@@ -1,0 +1,86 @@
+/* src/index.css */
+
+/* 1) Tailwind’s core layers */
+@tailwind base;
+@tailwind components;
+
+/* 2) Your custom utilities, first “referencing” the classes you want to @apply */
+@layer utilities {
+  .glass-panel {
+    /* ensure these utilities get generated */
+    @reference bg-surface-container-lowest;
+    @reference border-outline-variant/30;
+    @reference shadow-[0_16px_32px_-12px_rgba(36,49,74,0.12)];
+
+    /* now you can safely @apply them */
+    @apply bg-surface-container-lowest
+           border-outline-variant/30
+           shadow-[0_16px_32px_-12px_rgba(36,49,74,0.12)];
+  }
+
+  .glow-line {
+    @reference absolute;
+    @reference top-0;
+    @reference left-0;
+    @reference right-0;
+    @reference h-[2px];
+    @reference bg-surface-tint;
+    @reference opacity-0;
+    @reference transition-opacity;
+    @reference duration-300;
+
+    @apply absolute top-0 left-0 right-0
+           h-[2px]
+           bg-surface-tint
+           opacity-0
+           transition-opacity
+           duration-300;
+  }
+
+  .hover-glow:hover .glow-line {
+    @reference opacity-100;
+    @apply opacity-100;
+  }
+
+  .text-gradient {
+    @reference bg-clip-text;
+    @reference text-transparent;
+    @reference bg-gradient-to-r;
+    @reference from-primary;
+    @reference to-surface-tint;
+
+    @apply bg-clip-text
+           text-transparent
+           bg-gradient-to-r
+           from-primary
+           to-surface-tint;
+  }
+}
+
+/* 3) Finally bring in Tailwind’s generated utilities (including the ones you just referenced) */
+@tailwind utilities;
+
+
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/Geist-VariableFont_wght.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/JetBrainsMono-VariableFont_wght.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url('/fonts/MaterialSymbolsOutlined-VariableFont_FILL,GRAD,opsz,wght.ttf') format('truetype');
+}
