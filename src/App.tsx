@@ -1,5 +1,22 @@
 import React from 'react'
 
+// Helper component to colorize external SVGs automatically based on text color
+const Icon = ({ src, className }: { src: string; className?: string }) => (
+  <span
+    className={`inline-block bg-current ${className}`}
+    style={{
+      maskImage: `url(${src})`,
+      maskSize: 'contain',
+      maskRepeat: 'no-repeat',
+      maskPosition: 'center',
+      WebkitMaskImage: `url(${src})`,
+      WebkitMaskSize: 'contain',
+      WebkitMaskRepeat: 'no-repeat',
+      WebkitMaskPosition: 'center',
+    }}
+  />
+)
+
 const App: React.FC = () => {
   return (
     <>
@@ -80,12 +97,7 @@ const App: React.FC = () => {
             </p>
             <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
               <button className="w-full sm:w-auto bg-primary-container text-on-primary rounded-lg px-8 py-3 font-label-sm text-label-sm hover:bg-[#3A4B6B] transition-colors duration-300 shadow-[0_4px_14px_0_rgba(36,49,74,0.39)] flex items-center justify-center gap-2">
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontVariationSettings: "'FILL' 1" }}
-                >
-                  download
-                </span>
+                <Icon src="/icons/download_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg" className="w-5 h-5" />
                 Download for Desktop
               </button>
               <button className="w-full sm:w-auto border border-outline-variant bg-surface-container-lowest text-on-surface rounded-lg px-8 py-3 font-label-sm text-label-sm hover:bg-surface-container-low hover:border-outline transition-all duration-300">
@@ -113,19 +125,19 @@ const App: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {[
                 {
-                  icon: 'cloud_sync',
+                  iconSrc: '/icons/cloud_sync_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg',
                   title: 'Web Account',
                   text: 'Manage your settings, billing, and team access from a secure web portal.',
                   active: false,
                 },
                 {
-                  icon: 'desktop_windows',
+                  iconSrc: '/icons/desktop_windows_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg',
                   title: 'Desktop IDE',
                   text: 'A native, high-performance editor that syncs your remote context instantly.',
                   active: true,
                 },
                 {
-                  icon: 'smart_toy',
+                  iconSrc: '/icons/smart_toy_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg',
                   title: 'AI Ecosystem',
                   text: 'Extend your workflow with modular agents and custom tool integrations.',
                   active: false,
@@ -146,9 +158,7 @@ const App: React.FC = () => {
                         : ''
                     }`}
                   />
-                  <span className="material-symbols-outlined text-4xl text-primary mb-4">
-                    {card.icon}
-                  </span>
+                  <Icon src={card.iconSrc} className="w-10 h-10 mb-4 text-primary" />
                   <h3 className="font-headline-md text-headline-md text-primary mb-2">
                     {card.title}
                   </h3>
@@ -208,14 +218,12 @@ const App: React.FC = () => {
               </p>
               <ul className="flex flex-col gap-4 font-body-md text-body-md text-on-surface-variant">
                 {[
-                  { icon: 'verified_user', text: 'End-to-end encrypted context sync' },
-                  { icon: 'devices', text: 'Manage trusted devices from the web' },
-                  { icon: 'lock_clock', text: 'Remote session revocation' },
+                  { iconSrc: '/icons/verified_user_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg', text: 'End-to-end encrypted context sync' },
+                  { iconSrc: '/icons/devices_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg', text: 'Manage trusted devices from the web' },
+                  { iconSrc: '/icons/lock_clock_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg', text: 'Remote session revocation' },
                 ].map((li, i) => (
                   <li key={i} className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary">
-                      {li.icon}
-                    </span>
+                    <Icon src={li.iconSrc} className="w-6 h-6 text-primary" />
                     {li.text}
                   </li>
                 ))}
@@ -224,9 +232,7 @@ const App: React.FC = () => {
             <div className="glass-panel p-8 rounded-xl flex flex-col gap-6 relative">
               <div className="flex items-center justify-between border-b border-outline-variant/30 pb-4">
                 <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-3xl text-primary">
-                    laptop_mac
-                  </span>
+                  <Icon src="/icons/laptop_mac_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg" className="w-8 h-8 text-on-surface" />
                   <div>
                     <p className="font-headline-sm text-on-surface font-bold">
                       MacBook Pro (M3)
@@ -242,9 +248,7 @@ const App: React.FC = () => {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-3xl text-on-surface-variant">
-                    computer
-                  </span>
+                  <Icon src="/icons/computer_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg" className="w-8 h-8 opacity-60 text-on-surface" />
                   <div>
                     <p className="font-headline-sm text-on-surface">
                       Studio Desktop
@@ -276,25 +280,29 @@ const App: React.FC = () => {
               {[
                 {
                   iconBg: 'bg-primary-container',
-                  icon: 'code_blocks',
+                  iconColor: 'text-on-primary-container',
+                  iconSrc: '/icons/code_blocks_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg',
                   title: 'React Refactor',
                   desc: 'Specialized agent for modernizing React components and hooks.',
                 },
                 {
                   iconBg: 'bg-surface-tint',
-                  icon: 'bug_report',
+                  iconColor: 'text-on-primary',
+                  iconSrc: '/icons/bug_report_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg',
                   title: 'Test Gen AI',
                   desc: 'Automatically generate unit tests for TypeScript and Python.',
                 },
                 {
                   iconBg: 'bg-secondary',
-                  icon: 'api',
+                  iconColor: 'text-on-secondary',
+                  iconSrc: '/icons/api_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg',
                   title: 'API Architect',
                   desc: 'Assists in designing and validating REST and GraphQL APIs.',
                 },
                 {
                   iconBg: 'bg-transparent',
-                  icon: 'add_circle',
+                  iconColor: 'text-on-surface-variant',
+                  iconSrc: '/icons/add_circle_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg',
                   title: 'Marketplace',
                   desc: 'Explore 100+ tools',
                   dashed: true,
@@ -303,13 +311,11 @@ const App: React.FC = () => {
                 <div
                   key={i}
                   className={`glass-panel p-6 rounded-xl text-left hover:shadow-lg transition-shadow ${
-                    card.dashed ? 'border-dashed border-2 border-outline-variant/50 bg-transparent shadow-none flex flex-col justify-center items-center' : ''
+                    card.dashed ? 'border-dashed border-2 border-outline-variant/50 bg-transparent shadow-none flex flex-col justify-center items-center text-center' : ''
                   }`}
                 >
                   <div className={`w-12 h-12 ${card.iconBg} rounded-lg flex items-center justify-center mb-4`}>
-                    <span className="material-symbols-outlined text-on-primary">
-                      {card.icon}
-                    </span>
+                    <Icon src={card.iconSrc} className={`w-6 h-6 ${card.iconColor}`} />
                   </div>
                   <h4 className="font-headline-sm font-bold text-on-surface mb-2">
                     {card.title}
@@ -340,16 +346,14 @@ const App: React.FC = () => {
             </p>
             <div className="flex flex-wrap justify-center gap-8 items-center opacity-70">
               {[
-                { icon: 'code', name: 'GitHub' },
-                { icon: 'integration_instructions', name: 'GitLab' },
-                { icon: 'forum', name: 'Slack' },
-                { icon: 'dashboard', name: 'Jira' },
-                { icon: 'cloud', name: 'AWS' },
+                { iconSrc: '/icons/deployed_code_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg', name: 'GitHub' },
+                { iconSrc: '/icons/integration_instructions_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg', name: 'GitLab' },
+                { iconSrc: '/icons/groups_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg', name: 'Slack' },
+                { iconSrc: '/icons/category_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg', name: 'Jira' },
+                { iconSrc: '/icons/public_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg', name: 'AWS' },
               ].map((svc, i) => (
                 <div key={i} className="flex items-center gap-2 font-headline-md font-bold text-on-surface">
-                  <span className="material-symbols-outlined text-3xl">
-                    {svc.icon}
-                  </span>
+                  <Icon src={svc.iconSrc} className="w-8 h-8 text-on-surface-variant" />
                   {svc.name}
                 </div>
               ))}
@@ -362,9 +366,7 @@ const App: React.FC = () => {
           <div className="max-w-container-max mx-auto flex flex-col md:flex-row gap-16 items-center">
             <div className="flex-1">
               <div className="w-20 h-20 bg-surface-container-highest rounded-full flex items-center justify-center mb-6">
-                <span className="material-symbols-outlined text-4xl text-primary">
-                  security
-                </span>
+                <Icon src="/icons/security_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg" className="w-10 h-10 text-primary" />
               </div>
               <h2 className="font-headline-lg text-headline-lg text-primary mb-4">
                 Enterprise-Grade Security
@@ -376,9 +378,7 @@ const App: React.FC = () => {
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-primary mt-1">
-                    check_circle
-                  </span>
+                  <Icon src="/icons/check_circle_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg" className="w-6 h-6 mt-1 text-primary" />
                   <div>
                     <h4 className="font-headline-sm font-bold text-on-surface">
                       Signed Downloads
@@ -389,9 +389,7 @@ const App: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-primary mt-1">
-                    check_circle
-                  </span>
+                  <Icon src="/icons/check_circle_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg" className="w-6 h-6 mt-1 text-primary" />
                   <div>
                     <h4 className="font-headline-sm font-bold text-on-surface">
                       Data Privacy
@@ -449,9 +447,9 @@ const App: React.FC = () => {
                   <span className="text-on-surface-variant">/month</span>
                 </div>
                 <ul className="flex flex-col gap-3 font-body-sm text-on-surface-variant mb-8 flex-grow">
-                  {['Core Desktop IDE','Basic AI Autocomplete','1 Synced Device'].map((f,i)=><li key={i} className="flex items-center gap-2"><span className="material-symbols-outlined text-primary text-sm">done</span>{f}</li>)}
+                  {['Core Desktop IDE','Basic AI Autocomplete','1 Synced Device'].map((f,i)=><li key={i} className="flex items-center gap-2"><Icon src="/icons/check_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg" className="w-4 h-4 text-primary" />{f}</li>)}
                   <li className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-outline text-sm">close</span>
+                    <Icon src="/icons/close_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg" className="w-4 h-4 opacity-50 text-on-surface-variant" />
                     Custom Agents
                   </li>
                 </ul>
@@ -479,7 +477,7 @@ const App: React.FC = () => {
                     'Priority Support',
                   ].map((f,i)=>(
                     <li key={i} className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-primary text-sm">done</span>
+                      <Icon src="/icons/check_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg" className="w-4 h-4 text-primary" />
                       {f}
                     </li>
                   ))}
@@ -519,9 +517,7 @@ const App: React.FC = () => {
                 <details key={i} className="glass-panel rounded-lg p-6 group cursor-pointer" open={item.open}>
                   <summary className="font-headline-sm font-bold text-on-surface flex justify-between items-center list-none">
                     {item.q}
-                    <span className="material-symbols-outlined transition-transform group-open:rotate-180">
-                      expand_more
-                    </span>
+                    <Icon src="/icons/arrow_drop_down_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg" className="w-6 h-6 transition-transform group-open:rotate-180 text-on-surface" />
                   </summary>
                   <p className="font-body-md text-on-surface-variant mt-4">
                     {item.a}
@@ -547,12 +543,7 @@ const App: React.FC = () => {
                 Create Free Account
               </button>
               <button className="w-full sm:w-auto border border-primary-fixed-dim text-on-primary rounded-lg px-8 py-3 font-label-sm text-label-sm hover:bg-primary-container transition-colors flex items-center justify-center gap-2">
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontVariationSettings: "'FILL' 1" }}
-                >
-                  download
-                </span>
+                <Icon src="/icons/download_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg" className="w-5 h-5 text-on-primary" />
                 Download Mac (Apple Silicon)
               </button>
             </div>
@@ -637,7 +628,7 @@ const App: React.FC = () => {
                   href="#"
                   className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:bg-primary-container hover:text-on-primary transition-colors"
                 >
-                  <span className="material-symbols-outlined text-sm">link</span>
+                  <Icon src="/icons/link_512dp_E3E3E3_FILL0_wght400_GRAD0_opsz48.svg" className="w-4 h-4 text-inherit" />
                 </a>
               ))}
             </div>
