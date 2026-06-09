@@ -1,73 +1,58 @@
-# React + TypeScript + Vite
+# Cursify Landing Page
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Premium 3D-style animation-rich landing page for Cursify, an AI-powered IDE platform.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Next.js App Router
+- React
+- TypeScript
+- Tailwind CSS
+- Framer Motion
+- Lucide React
 
-## React Compiler
+## Run locally
+```bash
+npm install
+npm run dev
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Visit:
 
-## Expanding the ESLint configuration
+txt
+http://localhost:3000
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Production build
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+bash
+npm run build
+npm run start
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Product Positioning
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Cursify is a professional AI-powered IDE platform built around:
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- Web account platform
+- Secure subscription
+- Account-bound desktop downloads
+- Desktop app pairing
+- Device registration
+- License validation
+- Agent/tool/extension ecosystem
+- Linked developer accounts
+- Desktop sync
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
+
+# 32. Optional Route Placeholders
+
+Your header/footer link to `/login`, `/signup`, `/download`, `/privacy`, and `/terms`.
+
+For a clean production build, you can add placeholder pages:
+
+```txt
+app/login/page.tsx
+app/signup/page.tsx
+app/download/page.tsx
+app/privacy/page.tsx
+app/terms/page.tsx
