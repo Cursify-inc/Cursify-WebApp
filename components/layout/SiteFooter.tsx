@@ -38,7 +38,7 @@ export function SiteFooter() {
                     <div>
                         <Link href="/" className="flex items-center gap-3">
                             <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-brand text-white overflow-hidden">
-                                <Image src="../../public/icon.png" alt="Cursify Icon" width={16} height={16} className="h-4 w-4 object-contain" />
+                                <Image src="/icon.png" alt="Cursify Icon" width={16} height={16} className="h-4 w-4 object-contain" />
                             </span>
                             <span className="font-bold text-text-primary">Cursify</span>
                         </Link>

@@ -19,7 +19,7 @@ export function SiteHeader() {
                 <nav className="flex h-16 items-center justify-between">
                     <Link href="/" className="focus-ring flex items-center gap-3 rounded-full">
                         <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-brand text-white shadow-soft overflow-hidden">
-                            <Image src="../../public/icon.png" alt="Cursify Icon" width={16} height={16} className="h-4 w-4 object-contain" />
+                            <Image src="/icon.png" alt="Cursify Icon" width={16} height={16} className="h-4 w-4 object-contain" />
                         </span>
                         <span className="text-sm font-bold tracking-tight text-text-primary">
                             Cursify
