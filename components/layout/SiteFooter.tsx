@@ -31,7 +31,7 @@ const links = [
 
 export function SiteFooter() {
     return (
-        <footer className="border-t border-white/60 py-12">
+        <footer className="border-t border-black/8 py-12 dark:border-white/10">
             <Container>
                 <div className="grid gap-10 lg:grid-cols-[1fr_2fr]">
                     <div>
@@ -69,7 +69,7 @@ export function SiteFooter() {
                     </div>
                 </div>
 
-                <div className="mt-10 border-t border-white/60 pt-6 text-sm text-text-tertiary">
+                <div className="mt-10 border-t border-black/8 pt-6 text-sm text-text-tertiary dark:border-white/10">
                     © {new Date().getFullYear()} Cursify. All rights reserved.
                 </div>
             </Container>

@@ -24,7 +24,7 @@ export function Button({
         variant === "secondary" &&
         "border border-border bg-background-surface text-text-primary hover:-translate-y-0.5 hover:border-brand-light hover:shadow-soft",
         variant === "ghost" &&
-        "text-text-secondary hover:bg-white/60 hover:text-text-primary",
+        "text-text-secondary hover:bg-black/5 hover:text-text-primary dark:hover:bg-white/10",
         size === "sm" && "h-9 px-4 text-sm",
         size === "md" && "h-11 px-5 text-sm",
         size === "lg" && "h-13 px-7 py-4 text-base",
