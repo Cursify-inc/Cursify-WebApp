@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Cpu, Download } from "lucide-react"
+import Image from "next/image"
 import { Button } from "@/components/ui/Button"
 import { Container } from "@/components/ui/Container"
 import { ThemeToggle } from "@/components/ui/ThemeToggle"
@@ -17,12 +18,12 @@ export function SiteHeader() {
             <Container>
                 <nav className="flex h-16 items-center justify-between">
                     <Link href="/" className="focus-ring flex items-center gap-3 rounded-full">
-            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-brand text-white shadow-soft">
-              <Cpu className="h-4 w-4" />
-            </span>
+                        <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-brand text-white shadow-soft overflow-hidden">
+                            <Image src="../../public/icon.png" alt="Cursify Icon" width={16} height={16} className="h-4 w-4 object-contain" />
+                        </span>
                         <span className="text-sm font-bold tracking-tight text-text-primary">
-              Cursify
-            </span>
+                            Cursify
+                        </span>
                     </Link>
 
                     <div className="hidden items-center gap-7 md:flex">

@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Cpu } from "lucide-react"
+import Image from "next/image"
 import { Container } from "@/components/ui/Container"
 
 const links = [
@@ -36,9 +37,9 @@ export function SiteFooter() {
                 <div className="grid gap-10 lg:grid-cols-[1fr_2fr]">
                     <div>
                         <Link href="/" className="flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-brand text-white">
-                <Cpu className="h-4 w-4" />
-              </span>
+                            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-brand text-white overflow-hidden">
+                                <Image src="../../public/icon.png" alt="Cursify Icon" width={16} height={16} className="h-4 w-4 object-contain" />
+                            </span>
                             <span className="font-bold text-text-primary">Cursify</span>
                         </Link>
                         <p className="mt-4 max-w-sm text-sm leading-7 text-text-secondary">
