@@ -11,7 +11,12 @@ import {
     type UseInViewOptions,
 } from "framer-motion"
 import { cn } from "@/lib/utils"
-import { AutoEdgeLight } from "@/components/ui/AutoEdgeLight"
+import dynamic from "next/dynamic"
+
+const AutoEdgeLight = dynamic(
+    () => import("@/components/ui/AutoEdgeLight").then((mod) => mod.AutoEdgeLight),
+    { ssr: false }
+)
 import type { AutoEdgeLightProProps } from "@/components/ui/AutoEdgeLight"
 
 type ViewportMargin = UseInViewOptions["margin"]
