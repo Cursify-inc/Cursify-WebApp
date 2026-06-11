@@ -13,6 +13,7 @@ const items = [
 ]
 
 const compactEdgeLight = {
+    inset: 1,
     strokeWidth: 2,
     glowWidth: 6,
     glowBlur: 6,
@@ -20,7 +21,7 @@ const compactEdgeLight = {
     trailCount: 3,
     trailGap: 2,
     idleSpeed: 0.4,
-    activeSpeedBoost: 0.14,
+    hoverSpeedBoost: 0.14, // ✅ fixed name
     attractStrength: 6,
     proximityRadius: 90,
     pulseDurationMs: 560,
@@ -45,25 +46,19 @@ export function TrustedStrip() {
                         Designed around a secure, scalable architecture
                     </p>
 
-                    <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                    <div className="mt-5 grid items-stretch grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
                         {items.map((item, index) => (
                             <Card
                                 key={item}
                                 animateIn
-                                delay={index}
+                                delay={Math.min(index, 3)} // optional: smoother perceived alignment
                                 interactive
                                 glow
                                 edgeLightProps={compactEdgeLight}
-                                className="h-full rounded-[1.35rem]"
-                                contentClassName={`
-                  rounded-[1.25rem]
-                  border-white/60
-                  bg-white/72
-                  dark:border-white/10
-                  dark:bg-white/[0.045]
-                `}
+                                className="h-full rounded-[1.25rem]"
+                                contentClassName="flex h-full rounded-[1.25rem] bg-white/72 dark:bg-white/[0.045]"
                             >
-                                <div className="flex min-h-19 items-center justify-center px-3 py-3 text-center">
+                                <div className="flex h-full min-h-[4.75rem] items-center justify-center px-3 py-3 text-center">
                   <span className="text-sm font-semibold leading-snug text-text-secondary">
                     {item}
                   </span>

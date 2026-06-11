@@ -3,18 +3,22 @@
 import * as React from "react"
 import {
     motion,
-    useMotionTemplate,
+    useInView,
     useMotionValue,
     useReducedMotion,
     useSpring,
     useTransform,
+    type UseInViewOptions,
 } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { AutoEdgeLight } from "@/components/ui/AutoEdgeLight"
+import type { AutoEdgeLightProProps } from "@/components/ui/AutoEdgeLight"
 
-type AutoEdgeLightProps = React.ComponentProps<typeof AutoEdgeLight>
+type ViewportMargin = UseInViewOptions["margin"]
 
-type CardProps = {
+const DEFAULT_VIEWPORT_MARGIN = "0px 0px -160px 0px" satisfies NonNullable<UseInViewOptions["margin"]>
+
+export type CardProps = {
     children: React.ReactNode
     className?: string
     contentClassName?: string
@@ -22,162 +26,194 @@ type CardProps = {
     glow?: boolean
     animateIn?: boolean
     delay?: number
-    edgeLightProps?: Omit<AutoEdgeLightProps, "active" | "reducedMotion" | "parentRef">
-}
-
-function getCssVar(el: HTMLElement, name: string, fallback: string) {
-    const v = getComputedStyle(el).getPropertyValue(name).trim()
-    return v || fallback
+    edgeLightProps?: Omit<
+        AutoEdgeLightProProps,
+        "active" | "reducedMotion" | "parentRef"
+    >
+    activateGlowOnReveal?: boolean
+    revealGlowDurationMs?: number
+    revealGlowDelayMs?: number
+    revealViewportMargin?: ViewportMargin
 }
 
 export function Card({
                          children,
                          className,
                          contentClassName,
-                         interactive = true,
-                         glow = true,
+                         interactive = false,
+                         glow = false,
                          animateIn = false,
                          delay = 0,
                          edgeLightProps,
+                         activateGlowOnReveal = false,
+                         revealGlowDurationMs = 1200,
+                         revealGlowDelayMs = 0,
+                         revealViewportMargin = DEFAULT_VIEWPORT_MARGIN,
                      }: CardProps) {
-    const reducedMotion = useReducedMotion() ?? false
-    const [active, setActive] = React.useState(false)
+    const reducedMotion = useReducedMotion()
     const cardRef = React.useRef<HTMLDivElement>(null)
-
-    const [spotlightColor, setSpotlightColor] = React.useState("rgba(56,189,248,0.12)")
-    const [spotlightStop, setSpotlightStop] = React.useState("34%")
-
-    React.useEffect(() => {
-        const read = () => {
-            const host = cardRef.current ?? document.documentElement
-            setSpotlightColor(getCssVar(host, "--card-spotlight-color", "rgba(56,189,248,0.12)"))
-            setSpotlightStop(getCssVar(host, "--card-spotlight-stop", "34%"))
-        }
-
-        read()
-
-        const mo = new MutationObserver(read)
-        mo.observe(document.documentElement, {
-            attributes: true,
-            attributeFilter: ["class", "data-theme"],
-        })
-
-        return () => mo.disconnect()
-    }, [])
+    const [active, setActive] = React.useState(false)
 
     const mouseX = useMotionValue(0)
     const mouseY = useMotionValue(0)
 
-    const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], [8, -8]), {
-        stiffness: 140,
-        damping: 18,
+    const rotateXRaw = useTransform(mouseY, (y) => {
+        const el = cardRef.current
+        if (!el) return 0
+        const h = el.clientHeight || 1
+        const py = y / h - 0.5
+        return -(py * 8)
     })
 
-    const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-8, 8]), {
-        stiffness: 140,
-        damping: 18,
+    const rotateYRaw = useTransform(mouseX, (x) => {
+        const el = cardRef.current
+        if (!el) return 0
+        const w = el.clientWidth || 1
+        const px = x / w - 0.5
+        return px * 8
     })
 
-    const glowX = useTransform(mouseX, [-0.5, 0.5], ["35%", "65%"])
-    const glowY = useTransform(mouseY, [-0.5, 0.5], ["30%", "70%"])
+    const rotateX = useSpring(rotateXRaw, { stiffness: 240, damping: 26, mass: 0.7 })
+    const rotateY = useSpring(rotateYRaw, { stiffness: 240, damping: 26, mass: 0.7 })
 
-    const spotlight = useMotionTemplate`radial-gradient(circle at ${glowX} ${glowY}, ${spotlightColor}, transparent ${spotlightStop})`
+    const showInteractive = interactive && !reducedMotion
+    const pointerGlowActive = glow && active
 
-    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!cardRef.current || reducedMotion || !interactive) return
+    const inView = useInView(cardRef, {
+        once: true,
+        margin: revealViewportMargin,
+    })
 
-        const rect = cardRef.current.getBoundingClientRect()
-        const x = (e.clientX - rect.left) / rect.width - 0.5
-        const y = (e.clientY - rect.top) / rect.height - 0.5
+    const [revealActive, setRevealActive] = React.useState(false)
+    const hasRevealedRef = React.useRef(false)
+    const startTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+    const endTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
-        mouseX.set(x)
-        mouseY.set(y)
-    }
+    const clearTimers = React.useCallback(() => {
+        if (startTimeoutRef.current) {
+            clearTimeout(startTimeoutRef.current)
+            startTimeoutRef.current = null
+        }
+        if (endTimeoutRef.current) {
+            clearTimeout(endTimeoutRef.current)
+            endTimeoutRef.current = null
+        }
+    }, [])
 
-    const resetMouse = () => {
-        mouseX.set(0)
-        mouseY.set(0)
+    React.useEffect(() => {
+        if (!activateGlowOnReveal || !inView || hasRevealedRef.current) return
+
+        hasRevealedRef.current = true
+
+        startTimeoutRef.current = setTimeout(() => {
+            setRevealActive(true)
+            endTimeoutRef.current = setTimeout(() => {
+                setRevealActive(false)
+            }, Math.max(0, revealGlowDurationMs))
+        }, Math.max(0, revealGlowDelayMs))
+
+        return clearTimers
+    }, [
+        activateGlowOnReveal,
+        inView,
+        revealGlowDelayMs,
+        revealGlowDurationMs,
+        clearTimers,
+    ])
+
+    React.useEffect(() => clearTimers, [clearTimers])
+
+    const glowActive = pointerGlowActive || revealActive
+
+    const updateMouseFromEvent = React.useCallback(
+        (e: React.PointerEvent<HTMLDivElement>) => {
+            const rect = cardRef.current?.getBoundingClientRect()
+            if (!rect) return
+            mouseX.set(e.clientX - rect.left)
+            mouseY.set(e.clientY - rect.top)
+        },
+        [mouseX, mouseY]
+    )
+
+    const handlePointerMove = React.useCallback(
+        (e: React.PointerEvent<HTMLDivElement>) => {
+            if (!showInteractive) return
+            updateMouseFromEvent(e)
+        },
+        [showInteractive, updateMouseFromEvent]
+    )
+
+    const handlePointerEnter = React.useCallback(
+        (e: React.PointerEvent<HTMLDivElement>) => {
+            if (!showInteractive) return
+            setActive(true)
+            updateMouseFromEvent(e)
+        },
+        [showInteractive, updateMouseFromEvent]
+    )
+
+    const handlePointerLeave = React.useCallback(() => {
         setActive(false)
-    }
-
-    const showInteractiveGlow = active && glow && interactive && !reducedMotion
+        const el = cardRef.current
+        if (!el) {
+            mouseX.set(0)
+            mouseY.set(0)
+            return
+        }
+        mouseX.set(el.clientWidth / 2)
+        mouseY.set(el.clientHeight / 2)
+    }, [mouseX, mouseY])
 
     return (
         <motion.div
             ref={cardRef}
-            initial={
-                animateIn
-                    ? reducedMotion
-                        ? { opacity: 0 }
-                        : { opacity: 0, y: 22 }
-                    : undefined
-            }
-            whileInView={
-                animateIn
-                    ? reducedMotion
-                        ? { opacity: 1 }
-                        : { opacity: 1, y: 0 }
-                    : undefined
-            }
-            viewport={animateIn ? { once: true, amount: 0.2 } : undefined}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={resetMouse}
-            onPointerEnter={() => {
-                if (interactive) setActive(true)
-            }}
+            className={cn("relative h-full w-full transform-gpu will-change-transform", className)}
             style={{
-                rotateX: reducedMotion || !interactive ? 0 : rotateX,
-                rotateY: reducedMotion || !interactive ? 0 : rotateY,
                 transformStyle: "preserve-3d",
                 backfaceVisibility: "hidden",
-                WebkitBackfaceVisibility: "hidden",
+                rotateX: showInteractive ? rotateX : 0,
+                rotateY: showInteractive ? rotateY : 0,
             }}
-            whileHover={reducedMotion || !interactive ? undefined : { y: -4, scale: 1.01 }}
+            onPointerEnter={handlePointerEnter}
+            onPointerMove={handlePointerMove}
+            onPointerLeave={handlePointerLeave}
+            whileHover={
+                showInteractive
+                    ? { y: -3, scale: 1.01, transition: { duration: 0.18, ease: "easeOut" } }
+                    : undefined
+            }
+            initial={animateIn ? { opacity: 0, y: 10 } : undefined}
+            animate={animateIn ? { opacity: 1, y: 0 } : undefined}
             transition={
                 animateIn
-                    ? { duration: 0.45, delay, ease: "easeOut" }
-                    : { type: "spring", stiffness: 220, damping: 18 }
+                    ? { duration: 0.35, ease: "easeOut", delay: delay * 0.06 }
+                    : undefined
             }
-            className={cn(
-                "group relative isolate overflow-hidden rounded-[28px] will-change-transform transform-[translateZ(0)]",
-                className
-            )}
         >
-            <AutoEdgeLight
-                active={showInteractiveGlow}
-                reducedMotion={reducedMotion}
-                parentRef={cardRef}
-                className="rounded-[inherit]"
-                {...edgeLightProps}
-            />
+            {glow ? (
+                <AutoEdgeLight
+                    active={glowActive}
+                    reducedMotion={!!reducedMotion}
+                    parentRef={cardRef}
+                    className="rounded-[inherit]"
+                    {...edgeLightProps}
+                />
+            ) : null}
 
             <div
                 className={cn(
-                    "card-surface relative overflow-hidden rounded-[27px] shadow-(--card-shadow)",
+                    "card-surface relative h-full overflow-hidden rounded-[inherit] shadow-(--card-shadow)",
                     contentClassName
                 )}
             >
-                {showInteractiveGlow && (
-                    <>
-                        <div aria-hidden="true" className="card-overlay pointer-events-none absolute inset-px rounded-[27px]" />
+                {glowActive ? (
+                    <div className="pointer-events-none absolute inset-0 z-1 rounded-[inherit]" />
+                ) : null}
 
-                        <motion.div
-                            aria-hidden="true"
-                            className="pointer-events-none absolute inset-px rounded-[26px]"
-                            style={{ background: spotlight }}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ duration: 0.25, ease: "easeOut" }}
-                        />
-
-                        <div aria-hidden="true" className="card-top-line pointer-events-none absolute inset-x-6 top-0 h-px" />
-
-                        <div aria-hidden="true" className="card-bottom-line pointer-events-none absolute inset-x-8 bottom-0 h-px" />
-                    </>
-                )}
-
-                <div className="relative z-10">{children}</div>
+                <div className="relative z-2 h-full">{children}</div>
             </div>
         </motion.div>
     )
 }
+
+export default Card

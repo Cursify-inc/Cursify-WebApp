@@ -56,6 +56,30 @@ const steps = [
             "Sync models, agents, tools, settings, and integrations into a ready-to-run AI environment.",
     },
 ]
+const compactEdgeLight = {
+    inset: 1,
+    strokeWidth: 5,
+    glowWidth: 6,
+    glowBlur: 6,
+    segmentRatio: 0.2,
+    trailCount: 3,
+    trailGap: 1,
+    idleSpeed: 0.4,
+    hoverSpeedBoost: 0.14,
+    attractStrength: 6,
+    proximityRadius: 90,
+    pulseDurationMs: 560,
+    pulseIntensity: 0.7,
+    coreOpacity: 0.82,
+    glowOpacity: 0.26,
+    highlightOpacity: 0.1,
+    colorA: "rgb(34 211 238)",
+    colorB: "rgb(99 102 241)",
+    highlightColor: "rgb(255 255 255)",
+    enableIdleScan: true,
+    enableCursorProximity: true,
+    enablePulse: false,
+} as const
 
 function StepCard({
                       step,
@@ -68,8 +92,11 @@ function StepCard({
         <Card
             animateIn
             delay={index * 0.06}
+            interactive
+            glow
+            edgeLightProps={compactEdgeLight}
+            className="h-full rounded-[1.25rem]"
             contentClassName="p-6"
-            edgeLightProps={{ enableIdleScan: true }}
         >
         <div className="flex items-start gap-4">
             <div

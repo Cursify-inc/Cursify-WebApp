@@ -581,39 +581,7 @@ body {
     }
 }
 /* globals.css */
-:root {
-    --ael-color-a: rgb(0 140 255);
-    --ael-color-b: rgb(124 58 237);
-    --ael-highlight: rgb(16 185 129);
 
-    --ael-gradient-start: rgba(59, 130, 246, 0);
-    --ael-gradient-end: rgba(124, 58, 237, 0);
-
-    --ael-stroke-width: 2;
-    --ael-glow-width: 8;
-    --ael-glow-blur: 6;
-
-    --ael-core-opacity: 0.72;
-    --ael-glow-opacity: 0.28;
-    --ael-highlight-opacity: 0.12;
-}
-
-.dark {
-    --ael-color-a: rgb(0 196 255);
-    --ael-color-b: rgb(140 0 255);
-    --ael-highlight: rgb(34 255 0);
-
-    --ael-gradient-start: rgba(34, 211, 238, 0);
-    --ael-gradient-end: rgba(168, 85, 247, 0);
-
-    --ael-stroke-width: 2;
-    --ael-glow-width: 9;
-    --ael-glow-blur: 8;
-
-    --ael-core-opacity: 0.92;
-    --ael-glow-opacity: 0.42;
-    --ael-highlight-opacity: 0.16;
-}
 
 :root {
     --card-bg: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(242,246,252,0.98));
@@ -715,3 +683,243 @@ body {
     background: var(--card-overlay-bg);
     opacity: 0.65;
 }
+/* Disable heavy transitions during theme flip window */
+/*.theme-switching *,*/
+/*.theme-switching *::before,*/
+/*.theme-switching *::after {*/
+/*    transition: none !important;*/
+/*}*/
+/* Fixed compositor-only fx root */
+@keyframes theme-fx-wrap-life { to { opacity: 1; } }
+
+.theme-fx-wrap {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 24px;
+    height: 24px;
+    pointer-events: none;
+    isolation: isolate;
+    z-index: 2147483647;
+
+    /* replace translate: -50% -50% */
+    transform: translate(-50%, -50%);
+
+    animation: theme-fx-fade 560ms ease forwards;
+}
+
+.theme-fx-fill,
+.theme-fx-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    will-change: transform, opacity;
+    transform: scale3d(0, 0, 1) translateZ(0);
+    opacity: 0;
+}
+
+.theme-fx-fill {
+    background: var(--fx-fill);
+    animation: theme-fx-fill 480ms cubic-bezier(0.15, 0.9, 0.3, 1) forwards;
+}
+
+.theme-fx-ring {
+    border: 2px solid color-mix(in srgb, var(--fx-neon) 86%, transparent);
+    box-shadow:
+            0 0 12px color-mix(in srgb, var(--fx-neon) 65%, transparent),
+            0 0 18px color-mix(in srgb, var(--fx-neon) 55%, transparent);
+    animation: theme-fx-ring 540ms cubic-bezier(0.11, 0.6, 0.3, 1) forwards;
+}
+
+@keyframes theme-fx-fill {
+    0% {
+        transform: scale3d(0.05, 0.05, 1) translateZ(0);
+        opacity: 0.95;
+    }
+    55% {
+        transform: scale3d(var(--fx-fill-scale), var(--fx-fill-scale), 1) translateZ(0);
+        opacity: 0.85;
+    }
+    100% {
+        transform: scale3d(var(--fx-fill-scale), var(--fx-fill-scale), 1) translateZ(0);
+        opacity: 0;
+    }
+}
+
+@keyframes theme-fx-ring {
+    0% {
+        transform: scale3d(0.1, 0.1, 1) translateZ(0);
+        opacity: 0.98;
+    }
+    50% {
+        transform: scale3d(var(--fx-ring-scale), var(--fx-ring-scale), 1) translateZ(0);
+        opacity: 0.88;
+    }
+    100% {
+        transform: scale3d(var(--fx-ring-scale), var(--fx-ring-scale), 1) translateZ(0);
+        opacity: 0;
+    }
+}
+
+@keyframes theme-fx-fade {
+    to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .theme-fx-wrap,
+    .theme-fx-fill,
+    .theme-fx-ring {
+        animation: none !important;
+    }
+}
+@property --background { syntax: "<color>"; inherits: true; initial-value: #e6eefc; }
+@property --background-surface { syntax: "<color>"; inherits: true; initial-value: #edf3ff; }
+@property --background-elevated { syntax: "<color>"; inherits: true; initial-value: #f5f8ff; }
+
+@property --text-primary { syntax: "<color>"; inherits: true; initial-value: #101a2b; }
+@property --text-secondary { syntax: "<color>"; inherits: true; initial-value: #475977; }
+@property --text-tertiary { syntax: "<color>"; inherits: true; initial-value: #7585a0; }
+
+@property --border { syntax: "<color>"; inherits: true; initial-value: rgba(76, 97, 140, 0.16); }
+
+@property --brand { syntax: "<color>"; inherits: true; initial-value: #4da3ff; }
+@property --brand-hover { syntax: "<color>"; inherits: true; initial-value: #2f8fff; }
+@property --brand-light { syntax: "<color>"; inherits: true; initial-value: #8fd0ff; }
+
+@property --surface-bg { syntax: "<color>"; inherits: true; initial-value: rgba(237, 243, 255, 0.74); }
+@property --surface-bg-strong { syntax: "<color>"; inherits: true; initial-value: rgba(245, 248, 255, 0.9); }
+@property --surface-border { syntax: "<color>"; inherits: true; initial-value: rgba(255, 255, 255, 0.62); }
+@property --surface-border-strong { syntax: "<color>"; inherits: true; initial-value: rgba(173, 191, 255, 0.38); }
+
+
+html.theme-transition {
+    transition:
+            --background 360ms cubic-bezier(0.22, 1, 0.36, 1),
+            --background-surface 360ms cubic-bezier(0.22, 1, 0.36, 1),
+            --background-elevated 360ms cubic-bezier(0.22, 1, 0.36, 1),
+            --text-primary 280ms cubic-bezier(0.22, 1, 0.36, 1),
+            --text-secondary 280ms cubic-bezier(0.22, 1, 0.36, 1),
+            --text-tertiary 280ms cubic-bezier(0.22, 1, 0.36, 1),
+            --border 360ms cubic-bezier(0.22, 1, 0.36, 1),
+            --brand 320ms cubic-bezier(0.22, 1, 0.36, 1),
+            --brand-hover 320ms cubic-bezier(0.22, 1, 0.36, 1),
+            --brand-light 320ms cubic-bezier(0.22, 1, 0.36, 1),
+            --surface-bg 360ms cubic-bezier(0.22, 1, 0.36, 1),
+            --surface-bg-strong 360ms cubic-bezier(0.22, 1, 0.36, 1),
+            --surface-border 360ms cubic-bezier(0.22, 1, 0.36, 1),
+            --surface-border-strong 360ms cubic-bezier(0.22, 1, 0.36, 1),
+            --ael-color-a 320ms cubic-bezier(0.22, 1, 0.36, 1),
+            --ael-color-b 320ms cubic-bezier(0.22, 1, 0.36, 1),
+            --ael-highlight 320ms cubic-bezier(0.22, 1, 0.36, 1),
+            --ael-gradient-start 320ms cubic-bezier(0.22, 1, 0.36, 1),
+            --ael-gradient-end 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.theme-color-fade {
+    transition:
+            background-color 320ms cubic-bezier(0.22, 1, 0.36, 1),
+            color 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            border-color 320ms cubic-bezier(0.22, 1, 0.36, 1),
+            fill 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            stroke 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.card-theme-fade {
+    position: relative;
+}
+.card-theme-fade::before,
+.card-theme-fade::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.card-theme-fade::before { opacity: 1; background: var(--card-bg-light); }
+.card-theme-fade::after  { opacity: 0; background: var(--card-bg-dark); }
+
+.dark .card-theme-fade::before { opacity: 0; }
+.dark .card-theme-fade::after  { opacity: 1; }
+/* AutoEdgeLight tokens - light theme */
+:root {
+    --ael-color-a: rgb(56 189 248);              /* sky-400 */
+    --ael-color-b: rgb(99 102 241);              /* indigo-500 */
+    --ael-highlight: rgb(129 140 248);           /* indigo-400 */
+
+    --ael-gradient-start: rgba(56, 189, 248, 0);
+    --ael-gradient-end: rgba(99, 102, 241, 0);
+
+    --ael-stroke-width: 1.75;
+    --ael-glow-width: 7.5;
+    --ael-glow-blur: 5.5;
+
+    --ael-core-opacity: 0.72;
+    --ael-glow-opacity: 0.24;
+    --ael-highlight-opacity: 0.10;
+}
+
+/* AutoEdgeLight tokens - dark theme */
+.dark {
+    --ael-color-a: rgb(34 211 238);              /* cyan-400 */
+    --ael-color-b: rgb(168 85 247);              /* purple-500 */
+    --ael-highlight: rgb(52 211 153);            /* emerald-400 */
+
+    --ael-gradient-start: rgba(34, 211, 238, 0);
+    --ael-gradient-end: rgba(168, 85, 247, 0);
+
+    --ael-stroke-width: 2;
+    --ael-glow-width: 9;
+    --ael-glow-blur: 8;
+
+    --ael-core-opacity: 0.92;
+    --ael-glow-opacity: 0.42;
+    --ael-highlight-opacity: 0.16;
+}
+/* --- AutoEdgeLight theme tokens (global) --- */
+@property --ael-color-a {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: #006dff;
+}
+@property --ael-color-b {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: #7c3aed;
+}
+@property --ael-highlight {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: #10b981;
+}
+@property --ael-gradient-start {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: #00263c;
+}
+@property --ael-gradient-end {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: #12001b;
+}
+
+:root {
+    --ael-color-a: #006dff;
+    --ael-color-b: #7c3aed;
+    --ael-highlight: #10b981;
+    --ael-gradient-start: #dbeafe; /* light */
+    --ael-gradient-end: #ede9fe;   /* light */
+}
+
+/* if you use next-themes attribute="class" */
+:root.dark,
+.dark {
+    --ael-color-a: #2ae0ff;
+    --ael-color-b: #c084fc;
+    --ael-highlight: #6ee7b7;
+    --ael-gradient-start: #00263c; /* dark */
+    --ael-gradient-end: #12001b;   /* dark */
+}
+
+/* If you use attribute="data-theme", use this instead:
+:root[data-theme="dark"] { ... }
+*/

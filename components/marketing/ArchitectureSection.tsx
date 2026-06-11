@@ -37,6 +37,31 @@ const architecture = [
     },
 ]
 
+const compactEdgeLight = {
+    inset: 1,
+    strokeWidth: 5,
+    glowWidth: 6,
+    glowBlur: 6,
+    segmentRatio: 0.2,
+    trailCount: 3,
+    trailGap: 1,
+    idleSpeed: 0.4,
+    hoverSpeedBoost: 0.14, // correct prop name
+    attractStrength: 6,
+    proximityRadius: 90,
+    pulseDurationMs: 560,
+    pulseIntensity: 0.7,
+    coreOpacity: 0.82,
+    glowOpacity: 0.26,
+    highlightOpacity: 0.1,
+    colorA: "rgb(34 211 238)",
+    colorB: "rgb(99 102 241)",
+    highlightColor: "rgb(255 255 255)",
+    enableIdleScan: true,
+    enableCursorProximity: true,
+    enablePulse: false,
+} as const
+
 export function ArchitectureSection() {
     return (
         <section className="py-24">
@@ -47,29 +72,32 @@ export function ArchitectureSection() {
                     description="Cursify can start as a focused Go API plus Rust security service, then split into specialized services as traffic and product complexity grow."
                 />
 
-                {/* Outer Container: Simple structural wrapper */}
                 <div className="mt-14 rounded-3xl border border-border bg-background-surface/30 p-2 sm:p-4">
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                    <div className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-5">
+
                         {architecture.map((item, index) => {
                             const Icon = item.icon
                             return (
-                                <div key={item.title} className="relative group">
-                                    {/* Using your Card component here */}
-                                    <Card className="relative h-full overflow-hidden border-border bg-background-elevated p-5 transition-all duration-300">
-                                        {/* The Edge Animation: Only active inside these cards */}
-                                        <div className="edge-animate absolute inset-0 rounded-[inherit] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-                                        <div className="relative z-10">
-                                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand text-background-inverse">
-                                                <Icon className="h-5 w-5" />
-                                            </div>
-                                            <h3 className="mt-4 font-bold text-text-primary">{item.title}</h3>
-                                            <p className="mt-3 text-sm leading-6 text-text-secondary">
-                                                {item.description}
-                                            </p>
+                                <Card
+                                    key={item.title}
+                                    animateIn
+                                    delay={index}
+                                    interactive
+                                    glow
+                                    edgeLightProps={compactEdgeLight}
+                                    className="h-full rounded-[1.25rem]"
+                                    contentClassName="flex h-full flex-col rounded-[1.25rem] bg-background-elevated p-5"
+                                >
+                                    <div className="relative z-10">
+                                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand text-background-inverse">
+                                            <Icon className="h-5 w-5" />
                                         </div>
-                                    </Card>
-                                </div>
+                                        <h3 className="mt-4 font-bold text-text-primary">{item.title}</h3>
+                                        <p className="mt-3 text-sm leading-6 text-text-secondary">
+                                            {item.description}
+                                        </p>
+                                    </div>
+                                </Card>
                             )
                         })}
                     </div>

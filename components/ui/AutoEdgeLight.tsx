@@ -15,7 +15,8 @@ import {
     useSpring,
     useTransform,
 } from "framer-motion";
-
+import { useUnifiedPointerGlow } from "./useUnifiedPointerGlow";
+import { useTheme } from "next-themes";
 type CornerRadius = {
     rx: number;
     ry: number;
@@ -37,7 +38,7 @@ type Geometry = {
     path: string;
 };
 
-type AutoEdgeLightProProps = {
+export type AutoEdgeLightProProps = {
     active: boolean;
     parentRef: RefObject<HTMLElement | null>;
     reducedMotion?: boolean;
@@ -434,18 +435,46 @@ function buildDashArray(
 }
 
 const DEFAULT_THEME: ThemeVars = {
-    colorA: "rgb(0 196 255)",
-    colorB: "rgb(140 0 255)",
-    highlight: "rgb(34 255 0)",
-    gradStart: "rgba(34,211,238,0)",
-    gradEnd: "rgba(168,85,247,0)",
+    colorA: "rgb(77 163 255)",
+    colorB: "rgb(111 93 255)",
+    highlight: "rgb(129 140 248)",
+    gradStart: "rgba(77,163,255,0)",
+    gradEnd: "rgba(111,93,255,0)",
     strokeWidth: 2,
-    glowWidth: 9,
-    glowBlur: 8,
-    coreOpacity: 0.92,
-    glowOpacity: 0.42,
-    highlightOpacity: 0.16,
+    glowWidth: 8,
+    glowBlur: 6,
+    coreOpacity: 0.86,
+    glowOpacity: 0.32,
+    highlightOpacity: 0.12,
 };
+
+function readVar(style: CSSStyleDeclaration, name: string, fallback: string) {
+    const v = style.getPropertyValue(name).trim();
+    return v || fallback;
+}
+
+function readNum(style: CSSStyleDeclaration, name: string, fallback: number) {
+    const v = style.getPropertyValue(name).trim();
+    const n = Number.parseFloat(v);
+    return Number.isFinite(n) ? n : fallback;
+}
+
+function resolveThemeVars(): ThemeVars {
+    const style = getComputedStyle(document.documentElement);
+    return {
+        colorA: readVar(style, "--ael-color-a", DEFAULT_THEME.colorA),
+        colorB: readVar(style, "--ael-color-b", DEFAULT_THEME.colorB),
+        highlight: readVar(style, "--ael-highlight", DEFAULT_THEME.highlight),
+        gradStart: readVar(style, "--ael-gradient-start", DEFAULT_THEME.gradStart),
+        gradEnd: readVar(style, "--ael-gradient-end", DEFAULT_THEME.gradEnd),
+        strokeWidth: readNum(style, "--ael-stroke-width", DEFAULT_THEME.strokeWidth),
+        glowWidth: readNum(style, "--ael-glow-width", DEFAULT_THEME.glowWidth),
+        glowBlur: readNum(style, "--ael-glow-blur", DEFAULT_THEME.glowBlur),
+        coreOpacity: readNum(style, "--ael-core-opacity", DEFAULT_THEME.coreOpacity),
+        glowOpacity: readNum(style, "--ael-glow-opacity", DEFAULT_THEME.glowOpacity),
+        highlightOpacity: readNum(style, "--ael-highlight-opacity", DEFAULT_THEME.highlightOpacity),
+    };
+}
 
 export function AutoEdgeLight({
                                   active,
@@ -486,7 +515,24 @@ export function AutoEdgeLight({
                                   enableCursorProximity = true,
                                   enablePulse = true,
                               }: AutoEdgeLightProProps) {
+    const { resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
     const [themeVars, setThemeVars] = useState<ThemeVars>(DEFAULT_THEME);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (!mounted) return;
+
+        // Wait 1 frame so .dark/:root vars are definitely applied
+        const id = requestAnimationFrame(() => {
+            setThemeVars(resolveThemeVars());
+        });
+
+        return () => cancelAnimationFrame(id);
+    }, [mounted, resolvedTheme]);
 
     useEffect(() => {
         const host = parentRef.current ?? document.documentElement;
@@ -632,102 +678,56 @@ export function AutoEdgeLight({
         };
     }, [parentRef, safeInset]);
 
+    useUnifiedPointerGlow({
+        parentRef,
+        reducedMotion,
+        enableCursorProximity,
+        enablePulse,
+        active,
+
+        geometry,
+        pathLength,
+        proximityRadius,
+        releaseDelayMs: 140, // same desktop/mobile feel
+
+        proximityRaw,
+        hoverRaw,
+        targetOffset,
+        targetSpeed,
+        pulse,
+        pulseStartRef,
+        releaseTimeoutRef,
+
+        getClosestPerimeterPoint,
+    });
+
+
     useEffect(() => {
-        const el = parentRef.current;
-        if (!el || reducedMotion || !enableCursorProximity) return;
-
-        const updateFromClientPoint = (clientX: number, clientY: number) => {
-            if (!geometry.width || !geometry.height) return;
-
-            const rect = el.getBoundingClientRect();
-            const localX = clientX - rect.left - geometry.offsetX;
-            const localY = clientY - rect.top - geometry.offsetY;
-
-            const result = getClosestPerimeterPoint(
-                localX,
-                localY,
-                geometry.width,
-                geometry.height,
-                geometry.radii,
-                proximityRadius
-            );
-
-            proximityRaw.set(result.proximity);
-
-            if (pathLength > 0) {
-                targetOffset.set(-result.progress * pathLength);
-            }
-        };
-
-        const clearReleaseTimeout = () => {
+        const reset = () => {
+            hoverRaw.set(0);
+            proximityRaw.set(0);
+            targetSpeed.set(0);
+            pulse.set(0);
             if (releaseTimeoutRef.current !== null) {
                 window.clearTimeout(releaseTimeoutRef.current);
                 releaseTimeoutRef.current = null;
             }
         };
 
-        const engage = () => {
-            clearReleaseTimeout();
-            hoverRaw.set(1);
+        const onVisibility = () => {
+            if (document.hidden) reset();
         };
 
-        const scheduleDisengage = () => {
-            clearReleaseTimeout();
-            releaseTimeoutRef.current = window.setTimeout(() => {
-                hoverRaw.set(0);
-                proximityRaw.set(0);
-            }, 220);
-        };
-
-        const onPointerEnter = (e: PointerEvent) => {
-            engage();
-            updateFromClientPoint(e.clientX, e.clientY);
-        };
-
-        const onPointerMove = (e: PointerEvent) => {
-            engage();
-            updateFromClientPoint(e.clientX, e.clientY);
-        };
-
-        const onPointerDown = (e: PointerEvent) => {
-            engage();
-            updateFromClientPoint(e.clientX, e.clientY);
-            if (enablePulse && active) pulseStartRef.current = performance.now();
-        };
-
-        const onPointerUp = () => scheduleDisengage();
-        const onPointerLeave = () => scheduleDisengage();
-        const onPointerCancel = () => scheduleDisengage();
-
-        el.addEventListener("pointerenter", onPointerEnter, { passive: true });
-        el.addEventListener("pointermove", onPointerMove, { passive: true });
-        el.addEventListener("pointerdown", onPointerDown, { passive: true });
-        el.addEventListener("pointerleave", onPointerLeave, { passive: true });
-        el.addEventListener("pointerup", onPointerUp, { passive: true });
-        el.addEventListener("pointercancel", onPointerCancel, { passive: true });
+        window.addEventListener("blur", reset, { passive: true });
+        window.addEventListener("pagehide", reset, { passive: true });
+        document.addEventListener("visibilitychange", onVisibility);
 
         return () => {
-            clearReleaseTimeout();
-            el.removeEventListener("pointerenter", onPointerEnter);
-            el.removeEventListener("pointermove", onPointerMove);
-            el.removeEventListener("pointerdown", onPointerDown);
-            el.removeEventListener("pointerleave", onPointerLeave);
-            el.removeEventListener("pointerup", onPointerUp);
-            el.removeEventListener("pointercancel", onPointerCancel);
+            window.removeEventListener("blur", reset);
+            window.removeEventListener("pagehide", reset);
+            document.removeEventListener("visibilitychange", onVisibility);
         };
-    }, [
-        active,
-        enableCursorProximity,
-        enablePulse,
-        geometry,
-        parentRef,
-        pathLength,
-        proximityRadius,
-        proximityRaw,
-        reducedMotion,
-        targetOffset,
-        hoverRaw,
-    ]);
+    }, [hoverRaw, proximityRaw, targetSpeed, pulse]);
 
     useEffect(() => {
         if (active && !lastActiveRef.current && enablePulse) {
@@ -807,7 +807,7 @@ export function AutoEdgeLight({
 
     return (
         <svg
-            className={`pointer-events-none absolute inset-0 z-20 h-full w-full overflow-hidden rounded-[inherit] ${className}`}
+            className={`pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible ${className}`}
             aria-hidden="true"
             focusable="false"
         >

@@ -70,6 +70,7 @@ export function EcosystemSection() {
                                     <p className="mt-2 text-sm leading-7 text-text-secondary">
                                         {item.description}
                                     </p>
+
                                 </Card>
                             )
                         })}
