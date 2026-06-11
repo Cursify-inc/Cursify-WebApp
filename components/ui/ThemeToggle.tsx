@@ -17,9 +17,9 @@ type ViewTransitionDocument = Document & {
 
 export function ThemeToggle({ className }: { className?: string }) {
     const { setTheme, resolvedTheme } = useTheme()
-    const [mounted, setMounted] = React.useState(false)
     const buttonRef = React.useRef<HTMLButtonElement | null>(null)
 
+    const [mounted, setMounted] = React.useState(false)
     React.useEffect(() => {
         setMounted(true)
     }, [])

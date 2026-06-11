@@ -2,6 +2,7 @@ import { ArrowRight, Box, Cloud, Database, Globe2, Shield } from "lucide-react"
 import { Card } from "@/components/ui/Card"
 import { Container } from "@/components/ui/Container"
 import { SectionHeading } from "@/components/ui/SectionHeading"
+import clsx from "clsx"
 
 const architecture = [
     {
@@ -46,35 +47,33 @@ export function ArchitectureSection() {
                     description="Cursify can start as a focused Go API plus Rust security service, then split into specialized services as traffic and product complexity grow."
                 />
 
-                <Card className="mt-14 p-6">
-                    <div className="grid gap-4 lg:grid-cols-5">
+                {/* Outer Container: Simple structural wrapper */}
+                <div className="mt-14 rounded-3xl border border-border bg-background-surface/30 p-2 sm:p-4">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                         {architecture.map((item, index) => {
                             const Icon = item.icon
-
                             return (
-                                <div key={item.title} className="relative">
-                                    <div className="h-full rounded-3xl border border-border/60 bg-background-surface/80 p-5 backdrop-blur-sm transition-colors">
-                                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand text-white shadow-[0_0_24px_rgba(99,102,241,0.25)]">
-                                            <Icon className="h-5 w-5" />
+                                <div key={item.title} className="relative group">
+                                    {/* Using your Card component here */}
+                                    <Card className="relative h-full overflow-hidden border-border bg-background-elevated p-5 transition-all duration-300">
+                                        {/* The Edge Animation: Only active inside these cards */}
+                                        <div className="edge-animate absolute inset-0 rounded-[inherit] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                                        <div className="relative z-10">
+                                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand text-background-inverse">
+                                                <Icon className="h-5 w-5" />
+                                            </div>
+                                            <h3 className="mt-4 font-bold text-text-primary">{item.title}</h3>
+                                            <p className="mt-3 text-sm leading-6 text-text-secondary">
+                                                {item.description}
+                                            </p>
                                         </div>
-
-                                        <h3 className="mt-4 font-bold text-text-primary">
-                                            {item.title}
-                                        </h3>
-
-                                        <p className="mt-3 text-sm leading-6 text-text-secondary">
-                                            {item.description}
-                                        </p>
-                                    </div>
-
-                                    {index < architecture.length - 1 && (
-                                        <ArrowRight className="absolute -right-5 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-brand/60 lg:block" />
-                                    )}
+                                    </Card>
                                 </div>
                             )
                         })}
                     </div>
-                </Card>
+                </div>
             </Container>
         </section>
     )

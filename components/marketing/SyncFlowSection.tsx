@@ -65,39 +65,45 @@ function StepCard({
     index: number
 }) {
     return (
-        <Card animateIn delay={index * 0.06} contentClassName="p-6">
-            <div className="flex items-start gap-4">
-                <div
-                    className="
+        <Card
+            animateIn
+            delay={index * 0.06}
+            contentClassName="p-6"
+            edgeLightProps={{ enableIdleScan: true }}
+        >
+        <div className="flex items-start gap-4">
+            <div
+                className="
                         relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl
                         border border-white/10
                         bg-[linear-gradient(180deg,rgba(34,211,238,0.10),rgba(168,85,247,0.08))]
                         shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]
                     "
-                    style={{
-                        transform: "translateZ(28px)",
-                        backfaceVisibility: "hidden",
-                        WebkitBackfaceVisibility: "hidden",
-                    }}
-                >
-                    <div className="absolute inset-px rounded-[15px] bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.12),transparent_45%)]" />
-                    <step.icon className="relative z-10 h-5 w-5 text-cyan-100" />
-                </div>
-
-                <div className="min-w-0">
-                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-200/65">
-                        Step {index + 1}
-                    </div>
-
-                    <h3 className="text-lg font-semibold tracking-tight text-white sm:text-xl">
-                        {step.title}
-                    </h3>
-
-                    <p className="mt-3 max-w-[44ch] text-sm leading-6 text-white/64">
-                        {step.description}
-                    </p>
-                </div>
+                style={{
+                    transform: "translateZ(28px)",
+                    backfaceVisibility: "hidden",
+                    WebkitBackfaceVisibility: "hidden",
+                }}
+            >
+                <div
+                    className="absolute inset-px rounded-[15px] bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.12),transparent_45%)]"/>
+                <step.icon className="relative z-10 h-5 w-5 text-cyan-100"/>
             </div>
+
+            <div className="min-w-0">
+                <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-200/65">
+                    Step {index + 1}
+                </div>
+
+                <h3 className="text-lg font-semibold tracking-tight text-white sm:text-xl">
+                    {step.title}
+                </h3>
+
+                <p className="mt-3 max-w-[44ch] text-sm leading-6 text-white/64">
+                    {step.description}
+                </p>
+            </div>
+        </div>
         </Card>
     )
 }

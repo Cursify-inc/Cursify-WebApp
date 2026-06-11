@@ -12,6 +12,8 @@ import {
 import { cn } from "@/lib/utils"
 import { AutoEdgeLight } from "@/components/ui/AutoEdgeLight"
 
+type AutoEdgeLightProps = React.ComponentProps<typeof AutoEdgeLight>
+
 type CardProps = {
     children: React.ReactNode
     className?: string
@@ -20,6 +22,12 @@ type CardProps = {
     glow?: boolean
     animateIn?: boolean
     delay?: number
+    edgeLightProps?: Omit<AutoEdgeLightProps, "active" | "reducedMotion" | "parentRef">
+}
+
+function getCssVar(el: HTMLElement, name: string, fallback: string) {
+    const v = getComputedStyle(el).getPropertyValue(name).trim()
+    return v || fallback
 }
 
 export function Card({
@@ -30,10 +38,32 @@ export function Card({
                          glow = true,
                          animateIn = false,
                          delay = 0,
+                         edgeLightProps,
                      }: CardProps) {
     const reducedMotion = useReducedMotion() ?? false
     const [active, setActive] = React.useState(false)
     const cardRef = React.useRef<HTMLDivElement>(null)
+
+    const [spotlightColor, setSpotlightColor] = React.useState("rgba(56,189,248,0.12)")
+    const [spotlightStop, setSpotlightStop] = React.useState("34%")
+
+    React.useEffect(() => {
+        const read = () => {
+            const host = cardRef.current ?? document.documentElement
+            setSpotlightColor(getCssVar(host, "--card-spotlight-color", "rgba(56,189,248,0.12)"))
+            setSpotlightStop(getCssVar(host, "--card-spotlight-stop", "34%"))
+        }
+
+        read()
+
+        const mo = new MutationObserver(read)
+        mo.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ["class", "data-theme"],
+        })
+
+        return () => mo.disconnect()
+    }, [])
 
     const mouseX = useMotionValue(0)
     const mouseY = useMotionValue(0)
@@ -51,7 +81,7 @@ export function Card({
     const glowX = useTransform(mouseX, [-0.5, 0.5], ["35%", "65%"])
     const glowY = useTransform(mouseY, [-0.5, 0.5], ["30%", "70%"])
 
-    const spotlight = useMotionTemplate`radial-gradient(circle at ${glowX} ${glowY}, rgba(56,189,248,0.12), transparent 34%)`
+    const spotlight = useMotionTemplate`radial-gradient(circle at ${glowX} ${glowY}, ${spotlightColor}, transparent ${spotlightStop})`
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!cardRef.current || reducedMotion || !interactive) return
@@ -102,9 +132,7 @@ export function Card({
                 backfaceVisibility: "hidden",
                 WebkitBackfaceVisibility: "hidden",
             }}
-            whileHover={
-                reducedMotion || !interactive ? undefined : { y: -4, scale: 1.01 }
-            }
+            whileHover={reducedMotion || !interactive ? undefined : { y: -4, scale: 1.01 }}
             transition={
                 animateIn
                     ? { duration: 0.45, delay, ease: "easeOut" }
@@ -120,22 +148,18 @@ export function Card({
                 reducedMotion={reducedMotion}
                 parentRef={cardRef}
                 className="rounded-[inherit]"
+                {...edgeLightProps}
             />
 
             <div
                 className={cn(
-                    "relative overflow-hidden rounded-[27px] border",
-                    "border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,247,251,0.98))] shadow-[0_12px_40px_rgba(15,21,34,0.08)]",
-                    "dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(10,14,24,0.96),rgba(7,10,18,0.98))] dark:shadow-[0_12px_40px_rgba(0,0,0,0.32)]",
+                    "card-surface relative overflow-hidden rounded-[27px] shadow-(--card-shadow)",
                     contentClassName
                 )}
             >
                 {showInteractiveGlow && (
                     <>
-                        <div
-                            aria-hidden="true"
-                            className="pointer-events-none absolute inset-px rounded-[27px] bg-linear-to-br from-cyan-300/10 via-sky-200/10 to-fuchsia-400/10 opacity-70 dark:from-cyan-300/14 dark:via-white/[0.035] dark:to-fuchsia-400/12"
-                        />
+                        <div aria-hidden="true" className="card-overlay pointer-events-none absolute inset-px rounded-[27px]" />
 
                         <motion.div
                             aria-hidden="true"
@@ -146,15 +170,9 @@ export function Card({
                             transition={{ duration: 0.25, ease: "easeOut" }}
                         />
 
-                        <div
-                            aria-hidden="true"
-                            className="pointer-events-none absolute inset-x-6 top-0 h-px bg-linear-to-r from-transparent via-cyan-500/20 to-transparent dark:via-cyan-200/35"
-                        />
+                        <div aria-hidden="true" className="card-top-line pointer-events-none absolute inset-x-6 top-0 h-px" />
 
-                        <div
-                            aria-hidden="true"
-                            className="pointer-events-none absolute inset-x-8 bottom-0 h-px bg-linear-to-r from-transparent via-slate-500/15 to-transparent dark:via-white/8"
-                        />
+                        <div aria-hidden="true" className="card-bottom-line pointer-events-none absolute inset-x-8 bottom-0 h-px" />
                     </>
                 )}
 

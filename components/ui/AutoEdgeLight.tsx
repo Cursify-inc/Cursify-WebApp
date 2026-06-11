@@ -91,6 +91,20 @@ type AutoEdgeLightProProps = {
     enablePulse?: boolean;
 };
 
+type ThemeVars = {
+    colorA: string;
+    colorB: string;
+    highlight: string;
+    gradStart: string;
+    gradEnd: string;
+    strokeWidth: number;
+    glowWidth: number;
+    glowBlur: number;
+    coreOpacity: number;
+    glowOpacity: number;
+    highlightOpacity: number;
+};
+
 const clamp = (n: number, min: number, max: number) =>
     Math.max(min, Math.min(n, max));
 
@@ -98,6 +112,16 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 const dist = (x1: number, y1: number, x2: number, y2: number) =>
     Math.hypot(x2 - x1, y2 - y1);
+
+function getCssVar(el: HTMLElement, name: string, fallback: string) {
+    const v = getComputedStyle(el).getPropertyValue(name).trim();
+    return v || fallback;
+}
+
+function parseNum(v: string, fallback: number) {
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : fallback;
+}
 
 function parseLengthToken(token: string, base: number) {
     const v = token.trim();
@@ -189,17 +213,17 @@ function parseCornerRadii(
 
 function buildRoundedRectPath(width: number, height: number, r: CornerRadii) {
     return `
-        M ${r.tl.rx} 0
-        H ${width - r.tr.rx}
-        A ${r.tr.rx} ${r.tr.ry} 0 0 1 ${width} ${r.tr.ry}
-        V ${height - r.br.ry}
-        A ${r.br.rx} ${r.br.ry} 0 0 1 ${width - r.br.rx} ${height}
-        H ${r.bl.rx}
-        A ${r.bl.rx} ${r.bl.ry} 0 0 1 0 ${height - r.bl.ry}
-        V ${r.tl.ry}
-        A ${r.tl.rx} ${r.tl.ry} 0 0 1 ${r.tl.rx} 0
-        Z
-    `
+    M ${r.tl.rx} 0
+    H ${width - r.tr.rx}
+    A ${r.tr.rx} ${r.tr.ry} 0 0 1 ${width} ${r.tr.ry}
+    V ${height - r.br.ry}
+    A ${r.br.rx} ${r.br.ry} 0 0 1 ${width - r.br.rx} ${height}
+    H ${r.bl.rx}
+    A ${r.bl.rx} ${r.bl.ry} 0 0 1 0 ${height - r.bl.ry}
+    V ${r.tl.ry}
+    A ${r.tl.rx} ${r.tl.ry} 0 0 1 ${r.tl.rx} 0
+    Z
+  `
         .replace(/\s+/g, " ")
         .trim();
 }
@@ -277,10 +301,7 @@ function getClosestPerimeterPoint(
         topLen + trArc + rightLen + brArc + bottomLen + blArc + leftLen + tlArc;
 
     if (perimeter <= 0) {
-        return {
-            progress: 0,
-            proximity: 0,
-        };
+        return { progress: 0, proximity: 0 };
     }
 
     const add = (d: number, progress: number) => {
@@ -290,94 +311,70 @@ function getClosestPerimeterPoint(
         });
     };
 
-    // Top edge
     {
         const x1 = r.tl.rx;
         const x2 = width - r.tr.rx;
         const px = clamp(x, x1, x2);
         const py = 0;
-
         add(dist(x, y, px, py), px - r.tl.rx);
     }
 
-    // Top-right corner
     if (r.tr.rx > 0 && r.tr.ry > 0) {
         const cx = width - r.tr.rx;
         const cy = r.tr.ry;
-
         const angle = clamp(Math.atan2(y - cy, x - cx), -Math.PI / 2, 0);
-
         const px = cx + Math.cos(angle) * r.tr.rx;
         const py = cy + Math.sin(angle) * r.tr.ry;
-
         const arcProgress = ((angle + Math.PI / 2) / (Math.PI / 2)) * trArc;
-
         add(dist(x, y, px, py), topLen + arcProgress);
     }
 
-    // Right edge
     {
         const y1 = r.tr.ry;
         const y2 = height - r.br.ry;
         const px = width;
         const py = clamp(y, y1, y2);
-
         add(dist(x, y, px, py), topLen + trArc + (py - r.tr.ry));
     }
 
-    // Bottom-right corner
     if (r.br.rx > 0 && r.br.ry > 0) {
         const cx = width - r.br.rx;
         const cy = height - r.br.ry;
-
         const angle = clamp(Math.atan2(y - cy, x - cx), 0, Math.PI / 2);
-
         const px = cx + Math.cos(angle) * r.br.rx;
         const py = cy + Math.sin(angle) * r.br.ry;
-
         const arcProgress = (angle / (Math.PI / 2)) * brArc;
-
         add(dist(x, y, px, py), topLen + trArc + rightLen + arcProgress);
     }
 
-    // Bottom edge
     {
         const x1 = r.bl.rx;
         const x2 = width - r.br.rx;
         const px = clamp(x, x1, x2);
-        const py = height;
-
         add(
-            dist(x, y, px, py),
+            dist(x, y, px, height),
             topLen + trArc + rightLen + brArc + (width - r.br.rx - px)
         );
     }
 
-    // Bottom-left corner
     if (r.bl.rx > 0 && r.bl.ry > 0) {
         const cx = r.bl.rx;
         const cy = height - r.bl.ry;
-
         const angle = clamp(Math.atan2(y - cy, x - cx), Math.PI / 2, Math.PI);
-
         const px = cx + Math.cos(angle) * r.bl.rx;
         const py = cy + Math.sin(angle) * r.bl.ry;
-
         const arcProgress = ((angle - Math.PI / 2) / (Math.PI / 2)) * blArc;
-
         add(
             dist(x, y, px, py),
             topLen + trArc + rightLen + brArc + bottomLen + arcProgress
         );
     }
 
-    // Left edge
     {
         const y1 = r.tl.ry;
         const y2 = height - r.bl.ry;
         const px = 0;
         const py = clamp(y, y1, y2);
-
         add(
             dist(x, y, px, py),
             topLen +
@@ -390,32 +387,18 @@ function getClosestPerimeterPoint(
         );
     }
 
-    // Top-left corner
     if (r.tl.rx > 0 && r.tl.ry > 0) {
         const cx = r.tl.rx;
         const cy = r.tl.ry;
-
         let angle = Math.atan2(y - cy, x - cx);
-
         if (angle < Math.PI) angle += Math.PI * 2;
-
         angle = clamp(angle, Math.PI, Math.PI * 1.5);
-
         const px = cx + Math.cos(angle) * r.tl.rx;
         const py = cy + Math.sin(angle) * r.tl.ry;
-
         const arcProgress = ((angle - Math.PI) / (Math.PI / 2)) * tlArc;
-
         add(
             dist(x, y, px, py),
-            topLen +
-            trArc +
-            rightLen +
-            brArc +
-            bottomLen +
-            blArc +
-            leftLen +
-            arcProgress
+            topLen + trArc + rightLen + brArc + bottomLen + blArc + leftLen + arcProgress
         );
     }
 
@@ -437,21 +420,32 @@ function buildDashArray(
     if (!pathLength) return "0 9999";
 
     const visible = pathLength * clamp(segmentRatio, 0.04, 0.5);
-
     if (trailCount <= 1) return `${visible} ${pathLength}`;
 
     const gap = visible * clamp(trailGap, 0.3, 4);
     const pattern: number[] = [];
 
-    for (let i = 0; i < trailCount; i++) {
-        pattern.push(visible, gap);
-    }
+    for (let i = 0; i < trailCount; i++) pattern.push(visible, gap);
 
     const used = pattern.reduce((sum, v) => sum + v, 0);
     pattern.push(Math.max(pathLength - used, gap));
 
     return pattern.join(" ");
 }
+
+const DEFAULT_THEME: ThemeVars = {
+    colorA: "rgb(0 196 255)",
+    colorB: "rgb(140 0 255)",
+    highlight: "rgb(34 255 0)",
+    gradStart: "rgba(34,211,238,0)",
+    gradEnd: "rgba(168,85,247,0)",
+    strokeWidth: 2,
+    glowWidth: 9,
+    glowBlur: 8,
+    coreOpacity: 0.92,
+    glowOpacity: 0.42,
+    highlightOpacity: 0.16,
+};
 
 export function AutoEdgeLight({
                                   active,
@@ -460,9 +454,9 @@ export function AutoEdgeLight({
                                   className = "",
                                   inset,
 
-                                  strokeWidth = 2,
-                                  glowWidth = 9,
-                                  glowBlur = 8,
+                                  strokeWidth,
+                                  glowWidth,
+                                  glowBlur,
 
                                   segmentRatio = 0.14,
                                   trailCount = 2,
@@ -480,26 +474,84 @@ export function AutoEdgeLight({
                                   pulseDurationMs = 700,
                                   pulseIntensity = 1,
 
-                                  coreOpacity = 0.92,
-                                  glowOpacity = 0.42,
-                                  highlightOpacity = 0.16,
+                                  coreOpacity,
+                                  glowOpacity,
+                                  highlightOpacity,
 
-                                  colorA = "rgb(0 196 255)",
-                                  colorB = "rgb(140 0 255)",
-                                  highlightColor = "rgb(34 255 0)",
+                                  colorA,
+                                  colorB,
+                                  highlightColor,
 
                                   enableIdleScan = true,
                                   enableCursorProximity = true,
                                   enablePulse = true,
                               }: AutoEdgeLightProProps) {
-    /**
-     * Important:
-     * The path stroke is centered on the SVG path.
-     * If inset is 0, half the stroke/glow gets clipped by overflow-hidden.
-     * This safe inset prevents anti-aliasing hairlines at the card edge.
-     */
+    const [themeVars, setThemeVars] = useState<ThemeVars>(DEFAULT_THEME);
+
+    useEffect(() => {
+        const host = parentRef.current ?? document.documentElement;
+        if (!host) return;
+
+        const read = () => {
+            const base = parentRef.current ?? document.documentElement;
+            setThemeVars({
+                colorA: getCssVar(base, "--ael-color-a", DEFAULT_THEME.colorA),
+                colorB: getCssVar(base, "--ael-color-b", DEFAULT_THEME.colorB),
+                highlight: getCssVar(base, "--ael-highlight", DEFAULT_THEME.highlight),
+                gradStart: getCssVar(base, "--ael-gradient-start", DEFAULT_THEME.gradStart),
+                gradEnd: getCssVar(base, "--ael-gradient-end", DEFAULT_THEME.gradEnd),
+                strokeWidth: parseNum(
+                    getCssVar(base, "--ael-stroke-width", String(DEFAULT_THEME.strokeWidth)),
+                    DEFAULT_THEME.strokeWidth
+                ),
+                glowWidth: parseNum(
+                    getCssVar(base, "--ael-glow-width", String(DEFAULT_THEME.glowWidth)),
+                    DEFAULT_THEME.glowWidth
+                ),
+                glowBlur: parseNum(
+                    getCssVar(base, "--ael-glow-blur", String(DEFAULT_THEME.glowBlur)),
+                    DEFAULT_THEME.glowBlur
+                ),
+                coreOpacity: parseNum(
+                    getCssVar(base, "--ael-core-opacity", String(DEFAULT_THEME.coreOpacity)),
+                    DEFAULT_THEME.coreOpacity
+                ),
+                glowOpacity: parseNum(
+                    getCssVar(base, "--ael-glow-opacity", String(DEFAULT_THEME.glowOpacity)),
+                    DEFAULT_THEME.glowOpacity
+                ),
+                highlightOpacity: parseNum(
+                    getCssVar(base, "--ael-highlight-opacity", String(DEFAULT_THEME.highlightOpacity)),
+                    DEFAULT_THEME.highlightOpacity
+                ),
+            });
+        };
+
+        read();
+
+        const mo = new MutationObserver(read);
+        mo.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ["class", "data-theme"],
+        });
+
+        return () => mo.disconnect();
+    }, [parentRef]);
+
+    const resolvedStrokeWidth = strokeWidth ?? themeVars.strokeWidth;
+    const resolvedGlowWidth = glowWidth ?? themeVars.glowWidth;
+    const resolvedGlowBlur = glowBlur ?? themeVars.glowBlur;
+
+    const resolvedColorA = colorA ?? themeVars.colorA;
+    const resolvedColorB = colorB ?? themeVars.colorB;
+    const resolvedHighlight = highlightColor ?? themeVars.highlight;
+
+    const resolvedCoreOpacity = coreOpacity ?? themeVars.coreOpacity;
+    const resolvedGlowOpacity = glowOpacity ?? themeVars.glowOpacity;
+    const resolvedHighlightOpacity = highlightOpacity ?? themeVars.highlightOpacity;
+
     const safeInset =
-        inset ?? Math.ceil(Math.max(strokeWidth, glowWidth) / 2 + glowBlur * 0.5);
+        inset ?? Math.ceil(Math.max(resolvedStrokeWidth, resolvedGlowWidth) / 2 + resolvedGlowBlur * 0.5);
 
     const [geometry, setGeometry] = useState<Geometry>({
         width: 0,
@@ -520,7 +572,7 @@ export function AutoEdgeLight({
     const pathMeasureRef = useRef<SVGPathElement>(null);
     const lastActiveRef = useRef(active);
     const pulseStartRef = useRef<number | null>(null);
-    const releaseTimeoutRef = useRef<number | null>(null)
+    const releaseTimeoutRef = useRef<number | null>(null);
 
     const rawGradientId = useId();
     const rawGlowFilterId = useId();
@@ -571,7 +623,6 @@ export function AutoEdgeLight({
         };
 
         const ro = new ResizeObserver(update);
-
         ro.observe(el);
         update();
 
@@ -582,16 +633,15 @@ export function AutoEdgeLight({
     }, [parentRef, safeInset]);
 
     useEffect(() => {
-        const el = parentRef.current
-        if (!el || reducedMotion || !enableCursorProximity) return
+        const el = parentRef.current;
+        if (!el || reducedMotion || !enableCursorProximity) return;
 
         const updateFromClientPoint = (clientX: number, clientY: number) => {
-            if (!geometry.width || !geometry.height) return
+            if (!geometry.width || !geometry.height) return;
 
-            const rect = el.getBoundingClientRect()
-
-            const localX = clientX - rect.left - geometry.offsetX
-            const localY = clientY - rect.top - geometry.offsetY
+            const rect = el.getBoundingClientRect();
+            const localX = clientX - rect.left - geometry.offsetX;
+            const localY = clientY - rect.top - geometry.offsetY;
 
             const result = getClosestPerimeterPoint(
                 localX,
@@ -600,83 +650,71 @@ export function AutoEdgeLight({
                 geometry.height,
                 geometry.radii,
                 proximityRadius
-            )
+            );
 
-            proximityRaw.set(result.proximity)
+            proximityRaw.set(result.proximity);
 
             if (pathLength > 0) {
-                targetOffset.set(-result.progress * pathLength)
+                targetOffset.set(-result.progress * pathLength);
             }
-        }
+        };
+
         const clearReleaseTimeout = () => {
             if (releaseTimeoutRef.current !== null) {
-                window.clearTimeout(releaseTimeoutRef.current)
-                releaseTimeoutRef.current = null
+                window.clearTimeout(releaseTimeoutRef.current);
+                releaseTimeoutRef.current = null;
             }
-        }
+        };
 
         const engage = () => {
-            clearReleaseTimeout()
-            hoverRaw.set(1)
-        }
+            clearReleaseTimeout();
+            hoverRaw.set(1);
+        };
 
         const scheduleDisengage = () => {
-            clearReleaseTimeout()
+            clearReleaseTimeout();
             releaseTimeoutRef.current = window.setTimeout(() => {
-                hoverRaw.set(0)
-                proximityRaw.set(0)
-            }, 220)
-        }
-
+                hoverRaw.set(0);
+                proximityRaw.set(0);
+            }, 220);
+        };
 
         const onPointerEnter = (e: PointerEvent) => {
-            engage()
-            updateFromClientPoint(e.clientX, e.clientY)
-        }
+            engage();
+            updateFromClientPoint(e.clientX, e.clientY);
+        };
 
         const onPointerMove = (e: PointerEvent) => {
-            engage()
-            updateFromClientPoint(e.clientX, e.clientY)
-        }
+            engage();
+            updateFromClientPoint(e.clientX, e.clientY);
+        };
 
         const onPointerDown = (e: PointerEvent) => {
-            engage()
-            updateFromClientPoint(e.clientX, e.clientY)
+            engage();
+            updateFromClientPoint(e.clientX, e.clientY);
+            if (enablePulse && active) pulseStartRef.current = performance.now();
+        };
 
-            if (enablePulse && active) {
-                pulseStartRef.current = performance.now()
-            }
-        }
+        const onPointerUp = () => scheduleDisengage();
+        const onPointerLeave = () => scheduleDisengage();
+        const onPointerCancel = () => scheduleDisengage();
 
-        const onPointerUp = () => {
-            scheduleDisengage()
-        }
-
-        const onPointerLeave = () => {
-            scheduleDisengage()
-        }
-
-        const onPointerCancel = () => {
-            scheduleDisengage()
-        }
-
-
-        el.addEventListener("pointerenter", onPointerEnter, { passive: true })
-        el.addEventListener("pointermove", onPointerMove, { passive: true })
-        el.addEventListener("pointerdown", onPointerDown, { passive: true })
-        el.addEventListener("pointerleave", onPointerLeave, { passive: true })
-        el.addEventListener("pointerup", onPointerUp, { passive: true })
-        el.addEventListener("pointercancel", onPointerCancel, { passive: true })
+        el.addEventListener("pointerenter", onPointerEnter, { passive: true });
+        el.addEventListener("pointermove", onPointerMove, { passive: true });
+        el.addEventListener("pointerdown", onPointerDown, { passive: true });
+        el.addEventListener("pointerleave", onPointerLeave, { passive: true });
+        el.addEventListener("pointerup", onPointerUp, { passive: true });
+        el.addEventListener("pointercancel", onPointerCancel, { passive: true });
 
         return () => {
-            clearReleaseTimeout()
-            el.removeEventListener("pointerenter", onPointerEnter)
-            el.removeEventListener("pointermove", onPointerMove)
-            el.removeEventListener("pointerdown", onPointerDown)
-            el.removeEventListener("pointerleave", onPointerLeave)
-            el.removeEventListener("pointerup", onPointerUp)
-            el.removeEventListener("pointercancel", onPointerCancel)
-        }
+            clearReleaseTimeout();
+            el.removeEventListener("pointerenter", onPointerEnter);
+            el.removeEventListener("pointermove", onPointerMove);
+            el.removeEventListener("pointerdown", onPointerDown);
+            el.removeEventListener("pointerleave", onPointerLeave);
+            el.removeEventListener("pointerup", onPointerUp);
+            el.removeEventListener("pointercancel", onPointerCancel);
+        };
     }, [
         active,
         enableCursorProximity,
@@ -689,13 +727,12 @@ export function AutoEdgeLight({
         reducedMotion,
         targetOffset,
         hoverRaw,
-    ])
+    ]);
 
     useEffect(() => {
         if (active && !lastActiveRef.current && enablePulse) {
             pulseStartRef.current = performance.now();
         }
-
         lastActiveRef.current = active;
     }, [active, enablePulse]);
 
@@ -703,23 +740,15 @@ export function AutoEdgeLight({
         if (!pathLength || !geometry.path) return;
 
         const dt = delta / 1000;
-
         const hoverAmount = hover.get();
         const proximityAmount = proximity.get();
 
-        const engagement = clamp(
-            Math.max(proximityAmount, hoverAmount * 0.5),
-            0,
-            1
-        );
-
+        const engagement = clamp(Math.max(proximityAmount, hoverAmount * 0.5), 0, 1);
         const visibility = activeProgress.get();
         const wantsAnimation = !reducedMotion && visibility > 0.001;
 
         const desiredSpeed = wantsAnimation
-            ? pathLength *
-            ((enableIdleScan ? idleSpeed : 0) + hoverSpeedBoost * engagement) *
-            visibility
+            ? pathLength * ((enableIdleScan ? idleSpeed : 0) + hoverSpeedBoost * engagement) * visibility
             : 0;
 
         targetSpeed.set(desiredSpeed);
@@ -728,21 +757,13 @@ export function AutoEdgeLight({
             const scannerOffset = dashOffset.get() - smoothSpeed.get() * dt;
             const followMix = clamp(attractStrength * engagement * dt, 0, 0.24);
             const next = lerp(scannerOffset, targetOffset.get(), followMix);
-
             dashOffset.set(next);
         }
 
         if (pulseStartRef.current !== null) {
-            const t = clamp(
-                (time - pulseStartRef.current) / pulseDurationMs,
-                0,
-                1
-            );
-
+            const t = clamp((time - pulseStartRef.current) / pulseDurationMs, 0, 1);
             const fade = 1 - Math.pow(1 - t, 3);
-
             pulse.set((1 - fade) * pulseIntensity);
-
             if (t >= 1) {
                 pulse.set(0);
                 pulseStartRef.current = null;
@@ -759,8 +780,7 @@ export function AutoEdgeLight({
         [proximity, pulse, activeProgress],
         (latest) => {
             const [p, pu, ap] = latest as [number, number, number];
-
-            return clamp((glowOpacity + p * 0.18 + pu * 0.24) * ap, 0, 1);
+            return clamp((resolvedGlowOpacity + p * 0.18 + pu * 0.24) * ap, 0, 1);
         }
     );
 
@@ -768,8 +788,7 @@ export function AutoEdgeLight({
         [proximity, pulse, activeProgress],
         (latest) => {
             const [p, pu, ap] = latest as [number, number, number];
-
-            return clamp((coreOpacity + p * 0.1 + pu * 0.16) * ap, 0, 1);
+            return clamp((resolvedCoreOpacity + p * 0.1 + pu * 0.16) * ap, 0, 1);
         }
     );
 
@@ -777,8 +796,7 @@ export function AutoEdgeLight({
         [pulse, proximity, activeProgress],
         (latest) => {
             const [pu, p, ap] = latest as [number, number, number];
-
-            return clamp((highlightOpacity + pu * 0.22 + p * 0.06) * ap, 0, 0.85);
+            return clamp((resolvedHighlightOpacity + pu * 0.22 + p * 0.06) * ap, 0, 0.85);
         }
     );
 
@@ -795,11 +813,11 @@ export function AutoEdgeLight({
         >
             <defs>
                 <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="rgba(34,211,238,0)" />
-                    <stop offset="18%" stopColor={colorA} />
-                    <stop offset="54%" stopColor={colorA} />
-                    <stop offset="84%" stopColor={colorB} />
-                    <stop offset="100%" stopColor="rgba(168,85,247,0)" />
+                    <stop offset="0%" stopColor={themeVars.gradStart} />
+                    <stop offset="18%" stopColor={resolvedColorA} />
+                    <stop offset="54%" stopColor={resolvedColorA} />
+                    <stop offset="84%" stopColor={resolvedColorB} />
+                    <stop offset="100%" stopColor={themeVars.gradEnd} />
                 </linearGradient>
 
                 <filter
@@ -810,7 +828,7 @@ export function AutoEdgeLight({
                     height="140%"
                     colorInterpolationFilters="sRGB"
                 >
-                    <feGaussianBlur stdDeviation={glowBlur} result="blur" />
+                    <feGaussianBlur stdDeviation={resolvedGlowBlur} result="blur" />
                     <feMerge>
                         <feMergeNode in="blur" />
                         <feMergeNode in="SourceGraphic" />
@@ -819,14 +837,7 @@ export function AutoEdgeLight({
             </defs>
 
             <g transform={`translate(${geometry.offsetX}, ${geometry.offsetY})`}>
-                {/* Hidden measurement path. Prevents visible dash artifacts before pathLength is known. */}
-                <path
-                    ref={pathMeasureRef}
-                    d={geometry.path}
-                    fill="none"
-                    stroke="none"
-                    opacity={0}
-                />
+                <path ref={pathMeasureRef} d={geometry.path} fill="none" stroke="none" opacity={0} />
 
                 {reducedMotion ? (
                     <>
@@ -834,16 +845,15 @@ export function AutoEdgeLight({
                             d={geometry.path}
                             fill="none"
                             stroke={`url(#${gradientId})`}
-                            strokeWidth={glowWidth * 0.55}
-                            opacity={staticReducedOpacity ? glowOpacity * 0.55 : 0}
+                            strokeWidth={resolvedGlowWidth * 0.55}
+                            opacity={staticReducedOpacity ? resolvedGlowOpacity * 0.55 : 0}
                         />
-
                         <path
                             d={geometry.path}
                             fill="none"
                             stroke={`url(#${gradientId})`}
-                            strokeWidth={strokeWidth}
-                            opacity={staticReducedOpacity ? coreOpacity * 0.82 : 0}
+                            strokeWidth={resolvedStrokeWidth}
+                            opacity={staticReducedOpacity ? resolvedCoreOpacity * 0.82 : 0}
                         />
                     </>
                 ) : isReady ? (
@@ -852,7 +862,7 @@ export function AutoEdgeLight({
                             d={geometry.path}
                             fill="none"
                             stroke={`url(#${gradientId})`}
-                            strokeWidth={glowWidth}
+                            strokeWidth={resolvedGlowWidth}
                             strokeLinecap="round"
                             strokeDasharray={dashArray}
                             style={{
@@ -861,12 +871,11 @@ export function AutoEdgeLight({
                                 filter: `url(#${glowFilterId})`,
                             }}
                         />
-
                         <motion.path
                             d={geometry.path}
                             fill="none"
                             stroke={`url(#${gradientId})`}
-                            strokeWidth={strokeWidth}
+                            strokeWidth={resolvedStrokeWidth}
                             strokeLinecap="round"
                             strokeDasharray={dashArray}
                             style={{
@@ -874,12 +883,11 @@ export function AutoEdgeLight({
                                 opacity: coreStrokeOpacity,
                             }}
                         />
-
                         <motion.path
                             d={geometry.path}
                             fill="none"
-                            stroke={highlightColor}
-                            strokeWidth={Math.max(1, strokeWidth * 0.34)}
+                            stroke={resolvedHighlight}
+                            strokeWidth={Math.max(1, resolvedStrokeWidth * 0.34)}
                             strokeLinecap="round"
                             strokeDasharray={dashArray}
                             style={{

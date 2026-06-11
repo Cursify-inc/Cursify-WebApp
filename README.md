@@ -44,13 +44,9 @@ Cursify is a professional AI-powered IDE platform built around:
 
 ---
 
-# 32. Optional Route Placeholders
 
-Your header/footer link to `/login`, `/signup`, `/download`, `/privacy`, and `/terms`.
+under development: header/footer link to `/login`, `/signup`, `/download`, `/privacy`, and `/terms`.
 
-For a clean production build, you can add placeholder pages:
-
-```txt
 app/login/page.tsx
 app/signup/page.tsx
 app/download/page.tsx
