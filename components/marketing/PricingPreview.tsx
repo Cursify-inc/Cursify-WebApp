@@ -1,6 +1,6 @@
 import { Check } from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import { Card } from "@/components/ui/Card"
+import { LargeCard } from "@/components/ui/CardVariants"
 import { Container } from "@/components/ui/Container"
 import { SectionHeading } from "@/components/ui/SectionHeading"
 
@@ -51,18 +51,21 @@ export function PricingPreview() {
 
                 <div className="mt-14 grid gap-5 lg:grid-cols-3">
                     {plans.map((plan) => (
-                        <Card
+                        <LargeCard
                             key={plan.name}
-                            className={
+                            className="h-full rounded-[1.25rem]"
+                            contentClassName={
                                 plan.highlighted
-                                    ? "relative border-brand bg-brand p-7 text-white shadow-card"
-                                    : "p-7"
+                                    ? "relative flex h-full flex-col border-brand bg-brand p-7 text-white shadow-card"
+                                    : "relative flex h-full flex-col p-7 bg-white dark:bg-white/[0.045]"
                             }
+                            interactive
+                            glow
                         >
                             {plan.highlighted && (
                                 <span className="absolute right-6 top-6 rounded-full bg-white px-3 py-1 text-xs font-bold text-brand">
-                  Popular
-                </span>
+                                    Popular
+                                </span>
                             )}
 
                             <h3
@@ -76,22 +79,22 @@ export function PricingPreview() {
                             </h3>
 
                             <div className="mt-5 flex items-end gap-1">
-                <span
-                    className={
-                        plan.highlighted
-                            ? "text-5xl font-bold text-white"
-                            : "text-5xl font-bold text-text-primary"
-                    }
-                >
-                  {plan.price}
-                </span>
+                                <span
+                                    className={
+                                        plan.highlighted
+                                            ? "text-5xl font-bold text-white"
+                                            : "text-5xl font-bold text-text-primary"
+                                    }
+                                >
+                                    {plan.price}
+                                </span>
                                 <span
                                     className={
                                         plan.highlighted ? "pb-1 text-white/60" : "pb-1 text-text-tertiary"
                                     }
                                 >
-                  /mo
-                </span>
+                                    /mo
+                                </span>
                             </div>
 
                             <p
@@ -119,8 +122,8 @@ export function PricingPreview() {
                                                 plan.highlighted ? "text-sm text-white/80" : "text-sm text-text-secondary"
                                             }
                                         >
-                      {feature}
-                    </span>
+                                            {feature}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
@@ -128,11 +131,11 @@ export function PricingPreview() {
                             <Button
                                 href="/signup"
                                 variant={plan.highlighted ? "secondary" : "primary"}
-                                className="mt-8 w-full"
+                                className="mt-auto pt-8 w-full"
                             >
                                 Get started
                             </Button>
-                        </Card>
+                        </LargeCard>
                     ))}
                 </div>
             </Container>

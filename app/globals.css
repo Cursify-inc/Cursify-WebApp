@@ -792,28 +792,53 @@ body {
 @property --surface-border-strong { syntax: "<color>"; inherits: true; initial-value: rgba(173, 191, 255, 0.38); }
 
 
-html.theme-transition {
-    transition:
-            --background 360ms cubic-bezier(0.22, 1, 0.36, 1),
-            --background-surface 360ms cubic-bezier(0.22, 1, 0.36, 1),
-            --background-elevated 360ms cubic-bezier(0.22, 1, 0.36, 1),
-            --text-primary 280ms cubic-bezier(0.22, 1, 0.36, 1),
-            --text-secondary 280ms cubic-bezier(0.22, 1, 0.36, 1),
-            --text-tertiary 280ms cubic-bezier(0.22, 1, 0.36, 1),
-            --border 360ms cubic-bezier(0.22, 1, 0.36, 1),
-            --brand 320ms cubic-bezier(0.22, 1, 0.36, 1),
-            --brand-hover 320ms cubic-bezier(0.22, 1, 0.36, 1),
-            --brand-light 320ms cubic-bezier(0.22, 1, 0.36, 1),
-            --surface-bg 360ms cubic-bezier(0.22, 1, 0.36, 1),
-            --surface-bg-strong 360ms cubic-bezier(0.22, 1, 0.36, 1),
-            --surface-border 360ms cubic-bezier(0.22, 1, 0.36, 1),
-            --surface-border-strong 360ms cubic-bezier(0.22, 1, 0.36, 1),
-            --ael-color-a 320ms cubic-bezier(0.22, 1, 0.36, 1),
-            --ael-color-b 320ms cubic-bezier(0.22, 1, 0.36, 1),
-            --ael-highlight 320ms cubic-bezier(0.22, 1, 0.36, 1),
-            --ael-gradient-start 320ms cubic-bezier(0.22, 1, 0.36, 1),
-            --ael-gradient-end 320ms cubic-bezier(0.22, 1, 0.36, 1);
+/* Active only during theme switch */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+    transition-property:
+            color,
+            background-color,
+            border-color,
+            fill,
+            stroke,
+            box-shadow,
+            outline-color,
+            text-decoration-color,
+            caret-color;
+    transition-duration: 320ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+/* Keep your gradient/card crossfade as-is */
+.card-theme-fade {
+    position: relative;
+}
+.card-theme-fade::before,
+.card-theme-fade::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.card-theme-fade::before { opacity: 1; background: var(--card-bg-light); }
+.card-theme-fade::after  { opacity: 0; background: var(--card-bg-dark); }
+
+.dark .card-theme-fade::before { opacity: 0; }
+.dark .card-theme-fade::after  { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+    html.theme-transition,
+    html.theme-transition *,
+    html.theme-transition *::before,
+    html.theme-transition *::after {
+        transition-duration: 0ms;
+    }
+}
+
 .theme-color-fade {
     transition:
             background-color 320ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -923,3 +948,133 @@ html.theme-transition {
 /* If you use attribute="data-theme", use this instead:
 :root[data-theme="dark"] { ... }
 */
+@layer base {
+    :root {
+        color-scheme: light;
+
+        /* Light theme: NOT pale white, slightly neon-tinted */
+        --bg-0: #eaf2ff;
+        --bg-1: #dfeaff;
+        --bg-2: #d4e3ff;
+        --text-0: #0b1220;
+        --text-1: #1a2440;
+
+        /* Glass base */
+        --glass-bg: rgba(236, 245, 255, 0.58);
+        --glass-border: rgba(59, 130, 246, 0.24);
+        --glass-ring: rgba(255, 255, 255, 0.42);
+        --glass-blur: 14px;
+
+        /* Theme accents (light) */
+        --neon-cyan: #06b6d4;
+        --neon-violet: #6366f1;
+        --neon-pink: #ec4899;
+        --neon-green: #10b981;
+
+        --premium-ice: #38bdf8;
+        --premium-lilac: #a78bfa;
+
+        /* Glow strengths */
+        --glow-strong: 1.2;
+        --glow-premium: 0.48;
+        --glow-hover-boost: 1.12;
+
+        /* Shadow */
+        --shadow-ambient: 0 10px 30px rgba(15, 23, 42, 0.12);
+    }
+
+    .dark {
+        color-scheme: dark;
+
+        --bg-0: #070b14;
+        --bg-1: #0b1020;
+        --bg-2: #0f1730;
+        --text-0: #e8efff;
+        --text-1: #c8d6ff;
+
+        --glass-bg: rgba(10, 18, 34, 0.52);
+        --glass-border: rgba(148, 163, 184, 0.20);
+        --glass-ring: rgba(255, 255, 255, 0.18);
+        --glass-blur: 14px;
+
+        --neon-cyan: #22d3ee;
+        --neon-violet: #8b5cf6;
+        --neon-pink: #ff4fd8;
+        --neon-green: #34f5a4;
+
+        --premium-ice: #60a5fa;
+        --premium-lilac: #c4b5fd;
+
+        --glow-strong: 1.15;
+        --glow-premium: 0.34;
+        --glow-hover-boost: 1.14;
+
+        --shadow-ambient: 0 12px 32px rgba(0, 0, 0, 0.38);
+    }
+}
+@layer components {
+    .glass-glow {
+        position: relative;
+        overflow: hidden;
+        border-radius: 1.25rem;
+        border: 1px solid var(--glass-border);
+        background: var(--glass-bg);
+        backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+        -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+        box-shadow: var(--shadow-ambient);
+        transform: translateZ(0);
+        backface-visibility: hidden;
+    }
+
+    .glass-glow::before,
+    .glass-glow::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+    }
+
+    /* Ambient glow wash */
+    .glass-glow::before {
+        background:
+                radial-gradient(120% 80% at 8% 0%, color-mix(in oklab, var(--glow-a) 32%, transparent) 0%, transparent 48%),
+                radial-gradient(100% 70% at 100% 100%, color-mix(in oklab, var(--glow-b) 30%, transparent) 0%, transparent 52%);
+        opacity: calc(0.58 * var(--glow-strength));
+        transition: opacity 220ms ease, filter 220ms ease;
+        filter: saturate(120%);
+    }
+
+    /* Inner ring */
+    .glass-glow::after {
+        box-shadow: inset 0 0 0 1px var(--glass-ring);
+        opacity: 0.9;
+    }
+
+    .glass-glow:hover::before {
+        opacity: calc(0.58 * var(--glow-strength) * var(--glow-hover-boost));
+        filter: saturate(150%);
+    }
+
+    /* Stronger neon variant */
+    .glass-glow-neon {
+        --glow-a: var(--neon-cyan);
+        --glow-b: var(--neon-violet);
+        --glow-strength: var(--glow-strong);
+        box-shadow:
+                var(--shadow-ambient),
+                0 0 38px color-mix(in oklab, var(--neon-cyan) 24%, transparent),
+                0 0 44px color-mix(in oklab, var(--neon-violet) 22%, transparent);
+    }
+
+    /* Subtle premium variant */
+    .glass-glow-premium {
+        --glow-a: var(--premium-ice);
+        --glow-b: var(--premium-lilac);
+        --glow-strength: var(--glow-premium);
+        box-shadow:
+                var(--shadow-ambient),
+                0 0 18px color-mix(in oklab, var(--premium-ice) 12%, transparent),
+                0 0 20px color-mix(in oklab, var(--premium-lilac) 10%, transparent);
+    }
+}

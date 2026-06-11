@@ -6,7 +6,7 @@ import {
     ShieldCheck,
     Siren
 } from "lucide-react"
-import { Card } from "@/components/ui/Card"
+import { TinyCard } from "@/components/ui/CardVariants"
 import { Container } from "@/components/ui/Container"
 import { SectionHeading } from "@/components/ui/SectionHeading"
 
@@ -82,7 +82,7 @@ export function SecuritySection() {
                         {/* Right grid */}
                         <div className="grid gap-3 p-6 sm:grid-cols-2">
                             {securityItems.map((item) => (
-                                <Card
+                                <TinyCard
                                     key={item}
                                     className="h-full rounded-2xl"
                                     contentClassName="px-4 py-4"
@@ -90,7 +90,7 @@ export function SecuritySection() {
                                     glow
                                 >
                                     <p className="text-sm font-semibold text-text-secondary">{item}</p>
-                                </Card>
+                                </TinyCard>
                             ))}
                         </div>
                     </div>

@@ -1,5 +1,5 @@
 "use client"
-
+import { buildContinuousDash } from "./auto-edge-light/dash";
 import React, {
     RefObject,
     useEffect,
@@ -90,6 +90,11 @@ export type AutoEdgeLightProProps = {
     enableIdleScan?: boolean;
     enableCursorProximity?: boolean;
     enablePulse?: boolean;
+    /** NEW: short interaction burst strength (0..1 recommended) */
+    interactionBoostAmount?: number;
+
+    /** NEW: burst decay per second */
+    interactionBoostDecay?: number;
 };
 
 type ThemeVars = {
@@ -122,6 +127,18 @@ function getCssVar(el: HTMLElement, name: string, fallback: string) {
 function parseNum(v: string, fallback: number) {
     const n = parseFloat(v);
     return Number.isFinite(n) ? n : fallback;
+}
+
+
+function wrap(v: number, m: number) {
+    if (m <= 0) return v;
+    return ((v % m) + m) % m;
+}
+
+function remapOffsetToNewCycle(offset: number, oldCycle: number, newCycle: number) {
+    if (oldCycle <= 0 || newCycle <= 0) return offset;
+    const phase01 = wrap(offset, oldCycle) / oldCycle; // [0..1)
+    return phase01 * newCycle;
 }
 
 function parseLengthToken(token: string, base: number) {
@@ -412,28 +429,6 @@ function getClosestPerimeterPoint(
     };
 }
 
-function buildDashArray(
-    pathLength: number,
-    segmentRatio: number,
-    trailCount: number,
-    trailGap: number
-) {
-    if (!pathLength) return "0 9999";
-
-    const visible = pathLength * clamp(segmentRatio, 0.04, 0.5);
-    if (trailCount <= 1) return `${visible} ${pathLength}`;
-
-    const gap = visible * clamp(trailGap, 0.3, 4);
-    const pattern: number[] = [];
-
-    for (let i = 0; i < trailCount; i++) pattern.push(visible, gap);
-
-    const used = pattern.reduce((sum, v) => sum + v, 0);
-    pattern.push(Math.max(pathLength - used, gap));
-
-    return pattern.join(" ");
-}
-
 const DEFAULT_THEME: ThemeVars = {
     colorA: "rgb(77 163 255)",
     colorB: "rgb(111 93 255)",
@@ -514,25 +509,21 @@ export function AutoEdgeLight({
                                   enableIdleScan = true,
                                   enableCursorProximity = true,
                                   enablePulse = true,
+
+                                  // NEW: interaction burst tuning
+                                  interactionBoostAmount = 0.75,
+                                  interactionBoostDecay = 2.2,
                               }: AutoEdgeLightProProps) {
     const { resolvedTheme } = useTheme();
-    const [mounted, setMounted] = useState(false);
     const [themeVars, setThemeVars] = useState<ThemeVars>(DEFAULT_THEME);
 
     useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    useEffect(() => {
-        if (!mounted) return;
-
-        // Wait 1 frame so .dark/:root vars are definitely applied
+        if (typeof window === "undefined") return;
         const id = requestAnimationFrame(() => {
             setThemeVars(resolveThemeVars());
         });
-
         return () => cancelAnimationFrame(id);
-    }, [mounted, resolvedTheme]);
+    }, [resolvedTheme]);
 
     useEffect(() => {
         const host = parentRef.current ?? document.documentElement;
@@ -620,13 +611,17 @@ export function AutoEdgeLight({
     const pulseStartRef = useRef<number | null>(null);
     const releaseTimeoutRef = useRef<number | null>(null);
 
+    const prevPathLengthRef = useRef<number>(0);
+    const lastMeasuredLenRef = useRef<number>(0);
+
     const rawGradientId = useId();
     const rawGlowFilterId = useId();
 
     const gradientId = `auto-edge-gradient-${rawGradientId.replace(/:/g, "")}`;
     const glowFilterId = `auto-edge-glow-${rawGlowFilterId.replace(/:/g, "")}`;
 
-    const dashOffset = useMotionValue(0);
+    // Source-of-truth perimeter offset (continuous / unbounded)
+    const perimeterOffset = useMotionValue(0);
     const targetOffset = useMotionValue(0);
 
     const targetSpeed = useMotionValue(0);
@@ -647,6 +642,9 @@ export function AutoEdgeLight({
 
     const pulse = useMotionValue(0);
 
+    // NEW: interaction burst for speed + lighting
+    const interactionBoost = useMotionValue(0);
+
     useEffect(() => {
         activeProgressRaw.set(active ? 1 : 0);
     }, [active, activeProgressRaw]);
@@ -663,7 +661,11 @@ export function AutoEdgeLight({
 
             raf = requestAnimationFrame(() => {
                 if (pathMeasureRef.current) {
-                    setPathLength(pathMeasureRef.current.getTotalLength());
+                    const nextLen = pathMeasureRef.current.getTotalLength();
+                    if (Math.abs(nextLen - lastMeasuredLenRef.current) > 0.25) {
+                        lastMeasuredLenRef.current = nextLen;
+                        setPathLength(nextLen);
+                    }
                 }
             });
         };
@@ -688,7 +690,7 @@ export function AutoEdgeLight({
         geometry,
         pathLength,
         proximityRadius,
-        releaseDelayMs: 140, // same desktop/mobile feel
+        releaseDelayMs: 140,
 
         proximityRaw,
         hoverRaw,
@@ -701,6 +703,32 @@ export function AutoEdgeLight({
         getClosestPerimeterPoint,
     });
 
+    // NEW: detect direct interactions and trigger burst
+    useEffect(() => {
+        const el = parentRef.current;
+        if (!el) return;
+
+        const triggerBoost = () => {
+            interactionBoost.set(Math.max(interactionBoost.get(), interactionBoostAmount));
+        };
+
+        const onEnter = () => triggerBoost();
+        const onMove = () => triggerBoost();
+        const onDown = () => triggerBoost();
+        const onTouchStart = () => triggerBoost();
+
+        el.addEventListener("mouseenter", onEnter, { passive: true });
+        el.addEventListener("mousemove", onMove, { passive: true });
+        el.addEventListener("mousedown", onDown, { passive: true });
+        el.addEventListener("touchstart", onTouchStart, { passive: true });
+
+        return () => {
+            el.removeEventListener("mouseenter", onEnter);
+            el.removeEventListener("mousemove", onMove);
+            el.removeEventListener("mousedown", onDown);
+            el.removeEventListener("touchstart", onTouchStart);
+        };
+    }, [parentRef, interactionBoost, interactionBoostAmount]);
 
     useEffect(() => {
         const reset = () => {
@@ -708,6 +736,7 @@ export function AutoEdgeLight({
             proximityRaw.set(0);
             targetSpeed.set(0);
             pulse.set(0);
+            interactionBoost.set(0);
             if (releaseTimeoutRef.current !== null) {
                 window.clearTimeout(releaseTimeoutRef.current);
                 releaseTimeoutRef.current = null;
@@ -727,7 +756,7 @@ export function AutoEdgeLight({
             window.removeEventListener("pagehide", reset);
             document.removeEventListener("visibilitychange", onVisibility);
         };
-    }, [hoverRaw, proximityRaw, targetSpeed, pulse]);
+    }, [hoverRaw, proximityRaw, targetSpeed, pulse, interactionBoost]);
 
     useEffect(() => {
         if (active && !lastActiveRef.current && enablePulse) {
@@ -736,6 +765,32 @@ export function AutoEdgeLight({
         lastActiveRef.current = active;
     }, [active, enablePulse]);
 
+    const { dashArray } = useMemo(
+        () => buildContinuousDash(pathLength, segmentRatio, trailCount, trailGap),
+        [pathLength, segmentRatio, trailCount, trailGap]
+    );
+
+    // IMPORTANT: no cycle wrapping here -> smooth continuous motion
+    const dashOffset = perimeterOffset;
+
+    // Preserve phase when path length changes
+    useEffect(() => {
+        const oldLen = prevPathLengthRef.current;
+        const newLen = pathLength;
+
+        if (oldLen > 0 && newLen > 0 && oldLen !== newLen) {
+            const p = perimeterOffset.get();
+            const phase = wrap(p, oldLen) / oldLen;
+            perimeterOffset.set(phase * newLen);
+
+            const t = targetOffset.get();
+            const tPhase = wrap(t, oldLen) / oldLen;
+            targetOffset.set(tPhase * newLen);
+        }
+
+        prevPathLengthRef.current = newLen;
+    }, [pathLength, perimeterOffset, targetOffset]);
+
     useAnimationFrame((time, delta) => {
         if (!pathLength || !geometry.path) return;
 
@@ -743,7 +798,19 @@ export function AutoEdgeLight({
         const hoverAmount = hover.get();
         const proximityAmount = proximity.get();
 
-        const engagement = clamp(Math.max(proximityAmount, hoverAmount * 0.5), 0, 1);
+        // decay interaction boost
+        const ib = interactionBoost.get();
+        if (ib > 0) {
+            interactionBoost.set(Math.max(0, ib - dt * interactionBoostDecay));
+        }
+
+        const interaction = interactionBoost.get();
+        const engagement = clamp(
+            Math.max(proximityAmount, hoverAmount * 0.5) + interaction * 0.7,
+            0,
+            1
+        );
+
         const visibility = activeProgress.get();
         const wantsAnimation = !reducedMotion && visibility > 0.001;
 
@@ -754,10 +821,12 @@ export function AutoEdgeLight({
         targetSpeed.set(desiredSpeed);
 
         if (wantsAnimation) {
-            const scannerOffset = dashOffset.get() - smoothSpeed.get() * dt;
+            const scannerOffset = perimeterOffset.get() - smoothSpeed.get() * dt;
             const followMix = clamp(attractStrength * engagement * dt, 0, 0.24);
             const next = lerp(scannerOffset, targetOffset.get(), followMix);
-            dashOffset.set(next);
+
+            // continuous (unbounded) for zero visual lap snap
+            perimeterOffset.set(next);
         }
 
         if (pulseStartRef.current !== null) {
@@ -771,32 +840,27 @@ export function AutoEdgeLight({
         }
     });
 
-    const dashArray = useMemo(
-        () => buildDashArray(pathLength, segmentRatio, trailCount, trailGap),
-        [pathLength, segmentRatio, trailCount, trailGap]
-    );
-
     const glowStrokeOpacity = useTransform(
-        [proximity, pulse, activeProgress],
+        [proximity, pulse, activeProgress, interactionBoost],
         (latest) => {
-            const [p, pu, ap] = latest as [number, number, number];
-            return clamp((resolvedGlowOpacity + p * 0.18 + pu * 0.24) * ap, 0, 1);
+            const [p, pu, ap, ib] = latest as [number, number, number, number];
+            return clamp((resolvedGlowOpacity + p * 0.18 + pu * 0.24 + ib * 0.22) * ap, 0, 1);
         }
     );
 
     const coreStrokeOpacity = useTransform(
-        [proximity, pulse, activeProgress],
+        [proximity, pulse, activeProgress, interactionBoost],
         (latest) => {
-            const [p, pu, ap] = latest as [number, number, number];
-            return clamp((resolvedCoreOpacity + p * 0.1 + pu * 0.16) * ap, 0, 1);
+            const [p, pu, ap, ib] = latest as [number, number, number, number];
+            return clamp((resolvedCoreOpacity + p * 0.1 + pu * 0.16 + ib * 0.12) * ap, 0, 1);
         }
     );
 
     const highlightStrokeOpacity = useTransform(
-        [pulse, proximity, activeProgress],
+        [pulse, proximity, activeProgress, interactionBoost],
         (latest) => {
-            const [pu, p, ap] = latest as [number, number, number];
-            return clamp((resolvedHighlightOpacity + pu * 0.22 + p * 0.06) * ap, 0, 0.85);
+            const [pu, p, ap, ib] = latest as [number, number, number, number];
+            return clamp((resolvedHighlightOpacity + pu * 0.22 + p * 0.06 + ib * 0.18) * ap, 0, 0.95);
         }
     );
 

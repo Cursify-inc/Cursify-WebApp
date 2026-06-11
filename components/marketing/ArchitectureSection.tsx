@@ -1,5 +1,5 @@
 import { ArrowRight, Box, Cloud, Database, Globe2, Shield } from "lucide-react"
-import { Card } from "@/components/ui/Card"
+import { LargeCard } from "@/components/ui/CardVariants"
 import { Container } from "@/components/ui/Container"
 import { SectionHeading } from "@/components/ui/SectionHeading"
 import clsx from "clsx"
@@ -37,31 +37,6 @@ const architecture = [
     },
 ]
 
-const compactEdgeLight = {
-    inset: 1,
-    strokeWidth: 5,
-    glowWidth: 6,
-    glowBlur: 6,
-    segmentRatio: 0.2,
-    trailCount: 3,
-    trailGap: 1,
-    idleSpeed: 0.4,
-    hoverSpeedBoost: 0.14, // correct prop name
-    attractStrength: 6,
-    proximityRadius: 90,
-    pulseDurationMs: 560,
-    pulseIntensity: 0.7,
-    coreOpacity: 0.82,
-    glowOpacity: 0.26,
-    highlightOpacity: 0.1,
-    colorA: "rgb(34 211 238)",
-    colorB: "rgb(99 102 241)",
-    highlightColor: "rgb(255 255 255)",
-    enableIdleScan: true,
-    enableCursorProximity: true,
-    enablePulse: false,
-} as const
-
 export function ArchitectureSection() {
     return (
         <section className="py-24">
@@ -74,17 +49,15 @@ export function ArchitectureSection() {
 
                 <div className="mt-14 rounded-3xl border border-border bg-background-surface/30 p-2 sm:p-4">
                     <div className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-5">
-
                         {architecture.map((item, index) => {
                             const Icon = item.icon
                             return (
-                                <Card
+                                <LargeCard
                                     key={item.title}
                                     animateIn
                                     delay={index}
                                     interactive
                                     glow
-                                    edgeLightProps={compactEdgeLight}
                                     className="h-full rounded-[1.25rem]"
                                     contentClassName="flex h-full flex-col rounded-[1.25rem] bg-background-elevated p-5"
                                 >
@@ -97,7 +70,7 @@ export function ArchitectureSection() {
                                             {item.description}
                                         </p>
                                     </div>
-                                </Card>
+                                </LargeCard>
                             )
                         })}
                     </div>

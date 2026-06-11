@@ -2,6 +2,8 @@
 
 import { motion, useReducedMotion } from "framer-motion"
 import { Code2, Database, KeyRound, Lock, Zap } from "lucide-react"
+import { TinyCardNoEdge } from "@/components/ui/CardVariants"
+import { cn } from "@/lib/utils"
 
 const floatingCards = [
     {
@@ -154,27 +156,27 @@ export function GeometryHero() {
                 return (
                     <motion.div
                         key={card.label}
-                        className={`absolute ${card.className} rounded-2xl border border-white/10 bg-white/[0.07] px-3 py-2.5 text-white shadow-[0_10px_24px_rgba(0,0,0,0.24)] backdrop-blur-lg md:px-4 md:py-3`}
+                        className={cn("absolute", card.className)}
                         initial={{ opacity: 0, y: 12 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true, margin: "-40px" }}
                         transition={{ delay: card.delay, duration: 0.45 }}
-                        animate={
-                            reducedMotion
-                                ? undefined
-                                : {
-                                    y: [0, -4, 0],
-                                }
-                        }
+                        animate={reducedMotion ? undefined : { y: [0, -4, 0] }}
                     >
-                        <div className="flex items-center gap-2.5">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-300 md:h-9 md:w-9">
-                                <Icon className="h-4 w-4" />
+                        <TinyCardNoEdge
+                            tone="glassGlowNeon" // or "glassGlowPremium"
+                            animateIn={false}
+                            interactive={false}
+                            className="pointer-events-none md:px-4 md:py-3"
+                            contentClassName="px-3 py-2.5 md:px-4 md:py-3 bg-transparent"
+                        >
+                            <div className="flex items-center gap-2.5">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-300 md:h-9 md:w-9">
+                                    <Icon className="h-4 w-4" />
+                                </div>
+                                <span className="text-sm font-semibold text-white/90">{card.label}</span>
                             </div>
-                            <span className="text-sm font-semibold text-white/90">
-          {card.label}
-        </span>
-                        </div>
+                        </TinyCardNoEdge>
                     </motion.div>
                 )
             })}

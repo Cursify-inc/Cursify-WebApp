@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Cpu, Download } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Container } from "@/components/ui/Container"
-import { ThemeToggle } from "@/components/ui/ThemeToggle"
+import { ThemeToggle } from "@/components/providers/ThemeToggle"
 
 const navItems = [
     { label: "Platform", href: "#platform" },
