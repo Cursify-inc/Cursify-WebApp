@@ -8,7 +8,8 @@ const navItems = [
     { label: "Platform", href: "#platform" },
     { label: "Sync", href: "#sync" },
     { label: "Security", href: "#security" },
-    { label: "Pricing", href: "#pricing" }
+    { label: "Pricing", href: "#pricing" },
+    { label: "Faq", href: "#FAQ" }
 ]
 
 export function SiteHeader() {

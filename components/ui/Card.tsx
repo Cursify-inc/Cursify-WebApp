@@ -24,7 +24,6 @@ type ViewportMargin = UseInViewOptions["margin"];
 
 const DEFAULT_VIEWPORT_MARGIN =
     CARD_MOTION.reveal.margin satisfies NonNullable<UseInViewOptions["margin"]>;
-
 export type CardProps = {
     children: React.ReactNode;
     className?: string;
@@ -57,13 +56,17 @@ export function Card({
     const reducedMotion = useReducedMotion();
     const cardRef = React.useRef<HTMLDivElement>(null);
     const [active, setActive] = React.useState(false);
+    const surfaceRef = React.useRef<HTMLDivElement>(null);
 
     const showInteractive = interactive && !reducedMotion;
+
+    // only track pointer when needed
+    const needsPointerTracking = showInteractive || glow;
 
     const mouseX = useMotionValue(0);
     const mouseY = useMotionValue(0);
 
-    // rAF-throttled pointer updates (prevents flooding on pointermove)
+    // rAF-throttled pointer updates
     const rafRef = React.useRef<number | null>(null);
     const lastPointRef = React.useRef<{ x: number; y: number } | null>(null);
 
@@ -77,11 +80,12 @@ export function Card({
 
     const queuePointer = React.useCallback(
         (x: number, y: number) => {
+            if (!needsPointerTracking) return;
             lastPointRef.current = { x, y };
             if (rafRef.current != null) return;
             rafRef.current = requestAnimationFrame(flushPointer);
         },
-        [flushPointer]
+        [flushPointer, needsPointerTracking]
     );
 
     React.useEffect(() => {
@@ -157,25 +161,33 @@ export function Card({
         return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     }, []);
 
+    // throttle pointermove in handler itself (extra protection)
+    const lastMoveTsRef = React.useRef(0);
+    const MOVE_THROTTLE_MS = 40;
+
     const handlePointerMove = React.useCallback(
         (e: React.PointerEvent<HTMLDivElement>) => {
-            if (!showInteractive) return;
+            if (!needsPointerTracking) return;
+            const now = performance.now();
+            if (now - lastMoveTsRef.current < MOVE_THROTTLE_MS) return;
+            lastMoveTsRef.current = now;
+
             const p = getRelativePointer(e);
             if (!p) return;
             queuePointer(p.x, p.y);
         },
-        [showInteractive, getRelativePointer, queuePointer]
+        [needsPointerTracking, getRelativePointer, queuePointer]
     );
 
     const handlePointerEnter = React.useCallback(
         (e: React.PointerEvent<HTMLDivElement>) => {
-            if (!showInteractive) return;
+            if (!needsPointerTracking) return;
             setActive(true);
             const p = getRelativePointer(e);
             if (!p) return;
             queuePointer(p.x, p.y);
         },
-        [showInteractive, getRelativePointer, queuePointer]
+        [needsPointerTracking, getRelativePointer, queuePointer]
     );
 
     const handlePointerLeave = React.useCallback(() => {
@@ -186,7 +198,6 @@ export function Card({
             mouseY.set(0);
             return;
         }
-        // Smoothly reset to center
         mouseX.set(el.clientWidth / 2);
         mouseY.set(el.clientHeight / 2);
     }, [mouseX, mouseY]);
@@ -194,7 +205,7 @@ export function Card({
     return (
         <motion.div
             ref={cardRef}
-            className={cn("relative w-full transform-gpu will-change-transform", className)}
+            className={cn("relative w-full will-change-transform", className)}
             style={{
                 transformStyle: "flat",
                 backfaceVisibility: "hidden",
@@ -208,9 +219,17 @@ export function Card({
             whileHover={
                 showInteractive
                     ? {
+                        // removed scale to avoid text blur
                         y: CARD_MOTION.hover.y,
-                        scale: CARD_MOTION.hover.scale,
                         transition: { duration: CARD_MOTION.hover.duration, ease: "easeOut" },
+                    }
+                    : undefined
+            }
+            whileTap={
+                showInteractive
+                    ? {
+                        // no scale on tap (prevents blur / raster resampling)
+                        y: 0,
                     }
                     : undefined
             }
@@ -222,15 +241,15 @@ export function Card({
                 <AutoEdgeLight
                     active={glowActive}
                     reducedMotion={!!reducedMotion}
-                    parentRef={cardRef}
+                    parentRef={surfaceRef}
                     className="rounded-[inherit]"
                     {...edgeLightProps}
                 />
             ) : null}
-
             <div
+                ref={surfaceRef}
                 className={cn(
-                    "card-surface relative h-full overflow-hidden rounded-[inherit] shadow-(--card-shadow) transform-[translateZ(0)] backface-hidden",
+                    "card-surface relative h-full overflow-hidden rounded-[inherit] shadow-(--card-shadow)",
                     contentClassName
                 )}
             >

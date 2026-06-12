@@ -29,7 +29,7 @@ type CornerRadii = {
     bl: CornerRadius;
 };
 
-type Geometry = {
+export type Geometry = {
     width: number;
     height: number;
     offsetX: number;
@@ -97,7 +97,7 @@ export type AutoEdgeLightProProps = {
     interactionBoostDecay?: number;
 };
 
-type ThemeVars = {
+export type ThemeVars = {
     colorA: string;
     colorB: string;
     highlight: string;
@@ -119,12 +119,12 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const dist = (x1: number, y1: number, x2: number, y2: number) =>
     Math.hypot(x2 - x1, y2 - y1);
 
-function getCssVar(el: HTMLElement, name: string, fallback: string) {
+export function getCssVar(el: HTMLElement, name: string, fallback: string) {
     const v = getComputedStyle(el).getPropertyValue(name).trim();
     return v || fallback;
 }
 
-function parseNum(v: string, fallback: number) {
+export function parseNum(v: string, fallback: number) {
     const n = parseFloat(v);
     return Number.isFinite(n) ? n : fallback;
 }
@@ -246,7 +246,7 @@ function buildRoundedRectPath(width: number, height: number, r: CornerRadii) {
         .trim();
 }
 
-function readGeometry(el: HTMLElement, inset: number): Geometry {
+export function readGeometry(el: HTMLElement, inset: number): Geometry {
     const style = window.getComputedStyle(el);
 
     const fullWidth = el.offsetWidth;
@@ -429,7 +429,7 @@ function getClosestPerimeterPoint(
     };
 }
 
-const DEFAULT_THEME: ThemeVars = {
+export const DEFAULT_THEME: ThemeVars = {
     colorA: "rgb(77 163 255)",
     colorB: "rgb(111 93 255)",
     highlight: "rgb(129 140 248)",
@@ -454,7 +454,7 @@ function readNum(style: CSSStyleDeclaration, name: string, fallback: number) {
     return Number.isFinite(n) ? n : fallback;
 }
 
-function resolveThemeVars(): ThemeVars {
+export function resolveThemeVars(): ThemeVars {
     const style = getComputedStyle(document.documentElement);
     return {
         colorA: readVar(style, "--ael-color-a", DEFAULT_THEME.colorA),
@@ -471,6 +471,24 @@ function resolveThemeVars(): ThemeVars {
     };
 }
 
+
+function parseRadius(v?: string | null) {
+    if (!v) return 0;
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : 0;
+}
+
+function getCornerRadius(el: HTMLElement, explicit?: number) {
+    if (typeof explicit === "number") return explicit;
+    const cs = getComputedStyle(el);
+    const r = Math.max(
+        parseRadius(cs.borderTopLeftRadius),
+        parseRadius(cs.borderTopRightRadius),
+        parseRadius(cs.borderBottomRightRadius),
+        parseRadius(cs.borderBottomLeftRadius)
+    );
+    return r;
+}
 export function AutoEdgeLight({
                                   active,
                                   parentRef,
@@ -510,7 +528,6 @@ export function AutoEdgeLight({
                                   enableCursorProximity = true,
                                   enablePulse = true,
 
-                                  // NEW: interaction burst tuning
                                   interactionBoostAmount = 0.75,
                                   interactionBoostDecay = 2.2,
                               }: AutoEdgeLightProProps) {
@@ -525,6 +542,7 @@ export function AutoEdgeLight({
         return () => cancelAnimationFrame(id);
     }, [resolvedTheme]);
 
+    // keep CSS-var read logic as-is (drop-in safe)
     useEffect(() => {
         const host = parentRef.current ?? document.documentElement;
         if (!host) return;
@@ -587,8 +605,8 @@ export function AutoEdgeLight({
     const resolvedGlowOpacity = glowOpacity ?? themeVars.glowOpacity;
     const resolvedHighlightOpacity = highlightOpacity ?? themeVars.highlightOpacity;
 
-    const safeInset =
-        inset ?? Math.ceil(Math.max(resolvedStrokeWidth, resolvedGlowWidth) / 2 + resolvedGlowBlur * 0.5);
+    const safeInset = inset ?? -2;
+
 
     const [geometry, setGeometry] = useState<Geometry>({
         width: 0,
@@ -620,7 +638,6 @@ export function AutoEdgeLight({
     const gradientId = `auto-edge-gradient-${rawGradientId.replace(/:/g, "")}`;
     const glowFilterId = `auto-edge-glow-${rawGlowFilterId.replace(/:/g, "")}`;
 
-    // Source-of-truth perimeter offset (continuous / unbounded)
     const perimeterOffset = useMotionValue(0);
     const targetOffset = useMotionValue(0);
 
@@ -641,32 +658,64 @@ export function AutoEdgeLight({
     });
 
     const pulse = useMotionValue(0);
-
-    // NEW: interaction burst for speed + lighting
     const interactionBoost = useMotionValue(0);
 
     useEffect(() => {
         activeProgressRaw.set(active ? 1 : 0);
     }, [active, activeProgressRaw]);
 
-    useEffect(() => {
+    React.useEffect(() => {
         const el = parentRef.current;
         if (!el) return;
 
         let raf = 0;
 
+        const roundedRectPath = (w: number, h: number, r: number) => {
+            // path starts at top-left corner arc start
+            return [
+                `M ${r} 0`,
+                `H ${w - r}`,
+                `A ${r} ${r} 0 0 1 ${w} ${r}`,
+                `V ${h - r}`,
+                `A ${r} ${r} 0 0 1 ${w - r} ${h}`,
+                `H ${r}`,
+                `A ${r} ${r} 0 0 1 0 ${h - r}`,
+                `V ${r}`,
+                `A ${r} ${r} 0 0 1 ${r} 0`,
+                "Z",
+            ].join(" ");
+        };
+
         const update = () => {
-            const next = readGeometry(el, safeInset);
-            setGeometry(next);
+            const rect = el.getBoundingClientRect();
+            const fullW = Math.max(0, rect.width);
+            const fullH = Math.max(0, rect.height);
+
+            const x = safeInset;
+            const y = safeInset;
+            const w = Math.max(0, fullW - safeInset * 2);
+            const h = Math.max(0, fullH - safeInset * 2);
+
+            const inferred = getCornerRadius(el); // uses computed styles
+            const r = Math.max(0, Math.min(inferred - safeInset, w / 2, h / 2));
+
+            setGeometry({
+                width: w,
+                height: h,
+                offsetX: x,
+                offsetY: y,
+                radii: {
+                    tl: { rx: r, ry: r },
+                    tr: { rx: r, ry: r },
+                    br: { rx: r, ry: r },
+                    bl: { rx: r, ry: r },
+                },
+                path: roundedRectPath(w, h, r),
+            });
 
             raf = requestAnimationFrame(() => {
-                if (pathMeasureRef.current) {
-                    const nextLen = pathMeasureRef.current.getTotalLength();
-                    if (Math.abs(nextLen - lastMeasuredLenRef.current) > 0.25) {
-                        lastMeasuredLenRef.current = nextLen;
-                        setPathLength(nextLen);
-                    }
-                }
+                if (!pathMeasureRef.current) return;
+                setPathLength(pathMeasureRef.current.getTotalLength());
             });
         };
 
@@ -679,6 +728,8 @@ export function AutoEdgeLight({
             cancelAnimationFrame(raf);
         };
     }, [parentRef, safeInset]);
+
+
 
     useUnifiedPointerGlow({
         parentRef,
@@ -703,7 +754,7 @@ export function AutoEdgeLight({
         getClosestPerimeterPoint,
     });
 
-    // NEW: detect direct interactions and trigger burst
+    // OPT 1: move-based boost is now throttled + pointer events unified
     useEffect(() => {
         const el = parentRef.current;
         if (!el) return;
@@ -712,20 +763,29 @@ export function AutoEdgeLight({
             interactionBoost.set(Math.max(interactionBoost.get(), interactionBoostAmount));
         };
 
-        const onEnter = () => triggerBoost();
-        const onMove = () => triggerBoost();
-        const onDown = () => triggerBoost();
-        const onTouchStart = () => triggerBoost();
+        let lastMoveBoostTs = 0;
+        const MOVE_THROTTLE_MS = 40; // ~25Hz
 
-        el.addEventListener("mouseenter", onEnter, { passive: true });
-        el.addEventListener("mousemove", onMove, { passive: true });
-        el.addEventListener("mousedown", onDown, { passive: true });
+        const onPointerEnter = () => triggerBoost();
+        const onPointerDown = () => triggerBoost();
+        const onTouchStart = () => triggerBoost();
+        const onPointerMove = () => {
+            const now = performance.now();
+            if (now - lastMoveBoostTs >= MOVE_THROTTLE_MS) {
+                lastMoveBoostTs = now;
+                triggerBoost();
+            }
+        };
+
+        el.addEventListener("pointerenter", onPointerEnter, { passive: true });
+        el.addEventListener("pointerdown", onPointerDown, { passive: true });
+        el.addEventListener("pointermove", onPointerMove, { passive: true });
         el.addEventListener("touchstart", onTouchStart, { passive: true });
 
         return () => {
-            el.removeEventListener("mouseenter", onEnter);
-            el.removeEventListener("mousemove", onMove);
-            el.removeEventListener("mousedown", onDown);
+            el.removeEventListener("pointerenter", onPointerEnter);
+            el.removeEventListener("pointerdown", onPointerDown);
+            el.removeEventListener("pointermove", onPointerMove);
             el.removeEventListener("touchstart", onTouchStart);
         };
     }, [parentRef, interactionBoost, interactionBoostAmount]);
@@ -770,10 +830,8 @@ export function AutoEdgeLight({
         [pathLength, segmentRatio, trailCount, trailGap]
     );
 
-    // IMPORTANT: no cycle wrapping here -> smooth continuous motion
     const dashOffset = perimeterOffset;
 
-    // Preserve phase when path length changes
     useEffect(() => {
         const oldLen = prevPathLengthRef.current;
         const newLen = pathLength;
@@ -794,24 +852,31 @@ export function AutoEdgeLight({
     useAnimationFrame((time, delta) => {
         if (!pathLength || !geometry.path) return;
 
+        const ap = activeProgress.get();
+        const pr = proximity.get();
+        const pu = pulse.get();
+        const hv = hover.get();
+        const ibCurrent = interactionBoost.get();
+
+        // OPT 3: strong idle early-exit
+        if (
+            reducedMotion ||
+            (ap < 0.001 && pr < 0.001 && pu < 0.001 && hv < 0.001 && ibCurrent < 0.001)
+        ) {
+            return;
+        }
+
         const dt = delta / 1000;
-        const hoverAmount = hover.get();
-        const proximityAmount = proximity.get();
 
         // decay interaction boost
-        const ib = interactionBoost.get();
-        if (ib > 0) {
-            interactionBoost.set(Math.max(0, ib - dt * interactionBoostDecay));
+        if (ibCurrent > 0) {
+            interactionBoost.set(Math.max(0, ibCurrent - dt * interactionBoostDecay));
         }
 
         const interaction = interactionBoost.get();
-        const engagement = clamp(
-            Math.max(proximityAmount, hoverAmount * 0.5) + interaction * 0.7,
-            0,
-            1
-        );
+        const engagement = clamp(Math.max(pr, hv * 0.5) + interaction * 0.7, 0, 1);
 
-        const visibility = activeProgress.get();
+        const visibility = ap;
         const wantsAnimation = !reducedMotion && visibility > 0.001;
 
         const desiredSpeed = wantsAnimation
@@ -824,8 +889,6 @@ export function AutoEdgeLight({
             const scannerOffset = perimeterOffset.get() - smoothSpeed.get() * dt;
             const followMix = clamp(attractStrength * engagement * dt, 0, 0.24);
             const next = lerp(scannerOffset, targetOffset.get(), followMix);
-
-            // continuous (unbounded) for zero visual lap snap
             perimeterOffset.set(next);
         }
 
@@ -864,6 +927,16 @@ export function AutoEdgeLight({
         }
     );
 
+    // OPT 2: conditional blur filter enablement
+    const glowFilterEnabled = useTransform(
+        [activeProgress, proximity, pulse, interactionBoost],
+        (latest) => {
+            const [ap, p, pu, ib] = latest as [number, number, number, number];
+            const energy = Math.max(p, pu, ib);
+            return ap > 0.01 && energy > 0.03;
+        }
+    );
+
     const staticReducedOpacity = active ? 1 : 0;
     const isReady = pathLength > 0;
 
@@ -871,7 +944,7 @@ export function AutoEdgeLight({
 
     return (
         <svg
-            className={`pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible ${className}`}
+            className={`pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible rounded-[inherit] ${className}`}
             aria-hidden="true"
             focusable="false"
         >
@@ -932,7 +1005,7 @@ export function AutoEdgeLight({
                             style={{
                                 strokeDashoffset: dashOffset,
                                 opacity: glowStrokeOpacity,
-                                filter: `url(#${glowFilterId})`,
+                                filter: glowFilterEnabled.get() ? `url(#${glowFilterId})` : "none",
                             }}
                         />
                         <motion.path

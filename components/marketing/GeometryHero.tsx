@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion"
 import { Code2, Database, KeyRound, Lock, Zap } from "lucide-react"
-import { TinyCardNoEdge } from "@/components/ui/CardVariants"
+import {PromoCard, TinyPromoCard} from "@/components/ui/CardVariants"
 import { cn } from "@/lib/utils"
 
 const floatingCards = [
@@ -86,7 +86,7 @@ export function GeometryHero() {
                     animate={reducedMotion ? undefined : { rotate: 360 }}
                     transition={{ duration: 32, repeat: Infinity, ease: "linear" }}
                 >
-          <span className="absolute left-1/2 top-0 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl border border-cyan-300/20 bg-white/10 text-cyan-300 backdrop-blur-md shadow-[0_0_24px_rgba(34,211,238,0.18)] md:h-12 md:w-12 md:rounded-2xl">
+          <span className="absolute left-1/2 top-0 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center border border-cyan-300/20 bg-white/10 text-cyan-300 backdrop-blur-md shadow-[0_0_24px_rgba(34,211,238,0.18)] md:h-12 md:w-12 ">
             <Zap className="h-4 w-4 md:h-5 md:w-5" />
           </span>
                 </motion.div>
@@ -103,7 +103,7 @@ export function GeometryHero() {
                 {/* Core object */}
                 <motion.div
                     aria-hidden="true"
-                    className="relative h-[210px] w-[210px] [transform-style:preserve-3d] md:h-[260px] md:w-[260px]"
+                    className="relative h-[210px] w-[210px] [transform-style:preserve-3d] md:h-[260px] md:w-[260px] overflow-visible"
                     animate={
                         reducedMotion
                             ? undefined
@@ -129,7 +129,7 @@ export function GeometryHero() {
                     <div className="absolute inset-x-6 top-6 h-14 rounded-[1.1rem] border border-cyan-300/20 bg-cyan-300/10 md:inset-x-8 md:top-8 md:h-20 md:rounded-[1.4rem]" />
 
                     <div
-                        className="absolute left-8 top-10 h-12 w-12 rounded-xl border border-white/10 bg-white/10 md:left-10 md:top-14 md:h-16 md:w-16 md:rounded-2xl"
+                        className="absolute left-8 top-10 h-12 w-12  border border-white/10 bg-white/10 md:left-10 md:top-14 md:h-16 md:w-16 md:rounded-2xl"
                         style={{ transform: "translateZ(18px)" }}
                     />
 
@@ -163,20 +163,33 @@ export function GeometryHero() {
                         transition={{ delay: card.delay, duration: 0.45 }}
                         animate={reducedMotion ? undefined : { y: [0, -4, 0] }}
                     >
-                        <TinyCardNoEdge
-                            tone="glassGlowNeon" // or "glassGlowPremium"
+                        <TinyPromoCard
                             animateIn={false}
-                            interactive={false}
-                            className="pointer-events-none md:px-4 md:py-3"
-                            contentClassName="px-3 py-2.5 md:px-4 md:py-3 bg-transparent"
+                            className="pointer-events-none"
+                            contentClassName="px-3 py-2.5 md:px-4 md:py-3"
+                            edge={{
+                                inset: 0,
+                                radius:12,
+                                durationSec: 5,
+                                strokeWidth: 2.2,
+                                glowWidth: 10,
+                                glowBlur: 12,
+                                coreOpacity: 0.95,
+                                glowOpacity: 0.75,
+                                highlightOpacity: 0.45,
+                                colorA: "rgb(34 211 238)",   // cyan
+                                colorB: "rgb(129 140 248)",  // indigo
+                                highlightColor: "rgb(255 255 255)",
+                            }}
                         >
                             <div className="flex items-center gap-2.5">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-300 md:h-9 md:w-9">
+                                <div className="flex h-8 w-8 items-center justify-center border border-cyan-300/20 text-cyan-300 md:h-9 md:w-9">
+                                    {/* removed bg-cyan-300/10 */}
                                     <Icon className="h-4 w-4" />
                                 </div>
                                 <span className="text-sm font-semibold text-white/90">{card.label}</span>
                             </div>
-                        </TinyCardNoEdge>
+                        </TinyPromoCard>
                     </motion.div>
                 )
             })}

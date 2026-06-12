@@ -56,14 +56,14 @@ export function PricingPreview() {
                             className="h-full rounded-[1.25rem]"
                             contentClassName={
                                 plan.highlighted
-                                    ? "relative flex h-full flex-col border-brand bg-brand p-7 text-white shadow-card"
-                                    : "relative flex h-full flex-col p-7 bg-white dark:bg-white/[0.045]"
+                                    ? "relative flex h-full flex-col border-brand-primary bg-brand-primary p-7 text-text-inverted shadow-card"
+                                    : "relative flex h-full flex-col p-7 bg-bg-1"
                             }
                             interactive
                             glow
                         >
                             {plan.highlighted && (
-                                <span className="absolute right-6 top-6 rounded-full bg-white px-3 py-1 text-xs font-bold text-brand">
+                                <span className="absolute right-6 top-6 rounded-full bg-bg-0 px-3 py-1 text-xs font-bold text-brand-primary shadow-soft">
                                     Popular
                                 </span>
                             )}
@@ -71,7 +71,7 @@ export function PricingPreview() {
                             <h3
                                 className={
                                     plan.highlighted
-                                        ? "text-xl font-bold text-white"
+                                        ? "text-xl font-bold text-text-inverted"
                                         : "text-xl font-bold text-text-primary"
                                 }
                             >
@@ -82,7 +82,7 @@ export function PricingPreview() {
                                 <span
                                     className={
                                         plan.highlighted
-                                            ? "text-5xl font-bold text-white"
+                                            ? "text-5xl font-bold text-text-inverted"
                                             : "text-5xl font-bold text-text-primary"
                                     }
                                 >
@@ -90,7 +90,7 @@ export function PricingPreview() {
                                 </span>
                                 <span
                                     className={
-                                        plan.highlighted ? "pb-1 text-white/60" : "pb-1 text-text-tertiary"
+                                        plan.highlighted ? "pb-1 text-text-inverted/60" : "pb-1 text-text-tertiary"
                                     }
                                 >
                                     /mo
@@ -100,7 +100,7 @@ export function PricingPreview() {
                             <p
                                 className={
                                     plan.highlighted
-                                        ? "mt-4 text-sm leading-7 text-white/70"
+                                        ? "mt-4 text-sm leading-7 text-text-inverted/70"
                                         : "mt-4 text-sm leading-7 text-text-secondary"
                                 }
                             >
@@ -113,13 +113,13 @@ export function PricingPreview() {
                                         <Check
                                             className={
                                                 plan.highlighted
-                                                    ? "h-4 w-4 text-white"
+                                                    ? "h-4 w-4 text-text-inverted"
                                                     : "h-4 w-4 text-success"
                                             }
                                         />
                                         <span
                                             className={
-                                                plan.highlighted ? "text-sm text-white/80" : "text-sm text-text-secondary"
+                                                plan.highlighted ? "text-sm text-text-inverted/80" : "text-sm text-text-secondary"
                                             }
                                         >
                                             {feature}

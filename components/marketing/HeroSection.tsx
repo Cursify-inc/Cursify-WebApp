@@ -35,11 +35,12 @@ export function HeroSection() {
                         </p>
 
                         <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                            <Button href="/signup" size="lg">
+                            <Button href="/signup" size="lg" edgeLight>
                                 Start building
                                 <ArrowRight className="ml-2 h-5 w-5" />
                             </Button>
-                            <Button href="#platform" variant="secondary" size="lg">
+
+                            <Button href="#platform" variant="secondary" size="lg" edgeLight={false}>
                                 Explore platform
                             </Button>
                         </div>

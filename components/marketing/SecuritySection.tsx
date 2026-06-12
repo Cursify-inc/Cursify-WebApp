@@ -54,33 +54,35 @@ export function SecuritySection() {
                     description="Cursify avoids unrealistic security claims. The platform uses layered controls, signed short-lived responses, server-side entitlement checks, and clear revocation paths."
                 />
 
-                {/* Outer simple box: NOT Card, but width-contained */}
-                <div className="mt-6 w-full max-w-full overflow-hidden rounded-[28px] border border-border/60 bg-background-light shadow-sm">
+                {/* Outer simple box utilizing semantic surface and border tokens */}
+                <div className="mt-6 w-full max-w-full overflow-hidden rounded-[28px] border border-card-border bg-bg-1 shadow-soft">
                     <div className="grid lg:grid-cols-[0.95fr_1.05fr]">
-                        {/* Left panel */}
-                        <div className="bg-brand p-8 text-white">
-                            <ShieldCheck className="h-8 w-8" />
-                            <h3 className="mt-5 text-2xl font-bold">Practical security controls</h3>
-                            <p className="mt-4 leading-8 text-white/75">
+
+                        {/* Left panel refactored to use semantic surfaces instead of hardcoded brand/white */}
+                        <div className="bg-bg-2 p-8 lg:border-r lg:border-card-border">
+                            <ShieldCheck className="h-8 w-8 text-brand-primary" />
+                            <h3 className="mt-5 text-2xl font-bold text-text-primary">Practical security controls</h3>
+                            <p className="mt-4 leading-8 text-text-secondary">
                                 Cursify never assumes the desktop client is impossible to bypass.
                                 License validation remains server-controlled, sensitive actions are
                                 logged, and access can be revoked.
                             </p>
 
                             <div className="mt-8 grid gap-3">
-                                <div className="flex items-center gap-3 rounded-2xl bg-white/10 p-4">
-                                    <RotateCcw className="h-5 w-5" />
-                                    <span className="font-semibold">Revocable devices</span>
+                                {/* Inner items utilizing standard component surface logic */}
+                                <div className="flex items-center gap-3 rounded-2xl bg-bg-0 border border-card-border p-4 shadow-sm">
+                                    <RotateCcw className="h-5 w-5 text-text-primary" />
+                                    <span className="font-semibold text-text-primary">Revocable devices</span>
                                 </div>
-                                <div className="flex items-center gap-3 rounded-2xl bg-white/10 p-4">
-                                    <Siren className="h-5 w-5" />
-                                    <span className="font-semibold">Audit-first workflows</span>
+                                <div className="flex items-center gap-3 rounded-2xl bg-bg-0 border border-card-border p-4 shadow-sm">
+                                    <Siren className="h-5 w-5 text-text-primary" />
+                                    <span className="font-semibold text-text-primary">Audit-first workflows</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Right grid */}
-                        <div className="grid gap-3 p-6 sm:grid-cols-2">
+                        <div className="grid gap-3 p-6 sm:grid-cols-2 bg-bg-1">
                             {securityItems.map((item) => (
                                 <TinyCard
                                     key={item}

@@ -92,11 +92,12 @@ export function ProductOverview() {
                             >
                                 <LargeCard
                                     className="group h-full rounded-[1.25rem] transition duration-300 hover:-translate-y-1 hover:shadow-card"
-                                    contentClassName="p-6 flex h-full flex-col hover:bg-white"
+                                    contentClassName="p-6 flex h-full flex-col hover:bg-bg-0"
                                     interactive
                                     glow
                                 >
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand text-white shadow-soft transition group-hover:scale-105">
+                                    {/* Replaced bg-brand and text-white with semantic variables */}
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-primary text-text-inverted shadow-soft transition group-hover:scale-105">
                                         <Icon className="h-5 w-5" />
                                     </div>
                                     <h3 className="mt-5 text-lg font-bold text-text-primary">

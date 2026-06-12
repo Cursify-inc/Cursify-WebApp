@@ -1,10 +1,15 @@
 "use client";
 import { useTheme } from "next-themes";
 import * as React from "react";
+import { useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Card, type CardProps } from "./Card";
 import { CARD_STYLE, getEdgeLightPreset, NO_EDGE_DEFAULT_TONE } from "./card.tokens";
-
+import dynamic from "next/dynamic";
+const AutoEdgeLightContinuous = dynamic(
+    () => import("./AutoEdgeLightContinuous").then((m) => m.AutoEdgeLightContinuous),
+    { ssr: false }
+);
 /**
  * EdgeLight options accepted by <Card edgeLightProps={...} />
  */
@@ -53,7 +58,11 @@ export function LargeCard({
     const { resolvedTheme } = useTheme();
     const mode = resolvedTheme === "dark" ? "dark" : "light";
 
-    const resolvedEdgeLightProps = edgeLightProps ?? getEdgeLightPreset("large", mode);
+    const resolvedEdgeLightProps = React.useMemo(
+        () => edgeLightProps ?? getEdgeLightPreset("large", mode),
+        [edgeLightProps, mode]
+    );
+
 
     return (
         <Card
@@ -82,7 +91,11 @@ export function TinyCard({
     const { resolvedTheme } = useTheme();
     const mode = resolvedTheme === "dark" ? "dark" : "light";
 
-    const resolvedEdgeLightProps = edgeLightProps ?? getEdgeLightPreset("tiny", mode);
+    const resolvedEdgeLightProps = React.useMemo(
+        () => edgeLightProps ?? getEdgeLightPreset("tiny", mode),
+        [edgeLightProps, mode]
+    );
+
 
     return (
         <Card
@@ -141,3 +154,93 @@ export function TinyCardNoEdge({
         </Card>
     );
 }
+
+
+
+type PromoEdgeProps = {
+    durationSec?: number;
+    radius?: number;
+    inset?: number;
+
+    strokeWidth?: number;
+    glowWidth?: number;
+    glowBlur?: number;
+
+    coreOpacity?: number;
+    glowOpacity?: number;
+    highlightOpacity?: number;
+
+    colorA?: string;
+    colorB?: string;
+    highlightColor?: string;
+};
+
+export interface PromoCardProps extends Omit<CardProps, "glow" | "interactive" | "edgeLightProps"> {
+    edge?: PromoEdgeProps;
+    contentClassName?: string;
+    className?: string;
+}
+
+export function PromoCard({ className, contentClassName, children, edge, ...props }: PromoCardProps) {
+    const reducedMotion = useReducedMotion();
+    const ringHostRef = React.useRef<HTMLDivElement>(null);
+
+    return (
+        <Card
+            {...props}
+            glow={false}
+            interactive={false}
+            className={cn("relative overflow-visible", CARD_STYLE.large, className)}
+        >
+            {/* This must be the visual card surface */}
+            <div
+                ref={ringHostRef}
+                className={cn("relative z-10 rounded-[inherit]", contentClassName)}
+            >
+                <AutoEdgeLightContinuous
+                    parentRef={ringHostRef}
+                    reducedMotion={!!reducedMotion}
+                    className="rounded-[inherit]"
+                    durationSec={edge?.durationSec ?? 8}
+                    inset={edge?.inset ?? 0}
+                    strokeWidth={edge?.strokeWidth ?? 2.2}
+                    glowWidth={edge?.glowWidth ?? 10}
+                    glowBlur={edge?.glowBlur ?? 12}
+                    coreOpacity={edge?.coreOpacity ?? 0.95}
+                    glowOpacity={edge?.glowOpacity ?? 0.75}
+                    highlightOpacity={edge?.highlightOpacity ?? 0.38}
+                    colorA="var(--promo-glow-primary)"
+                    colorB="var(--promo-glow-secondary)"
+                    highlightColor="var(--promo-edge-highlight)"
+                />
+                {children}
+            </div>
+        </Card>
+    );
+}
+
+export function TinyPromoCard({ className, edge, ...props }: PromoCardProps) {
+    return (
+        <PromoCard
+            {...props}
+            className={cn("relative overflow-visible", CARD_STYLE.tiny, className)}
+            edge={{
+                durationSec: 6.25,
+                radius: 16,
+                inset: 0,
+                strokeWidth: 2.2,
+                glowWidth: 10,
+                glowBlur: 12,
+                coreOpacity: 0.95,
+                glowOpacity: 0.78,
+                highlightOpacity: 0.42,
+                colorA:"var(--promo-glow-primary)",
+                colorB:"var(--promo-glow-secondary)",
+                highlightColor:"var(--promo-edge-highlight)",
+                ...edge,
+            }}
+        />
+    );
+}
+
+export default PromoCard;
