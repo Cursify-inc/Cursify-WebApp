@@ -353,20 +353,21 @@ function getClosestPerimeterPoint(
     return { progress: best.progress / perimeter, proximity };
 }
 
-export function resolveThemeVars(base: HTMLElement): ThemeVars {
+export function resolveThemeVars(base?: HTMLElement): ThemeVars {
+    const el = base ?? document.documentElement;
     return {
-        colorA: getCssVar(base, "--ael-color-a", DEFAULT_THEME.colorA),
-        colorB: getCssVar(base, "--ael-color-b", DEFAULT_THEME.colorB),
-        highlight: getCssVar(base, "--ael-highlight", DEFAULT_THEME.highlight),
-        gradStart: getCssVar(base, "--ael-gradient-start", DEFAULT_THEME.gradStart),
-        gradEnd: getCssVar(base, "--ael-gradient-end", DEFAULT_THEME.gradEnd),
-        strokeWidth: parseNum(getCssVar(base, "--ael-stroke-width", String(DEFAULT_THEME.strokeWidth)), DEFAULT_THEME.strokeWidth),
-        glowWidth: parseNum(getCssVar(base, "--ael-glow-width", String(DEFAULT_THEME.glowWidth)), DEFAULT_THEME.glowWidth),
-        glowBlur: parseNum(getCssVar(base, "--ael-glow-blur", String(DEFAULT_THEME.glowBlur)), DEFAULT_THEME.glowBlur),
-        coreOpacity: parseNum(getCssVar(base, "--ael-core-opacity", String(DEFAULT_THEME.coreOpacity)), DEFAULT_THEME.coreOpacity),
-        glowOpacity: parseNum(getCssVar(base, "--ael-glow-opacity", String(DEFAULT_THEME.glowOpacity)), DEFAULT_THEME.glowOpacity),
+        colorA: getCssVar(el, "--ael-color-a", DEFAULT_THEME.colorA),
+        colorB: getCssVar(el, "--ael-color-b", DEFAULT_THEME.colorB),
+        highlight: getCssVar(el, "--ael-highlight", DEFAULT_THEME.highlight),
+        gradStart: getCssVar(el, "--ael-gradient-start", DEFAULT_THEME.gradStart),
+        gradEnd: getCssVar(el, "--ael-gradient-end", DEFAULT_THEME.gradEnd),
+        strokeWidth: parseNum(getCssVar(el, "--ael-stroke-width", String(DEFAULT_THEME.strokeWidth)), DEFAULT_THEME.strokeWidth),
+        glowWidth: parseNum(getCssVar(el, "--ael-glow-width", String(DEFAULT_THEME.glowWidth)), DEFAULT_THEME.glowWidth),
+        glowBlur: parseNum(getCssVar(el, "--ael-glow-blur", String(DEFAULT_THEME.glowBlur)), DEFAULT_THEME.glowBlur),
+        coreOpacity: parseNum(getCssVar(el, "--ael-core-opacity", String(DEFAULT_THEME.coreOpacity)), DEFAULT_THEME.coreOpacity),
+        glowOpacity: parseNum(getCssVar(el, "--ael-glow-opacity", String(DEFAULT_THEME.glowOpacity)), DEFAULT_THEME.glowOpacity),
         highlightOpacity: parseNum(
-            getCssVar(base, "--ael-highlight-opacity", String(DEFAULT_THEME.highlightOpacity)),
+            getCssVar(el, "--ael-highlight-opacity", String(DEFAULT_THEME.highlightOpacity)),
             DEFAULT_THEME.highlightOpacity
         ),
     };
