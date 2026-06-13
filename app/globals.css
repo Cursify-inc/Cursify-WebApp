@@ -206,3 +206,63 @@ body {
         opacity: 0.92;
     }
 }
+
+/* Auth pages imported from cursify-project 2 */
+@theme inline {
+  --color-surface: #f7f9ff;
+  --color-surface-base: #e1e4ea;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f1f4fa;
+  --color-surface-container: #ebeef4;
+  --color-surface-container-high: #e5e8ee;
+  --color-surface-container-highest: #e0e3e9;
+  --color-on-surface: #181c20;
+  --color-on-surface-variant: #45474d;
+  --color-outline: #75777e;
+  --color-outline-variant: #c5c6ce;
+  --color-surface-tint: #525e7a;
+  --color-primary: #0e1c34;
+  --color-primary-container: #24314a;
+  --color-on-primary: #ffffff;
+  --color-on-primary-fixed-variant: #3a4761;
+  --color-success: #12805c;
+  --color-danger: #ba1a1a;
+}
+
+.auth-page-background {
+  background-color: #e1e4ea;
+  color: #181c20;
+  background-image:
+    linear-gradient(
+      45deg,
+      rgba(58, 75, 107, 0.035) 25%,
+      transparent 25%,
+      transparent 75%,
+      rgba(58, 75, 107, 0.035) 75%
+    ),
+    linear-gradient(
+      45deg,
+      rgba(58, 75, 107, 0.035) 25%,
+      transparent 25%,
+      transparent 75%,
+      rgba(58, 75, 107, 0.035) 75%
+    );
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+}
+
+.auth-input {
+  @apply w-full rounded-none border border-outline bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface transition-all placeholder:text-on-surface-variant/60 focus:border-l-4 focus:border-surface-tint focus:outline-none;
+}
+
+.auth-label {
+  @apply flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-on-surface;
+}
+
+.auth-button-primary {
+  @apply flex w-full items-center justify-center gap-2 rounded-none bg-primary-container px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-on-primary transition-all hover:bg-on-primary-fixed-variant active:border-2 active:border-white;
+}
+
+.auth-button-secondary {
+  @apply flex w-full items-center justify-center gap-3 rounded-none border border-on-primary-fixed-variant bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface transition-colors hover:bg-surface-container-low;
+}
