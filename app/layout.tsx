@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import "./globals.css"
 import { ThemeProvider } from "@/components/providers/theme-provider"
+import { ThemeFxProvider } from "@/components/providers/theme-fx-provider"
 
 export const metadata: Metadata = {
     title: "Cursify — AI-powered IDE platform",
@@ -17,8 +18,7 @@ export const metadata: Metadata = {
     twitter: {
         card: "summary_large_image",
         title: "Cursify — AI-powered IDE platform",
-        description:
-            "Professional AI IDE platform for serious developers.",
+        description: "Professional AI IDE platform for serious developers.",
     },
 }
 
@@ -31,8 +31,10 @@ export default function RootLayout({
         <html lang="en" suppressHydrationWarning>
         <body className="bg-background text-text-primary">
         <ThemeProvider>
-            {children}
-            <div className="noise-overlay" />
+            <ThemeFxProvider>
+                {children}
+                <div className="noise-overlay" />
+            </ThemeFxProvider>
         </ThemeProvider>
         </body>
         </html>

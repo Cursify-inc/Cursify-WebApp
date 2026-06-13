@@ -35,28 +35,29 @@ export function HeroSection() {
                         </p>
 
                         <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                            <Button href="/signup" size="lg">
+                            <Button href="/signup" size="lg" edgeLight>
                                 Start building
                                 <ArrowRight className="ml-2 h-5 w-5" />
                             </Button>
-                            <Button href="#platform" variant="secondary" size="lg">
+
+                            <Button href="#platform" variant="secondary" size="lg" edgeLight={false}>
                                 Explore platform
                             </Button>
                         </div>
 
                         <div className="mt-8 flex flex-wrap gap-3 text-sm text-text-secondary">
-              <span className="inline-flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-success" />
-                Signed downloads
-              </span>
                             <span className="inline-flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-success" />
-                Server-side license validation
-              </span>
+                                <ShieldCheck className="h-4 w-4 text-success" />
+                                Signed downloads
+                            </span>
                             <span className="inline-flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-success" />
-                Device revocation support
-              </span>
+                                <ShieldCheck className="h-4 w-4 text-success" />
+                                Server-side license validation
+                            </span>
+                            <span className="inline-flex items-center gap-2">
+                                <ShieldCheck className="h-4 w-4 text-success" />
+                                Device revocation support
+                            </span>
                         </div>
                     </motion.div>
 

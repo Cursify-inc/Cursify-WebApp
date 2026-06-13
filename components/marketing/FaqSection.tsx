@@ -1,4 +1,4 @@
-import { Card } from "@/components/ui/Card"
+import { LargeCard } from "@/components/ui/CardVariants"
 import { Container } from "@/components/ui/Container"
 import { SectionHeading } from "@/components/ui/SectionHeading"
 
@@ -42,15 +42,16 @@ export function FaqSection() {
 
                 <div className="mx-auto mt-14 max-w-4xl space-y-4">
                     {faqs.map((faq) => (
-                        <Card
+                        <LargeCard
                             key={faq.question}
-                            className="p-6 transition-colors duration-300 hover:border-brand/30"
+                            className="transition-colors duration-300 hover:border-brand-primary/30"
+                            contentClassName="p-6 md:p-8"
                         >
                             <h3 className="text-lg font-bold text-text-primary">
                                 {faq.question}
                             </h3>
                             <p className="mt-3 leading-7 text-text-secondary">{faq.answer}</p>
-                        </Card>
+                        </LargeCard>
                     ))}
                 </div>
             </Container>

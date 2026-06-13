@@ -1,6 +1,6 @@
 import { Bot, Puzzle, Store, Wrench } from "lucide-react"
 import { FaGithub, FaGitlab, FaSlack } from "react-icons/fa"
-import { Card } from "@/components/ui/Card"
+import { LargeCard } from "@/components/ui/CardVariants"
 import { Container } from "@/components/ui/Container"
 import { SectionHeading } from "@/components/ui/SectionHeading"
 
@@ -55,11 +55,12 @@ export function EcosystemSection() {
                             const Icon = item.icon
 
                             return (
-                                <Card
+                                <LargeCard
                                     key={item.title}
-                                    className="p-6 transition-transform duration-300 hover:-translate-y-1"
+                                    className="transition-transform duration-300 hover:-translate-y-1"
+                                    contentClassName="p-6"
                                 >
-                                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand/10 text-brand ring-1 ring-brand/20">
+                                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-primary/10 text-brand-primary ring-1 ring-brand-primary/20">
                                         <Icon className="h-5 w-5" />
                                     </div>
 
@@ -70,13 +71,13 @@ export function EcosystemSection() {
                                     <p className="mt-2 text-sm leading-7 text-text-secondary">
                                         {item.description}
                                     </p>
-                                </Card>
+                                </LargeCard>
                             )
                         })}
                     </div>
                 </div>
 
-                <div className="mt-10 rounded-4xl border border-border/60 bg-background-surface/75 p-6 shadow-soft backdrop-blur-xl">
+                <div className="mt-10 rounded-4xl border border-card-border bg-bg-1/75 p-6 shadow-soft backdrop-blur-xl">
                     <p className="text-sm font-semibold text-text-primary">
                         Linked developer accounts
                     </p>
@@ -88,18 +89,18 @@ export function EcosystemSection() {
                             return (
                                 <div
                                     key={provider.name}
-                                    className="flex items-center justify-between rounded-2xl border border-border/50 bg-background/70 px-4 py-4 backdrop-blur-sm"
+                                    className="flex items-center justify-between rounded-2xl border border-card-border/50 bg-bg-0/70 px-4 py-4 backdrop-blur-sm"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <Icon className="h-5 w-5 text-brand" />
+                                        <Icon className="h-5 w-5 text-brand-primary" />
                                         <span className="font-semibold text-text-primary">
-                      {provider.name}
-                    </span>
+                                            {provider.name}
+                                        </span>
                                     </div>
 
-                                    <span className="rounded-full bg-success-light px-2.5 py-1 text-xs font-bold text-success">
-                    OAuth
-                  </span>
+                                    <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-500 dark:bg-emerald-400/10 dark:text-emerald-400">
+                                        OAuth
+                                    </span>
                                 </div>
                             )
                         })}

@@ -14,7 +14,7 @@ import {
     RefreshCcw,
     UserPlus,
 } from "lucide-react"
-import { Card } from "@/components/ui/Card"
+import { LargeCard } from "@/components/ui/CardVariants"
 import { Container } from "@/components/ui/Container"
 import { SectionHeading } from "@/components/ui/SectionHeading"
 
@@ -65,14 +65,19 @@ function StepCard({
     index: number
 }) {
     return (
-        <Card animateIn delay={index * 0.06} contentClassName="p-6">
+        <LargeCard
+            animateIn
+            delay={index * 0.06}
+            interactive
+            glow
+            className="h-full rounded-[1.25rem]"
+            contentClassName="p-6"
+        >
             <div className="flex items-start gap-4">
                 <div
                     className="
                         relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl
-                        border border-white/10
-                        bg-[linear-gradient(180deg,rgba(34,211,238,0.10),rgba(168,85,247,0.08))]
-                        shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]
+                        border border-card-border bg-bg-2 shadow-soft
                     "
                     style={{
                         transform: "translateZ(28px)",
@@ -80,25 +85,26 @@ function StepCard({
                         WebkitBackfaceVisibility: "hidden",
                     }}
                 >
-                    <div className="absolute inset-px rounded-[15px] bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.12),transparent_45%)]" />
-                    <step.icon className="relative z-10 h-5 w-5 text-cyan-100" />
+                    {/* Replaced hardcoded white radial gradient with a subtle theme-aware overlay if needed, or simply removed it to let bg-bg-2 handle the surface */}
+                    <div className="absolute inset-px rounded-[15px] bg-gradient-to-br from-bg-1 to-transparent opacity-50" />
+                    <step.icon className="relative z-10 h-5 w-5 text-text-primary" />
                 </div>
 
                 <div className="min-w-0">
-                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-200/65">
+                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-text-tertiary">
                         Step {index + 1}
                     </div>
 
-                    <h3 className="text-lg font-semibold tracking-tight text-white sm:text-xl">
+                    <h3 className="text-lg font-semibold tracking-tight text-text-primary sm:text-xl">
                         {step.title}
                     </h3>
 
-                    <p className="mt-3 max-w-[44ch] text-sm leading-6 text-white/64">
+                    <p className="mt-3 max-w-[44ch] text-sm leading-6 text-text-secondary">
                         {step.description}
                     </p>
                 </div>
             </div>
-        </Card>
+        </LargeCard>
     )
 }
 
@@ -110,15 +116,22 @@ export function SyncFlowSection() {
     return (
         <section ref={ref} id="sync" className="relative overflow-hidden py-24 sm:py-28">
             <div className="pointer-events-none absolute inset-0">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.10),transparent_28%),radial-gradient(circle_at_82%_18%,rgba(168,85,247,0.08),transparent_26%),radial-gradient(circle_at_50%_80%,rgba(14,165,233,0.06),transparent_26%)]" />
+                {/* Brand accents can remain static if they are part of the core brand identity, or you can map them to --brand-primary variables */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.06),transparent_28%),radial-gradient(circle_at_82%_18%,rgba(168,85,247,0.05),transparent_26%),radial-gradient(circle_at_50%_80%,rgba(14,165,233,0.04),transparent_26%)]" />
 
-                <div className="absolute inset-0 opacity-[0.04] bg-[linear-gradient(rgba(255,255,255,0.14)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.14)_1px,transparent_1px)] bg-size-[48px_48px]" />
+                {/* Replaced white grid lines with theme-agnostic border colors */}
+                <div
+                    className="absolute inset-0 opacity-50 bg-size-[48px_48px]"
+                    style={{
+                        backgroundImage: `linear-gradient(var(--card-border) 1px, transparent 1px), linear-gradient(90deg, var(--card-border) 1px, transparent 1px)`
+                    }}
+                />
 
-                <div className="absolute bottom-0 left-1/2 top-0 hidden w-px -translate-x-1/2 bg-linear-to-b from-transparent via-white/8 to-transparent lg:block" />
+                <div className="absolute bottom-0 left-1/2 top-0 hidden w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-card-border to-transparent lg:block" />
 
                 {!prefersReducedMotion && inView && (
                     <motion.div
-                        className="absolute inset-x-[-10%] top-16 h-px bg-linear-to-r from-transparent via-cyan-300/25 to-transparent"
+                        className="absolute inset-x-[-10%] top-16 h-px bg-gradient-to-r from-transparent via-brand-primary/25 to-transparent"
                         animate={{ opacity: [0.35, 0.7, 0.35] }}
                         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                     />
@@ -130,7 +143,7 @@ export function SyncFlowSection() {
                     eyebrow="Desktop pairing"
                     title="A secure AI-native install flow from browser to desktop."
                     description="Built to feel seamless for users and trustworthy to stakeholders."
-                    className="text-white"
+                    // Removed className="text-white" to allow natural inheritance
                 />
 
                 <div className="relative mt-14 grid gap-8 lg:grid-cols-2 lg:gap-10">

@@ -11,7 +11,7 @@ import {
     ShieldCheck,
     WalletCards
 } from "lucide-react"
-import { Card } from "@/components/ui/Card"
+import { LargeCard } from "@/components/ui/CardVariants"
 import { Container } from "@/components/ui/Container"
 import { SectionHeading } from "@/components/ui/SectionHeading"
 
@@ -90,8 +90,14 @@ export function ProductOverview() {
                                 viewport={{ once: true, margin: "-80px" }}
                                 transition={{ duration: 0.5, delay: index * 0.04 }}
                             >
-                                <Card className="group h-full p-6 transition duration-300 hover:-translate-y-1 hover:bg-white hover:shadow-card">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand text-white shadow-soft transition group-hover:scale-105">
+                                <LargeCard
+                                    className="group h-full rounded-[1.25rem] transition duration-300 hover:-translate-y-1 hover:shadow-card"
+                                    contentClassName="p-6 flex h-full flex-col hover:bg-bg-0"
+                                    interactive
+                                    glow
+                                >
+                                    {/* Replaced bg-brand and text-white with semantic variables */}
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-primary text-text-inverted shadow-soft transition group-hover:scale-105">
                                         <Icon className="h-5 w-5" />
                                     </div>
                                     <h3 className="mt-5 text-lg font-bold text-text-primary">
@@ -100,7 +106,7 @@ export function ProductOverview() {
                                     <p className="mt-3 text-sm leading-7 text-text-secondary">
                                         {feature.description}
                                     </p>
-                                </Card>
+                                </LargeCard>
                             </motion.div>
                         )
                     })}
