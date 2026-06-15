@@ -1,11 +1,7 @@
-"use client"
+"use client";
 
-import {
-    motion,
-    useInView,
-    useReducedMotion,
-} from "framer-motion"
-import { useRef } from "react"
+import { useRef } from "react";
+import { motion, useInView, useReducedMotion } from "framer-motion";
 import {
     BadgeCheck,
     Computer,
@@ -13,10 +9,11 @@ import {
     KeyRound,
     RefreshCcw,
     UserPlus,
-} from "lucide-react"
-import { LargeCard } from "@/components/ui/CardVariants"
-import { Container } from "@/components/ui/Container"
-import { SectionHeading } from "@/components/ui/SectionHeading"
+} from "lucide-react";
+
+import { Container } from "@/components/ui/Container";
+import { LargeCard } from "@/components/ui/CardVariants";
+import { SectionHeading } from "@/components/ui/SectionHeading";
 
 const steps = [
     {
@@ -55,107 +52,99 @@ const steps = [
         description:
             "Sync models, agents, tools, settings, and integrations into a ready-to-run AI environment.",
     },
-]
-
-function StepCard({
-                      step,
-                      index,
-                  }: {
-    step: (typeof steps)[number]
-    index: number
-}) {
-    return (
-        <LargeCard
-            animateIn
-            delay={index * 0.06}
-            interactive
-            glow
-            className="h-full rounded-[1.25rem]"
-            contentClassName="p-6"
-        >
-            <div className="flex items-start gap-4">
-                <div
-                    className="
-                        relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl
-                        border border-card-border bg-bg-2 shadow-soft
-                    "
-                    style={{
-                        transform: "translateZ(28px)",
-                        backfaceVisibility: "hidden",
-                        WebkitBackfaceVisibility: "hidden",
-                    }}
-                >
-                    {/* Replaced hardcoded white radial gradient with a subtle theme-aware overlay if needed, or simply removed it to let bg-bg-2 handle the surface */}
-                    <div className="absolute inset-px rounded-[15px] bg-gradient-to-br from-bg-1 to-transparent opacity-50" />
-                    <step.icon className="relative z-10 h-5 w-5 text-text-primary" />
-                </div>
-
-                <div className="min-w-0">
-                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-text-tertiary">
-                        Step {index + 1}
-                    </div>
-
-                    <h3 className="text-lg font-semibold tracking-tight text-text-primary sm:text-xl">
-                        {step.title}
-                    </h3>
-
-                    <p className="mt-3 max-w-[44ch] text-sm leading-6 text-text-secondary">
-                        {step.description}
-                    </p>
-                </div>
-            </div>
-        </LargeCard>
-    )
-}
+];
 
 export function SyncFlowSection() {
-    const ref = useRef<HTMLElement | null>(null)
-    const inView = useInView(ref, { margin: "-15%" })
-    const prefersReducedMotion = useReducedMotion() ?? false
+    const ref = useRef<HTMLElement | null>(null);
+    const inView = useInView(ref, { margin: "-15%", once: true });
+    const prefersReducedMotion = useReducedMotion() ?? false;
 
     return (
-        <section ref={ref} id="sync" className="relative overflow-hidden py-24 sm:py-28">
+        <Container
+            as="section"
+            ref={ref}
+            id="sync"
+            variant="section"
+            width="wide"
+            className="relative overflow-hidden"
+        >
             <div className="pointer-events-none absolute inset-0">
-                {/* Brand accents can remain static if they are part of the core brand identity, or you can map them to --brand-primary variables */}
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.06),transparent_28%),radial-gradient(circle_at_82%_18%,rgba(168,85,247,0.05),transparent_26%),radial-gradient(circle_at_50%_80%,rgba(14,165,233,0.04),transparent_26%)]" />
+                <div className="absolute inset-0 bg-[var(--sync-flow-bg)]" />
 
-                {/* Replaced white grid lines with theme-agnostic border colors */}
                 <div
-                    className="absolute inset-0 opacity-50 bg-size-[48px_48px]"
+                    className="absolute inset-0 bg-size-[48px_48px] opacity-[var(--sync-flow-grid-opacity)]"
                     style={{
-                        backgroundImage: `linear-gradient(var(--card-border) 1px, transparent 1px), linear-gradient(90deg, var(--card-border) 1px, transparent 1px)`
+                        backgroundImage:
+                            "linear-gradient(var(--sync-flow-grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--sync-flow-grid-line) 1px, transparent 1px)",
                     }}
                 />
 
-                <div className="absolute bottom-0 left-1/2 top-0 hidden w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-card-border to-transparent lg:block" />
+                <div className="absolute bottom-0 left-1/2 top-0 hidden w-px -translate-x-1/2 bg-linear-to-b from-transparent via-[var(--sync-flow-divider)] to-transparent lg:block" />
 
-                {!prefersReducedMotion && inView && (
+                {!prefersReducedMotion && inView ? (
                     <motion.div
-                        className="absolute inset-x-[-10%] top-16 h-px bg-gradient-to-r from-transparent via-brand-primary/25 to-transparent"
+                        className="absolute inset-x-[-10%] top-16 h-px bg-linear-to-r from-transparent via-[var(--sync-flow-scanline)] to-transparent"
                         animate={{ opacity: [0.35, 0.7, 0.35] }}
                         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                     />
-                )}
+                ) : null}
             </div>
 
-            <Container className="relative z-10">
+            <div className="relative z-10">
                 <SectionHeading
                     eyebrow="Desktop pairing"
                     title="A secure AI-native install flow from browser to desktop."
                     description="Built to feel seamless for users and trustworthy to stakeholders."
-                    // Removed className="text-white" to allow natural inheritance
                 />
 
                 <div className="relative mt-14 grid gap-8 lg:grid-cols-2 lg:gap-10">
-                    {steps.map((step, index) => (
-                        <StepCard
-                            key={step.title}
-                            step={step}
-                            index={index}
-                        />
-                    ))}
+                    {steps.map((step, index) => {
+                        const Icon = step.icon;
+
+                        return (
+                            <LargeCard
+                                key={step.title}
+                                interactive
+                                glow
+                                glowActiveOverride={inView}
+                                className="h-full"
+                                edgeLightProps={{
+                                    quality: "balanced",
+                                    dashCount: 3,
+                                    syncColorToDash: true,
+                                }}
+                            >
+                                <div className="flex items-start gap-4">
+                                    <div
+                                        className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[var(--sync-flow-icon-border)] bg-[var(--sync-flow-icon-bg)] shadow-[var(--sync-flow-icon-shadow)]"
+                                        style={{
+                                            transform: "translateZ(28px)",
+                                            backfaceVisibility: "hidden",
+                                        }}
+                                    >
+                                        <div className="absolute inset-px rounded-[15px] bg-linear-to-br from-[var(--sync-flow-icon-highlight)] to-transparent opacity-70" />
+                                        <Icon className="theme-color-fade relative z-10 h-5 w-5 text-[var(--sync-flow-icon-color)]" />
+                                    </div>
+
+                                    <div className="min-w-0">
+                                        <div className="theme-color-fade mb-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--sync-flow-step-label)]">
+                                            Step {index + 1}
+                                        </div>
+
+                                        <h3 className="theme-color-fade text-lg font-semibold tracking-tight text-[var(--sync-flow-step-title)] sm:text-xl">
+                                            {step.title}
+                                        </h3>
+
+                                        <p className="theme-color-fade mt-3 max-w-[44ch] text-sm leading-6 text-[var(--sync-flow-step-description)]">
+                                            {step.description}
+                                        </p>
+                                    </div>
+                                </div>
+                            </LargeCard>
+                        );
+                    })}
                 </div>
-            </Container>
-        </section>
-    )
+            </div>
+        </Container>
+    );
 }

@@ -6,15 +6,23 @@ import { useTheme } from "next-themes"
 import { cn } from "@/lib/utils"
 import { useThemeFx } from "@/components/providers/theme-fx-provider"
 
+const subscribe = () => () => {}
+
+function useIsClient() {
+    return React.useSyncExternalStore(
+        subscribe,
+        () => true,
+        () => false
+    )
+}
+
 export function ThemeToggle({ className }: { className?: string }) {
     const { setTheme, resolvedTheme } = useTheme()
     const { burst } = useThemeFx()
     const buttonRef = React.useRef<HTMLButtonElement | null>(null)
 
-    const [mounted, setMounted] = React.useState(false)
+    const mounted = useIsClient()
     const [busy, setBusy] = React.useState(false)
-
-    React.useEffect(() => setMounted(true), [])
 
     const isDark = resolvedTheme === "dark"
 
@@ -56,7 +64,6 @@ export function ThemeToggle({ className }: { className?: string }) {
         setBusy(false)
     }
 
-
     return (
         <button
             ref={buttonRef}
@@ -69,10 +76,12 @@ export function ThemeToggle({ className }: { className?: string }) {
                 }
             }}
             aria-label="Toggle theme"
+            disabled={busy}
             className={cn(
                 "group inline-flex h-10 w-10 items-center justify-center rounded-full border border-border",
                 "bg-background-surface/80 text-text-primary backdrop-blur-md",
                 "transition-transform duration-200 hover:scale-[1.04] active:scale-[0.98]",
+                busy && "pointer-events-none opacity-80",
                 className
             )}
         >

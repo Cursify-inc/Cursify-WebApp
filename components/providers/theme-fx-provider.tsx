@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { createPortal } from "react-dom"
-import html2canvas from "html2canvas"
 type ThemeName = "light" | "dark"
 
 type FxPayload = {
@@ -17,34 +16,22 @@ type ThemeFxContextValue = {
 
 const ThemeFxContext = React.createContext<ThemeFxContextValue | null>(null)
 
+const subscribe = () => () => {}
+
+export function useIsClient() {
+    return React.useSyncExternalStore(
+        subscribe,
+        () => true,
+        () => false
+    )
+}
+
 export function useThemeFx() {
     const ctx = React.useContext(ThemeFxContext)
     if (!ctx) throw new Error("useThemeFx must be used inside ThemeFxProvider")
     return ctx
 }
-export async function createThemeSnapshot(): Promise<HTMLDivElement> {
-    const canvas = await html2canvas(document.documentElement, {
-        backgroundColor: null,
-        useCORS: true,
-        scale: window.devicePixelRatio,
-    })
 
-    const overlay = document.createElement("div")
-    overlay.style.transform = "scale(12)"
-    overlay.style.position = "fixed"
-    overlay.style.inset = "0"
-    overlay.style.zIndex = "2147483646"
-    overlay.style.pointerEvents = "none"
-    overlay.style.willChange = "opacity, clip-path"
-    overlay.style.transition =
-        "opacity 500ms cubic-bezier(0.22,1,0.36,1), clip-path 700ms cubic-bezier(0.22,1,0.36,1)"
-
-    overlay.appendChild(canvas)
-
-    document.body.appendChild(overlay)
-
-    return overlay
-}
 type FxState = {
     id: number
     x: number
@@ -63,17 +50,13 @@ type FxVars = React.CSSProperties & {
 }
 
 export function ThemeFxProvider({ children }: { children: React.ReactNode }) {
-    const [mounted, setMounted] = React.useState(false)
+    const mounted = useIsClient()
     const [fx, setFx] = React.useState<FxState>(null)
 
-    // resolver for the currently running burst
     const resolveRef = React.useRef<null | (() => void)>(null)
-
-    React.useEffect(() => setMounted(true), [])
 
     const burst = React.useCallback(({ x, y, nextTheme }: FxPayload) => {
         return new Promise<void>((resolve) => {
-            // resolve any previous unfinished burst to avoid deadlocks
             resolveRef.current?.()
             resolveRef.current = resolve
 

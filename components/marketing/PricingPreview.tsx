@@ -1,15 +1,21 @@
-import { Check } from "lucide-react"
-import { Button } from "@/components/ui/Button"
-import { LargeCard } from "@/components/ui/CardVariants"
-import { Container } from "@/components/ui/Container"
-import { SectionHeading } from "@/components/ui/SectionHeading"
+"use client";
+
+import type { CSSProperties } from "react";
+import { useRef } from "react";
+import { useInView } from "framer-motion";
+import { Check } from "lucide-react";
+
+import { Button } from "@/components/ui/Button";
+import { LargeCard } from "@/components/ui/CardVariants";
+import { Container } from "@/components/ui/Container";
+import { SectionHeading } from "@/components/ui/SectionHeading";
 
 const plans = [
     {
         name: "Free",
         price: "$0",
         description: "For exploring Cursify and basic account sync.",
-        features: ["Web account", "Basic desktop access", "Community tools", "Limited sync"]
+        features: ["Web account", "Basic desktop access", "Community tools", "Limited sync"],
     },
     {
         name: "Pro",
@@ -22,8 +28,8 @@ const plans = [
             "Tool and extension sync",
             "Signed downloads",
             "Device management",
-            "Linked developer accounts"
-        ]
+            "Linked developer accounts",
+        ],
     },
     {
         name: "Team",
@@ -34,111 +40,162 @@ const plans = [
             "Organization members",
             "Shared tool policy",
             "Admin visibility",
-            "Priority support"
-        ]
-    }
-]
+            "Priority support",
+        ],
+    },
+];
+
+const featuredCardVars = {
+    "--card-bg": "var(--pricing-card-featured-bg)",
+    "--card-bg-hover": "var(--pricing-card-featured-bg-hover)",
+    "--card-border": "var(--pricing-card-featured-border)",
+    "--card-border-hover": "var(--pricing-card-featured-border-hover)",
+    "--card-glow": "var(--pricing-card-featured-glow)",
+    "--card-highlight": "var(--pricing-card-featured-highlight)",
+    "--card-shadow": "var(--pricing-card-featured-shadow)",
+    "--card-shadow-hover": "var(--pricing-card-featured-shadow-hover)",
+} as CSSProperties;
 
 export function PricingPreview() {
+    const ref = useRef<HTMLElement | null>(null);
+    const inView = useInView(ref, { margin: "-15%", once: true });
+
     return (
-        <section id="pricing" className="py-24">
-            <Container>
+        <Container
+            as="section"
+            ref={ref}
+            id="pricing"
+            variant="section"
+            width="wide"
+            className="relative overflow-hidden"
+        >
+            <div className="pointer-events-none absolute inset-0 bg-[var(--pricing-section-bg)]" />
+
+            <div className="relative z-10">
                 <SectionHeading
                     eyebrow="Pricing"
                     title="Simple plans for individuals and teams."
                     description="Start free, upgrade when you need full desktop sync, AI agents, device controls, and professional workflow integrations."
                 />
 
-                <div className="mt-14 grid gap-5 lg:grid-cols-3">
-                    {plans.map((plan) => (
-                        <LargeCard
-                            key={plan.name}
-                            className="h-full rounded-[1.25rem]"
-                            contentClassName={
-                                plan.highlighted
-                                    ? "relative flex h-full flex-col border-brand-primary bg-brand-primary p-7 text-text-inverted shadow-card"
-                                    : "relative flex h-full flex-col p-7 bg-bg-1"
-                            }
-                            interactive
-                            glow
-                        >
-                            {plan.highlighted && (
-                                <span className="absolute right-6 top-6 rounded-full bg-bg-0 px-3 py-1 text-xs font-bold text-brand-primary shadow-soft">
-                                    Popular
-                                </span>
-                            )}
+                <div className="mt-14 grid auto-rows-fr items-stretch gap-5 lg:grid-cols-3">
+                    {plans.map((plan, index) => {
+                        const isHighlighted = plan.highlighted === true;
 
-                            <h3
-                                className={
-                                    plan.highlighted
-                                        ? "text-xl font-bold text-text-inverted"
-                                        : "text-xl font-bold text-text-primary"
-                                }
+                        return (
+                            <LargeCard
+                                key={plan.name}
+                                interactive
+                                glow
+                                glowActiveOverride={inView}
+                                animateIn
+                                delay={index}
+                                style={isHighlighted ? featuredCardVars : undefined}
+                                className="h-full"
+                                contentClassName="relative flex h-full min-h-[32rem] flex-col"
+                                edgeLightProps={{
+                                    quality: isHighlighted ? "ultra" : "balanced",
+                                    dashCount: isHighlighted ? 4 : 3,
+                                    syncColorToDash: true,
+                                    coreOpacity: isHighlighted ? 0.86 : 0.68,
+                                    glowOpacity: isHighlighted ? 0.32 : 0.2,
+                                    highlightOpacity: isHighlighted ? 0.18 : 0.1,
+                                }}
                             >
-                                {plan.name}
-                            </h3>
+                                {isHighlighted ? (
+                                    <span className="theme-color-fade absolute right-6 top-6 rounded-full border border-[var(--pricing-badge-border)] bg-[var(--pricing-badge-bg)] px-3 py-1 text-xs font-bold text-[var(--pricing-badge-text)] shadow-[var(--pricing-badge-shadow)]">
+                                        Popular
+                                    </span>
+                                ) : null}
 
-                            <div className="mt-5 flex items-end gap-1">
-                                <span
+                                <h3
                                     className={
-                                        plan.highlighted
-                                            ? "text-5xl font-bold text-text-inverted"
-                                            : "text-5xl font-bold text-text-primary"
+                                        isHighlighted
+                                            ? "theme-color-fade text-xl font-bold text-[var(--pricing-featured-title)]"
+                                            : "theme-color-fade text-xl font-bold text-[var(--pricing-plan-title)]"
                                     }
                                 >
-                                    {plan.price}
-                                </span>
-                                <span
+                                    {plan.name}
+                                </h3>
+
+                                <div className="mt-5 flex items-end gap-1">
+                                    <span
+                                        className={
+                                            isHighlighted
+                                                ? "theme-color-fade text-5xl font-bold tracking-tight text-[var(--pricing-featured-price)]"
+                                                : "theme-color-fade text-5xl font-bold tracking-tight text-[var(--pricing-plan-price)]"
+                                        }
+                                    >
+                                        {plan.price}
+                                    </span>
+
+                                    <span
+                                        className={
+                                            isHighlighted
+                                                ? "theme-color-fade pb-1 text-[var(--pricing-featured-period)]"
+                                                : "theme-color-fade pb-1 text-[var(--pricing-plan-period)]"
+                                        }
+                                    >
+                                        /mo
+                                    </span>
+                                </div>
+
+                                <p
                                     className={
-                                        plan.highlighted ? "pb-1 text-text-inverted/60" : "pb-1 text-text-tertiary"
+                                        isHighlighted
+                                            ? "theme-color-fade mt-4 text-sm leading-7 text-[var(--pricing-featured-description)]"
+                                            : "theme-color-fade mt-4 text-sm leading-7 text-[var(--pricing-plan-description)]"
                                     }
                                 >
-                                    /mo
-                                </span>
-                            </div>
+                                    {plan.description}
+                                </p>
 
-                            <p
-                                className={
-                                    plan.highlighted
-                                        ? "mt-4 text-sm leading-7 text-text-inverted/70"
-                                        : "mt-4 text-sm leading-7 text-text-secondary"
-                                }
-                            >
-                                {plan.description}
-                            </p>
+                                <div className="mt-7 space-y-3">
+                                    {plan.features.map((feature) => (
+                                        <div key={feature} className="flex items-center gap-3">
+                                            <span
+                                                className={
+                                                    isHighlighted
+                                                        ? "flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--pricing-featured-check-bg)]"
+                                                        : "flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--pricing-check-bg)]"
+                                                }
+                                            >
+                                                <Check
+                                                    className={
+                                                        isHighlighted
+                                                            ? "theme-color-fade h-3.5 w-3.5 text-[var(--pricing-featured-check)]"
+                                                            : "theme-color-fade h-3.5 w-3.5 text-[var(--pricing-check)]"
+                                                    }
+                                                />
+                                            </span>
 
-                            <div className="mt-7 space-y-3">
-                                {plan.features.map((feature) => (
-                                    <div key={feature} className="flex items-center gap-3">
-                                        <Check
-                                            className={
-                                                plan.highlighted
-                                                    ? "h-4 w-4 text-text-inverted"
-                                                    : "h-4 w-4 text-success"
-                                            }
-                                        />
-                                        <span
-                                            className={
-                                                plan.highlighted ? "text-sm text-text-inverted/80" : "text-sm text-text-secondary"
-                                            }
-                                        >
-                                            {feature}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
+                                            <span
+                                                className={
+                                                    isHighlighted
+                                                        ? "theme-color-fade text-sm text-[var(--pricing-featured-feature)]"
+                                                        : "theme-color-fade text-sm text-[var(--pricing-plan-feature)]"
+                                                }
+                                            >
+                                                {feature}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
 
-                            <Button
-                                href="/signup"
-                                variant={plan.highlighted ? "secondary" : "primary"}
-                                className="mt-auto pt-8 w-full"
-                            >
-                                Get started
-                            </Button>
-                        </LargeCard>
-                    ))}
+                                <div className="mt-auto pt-8">
+                                    <Button
+                                        href="/signup"
+                                        variant={isHighlighted ? "secondary" : "primary"}
+                                        className="w-full"
+                                    >
+                                        Get started
+                                    </Button>
+                                </div>
+                            </LargeCard>
+                        );
+                    })}
                 </div>
-            </Container>
-        </section>
-    )
+            </div>
+        </Container>
+    );
 }

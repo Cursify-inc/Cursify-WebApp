@@ -1,131 +1,153 @@
-// card.tokens.ts
-import type { CardProps } from "./Card";
-import type { EdgeLightOptions, TinyNoEdgeTone } from "./CardVariants";
+import type { UseInViewOptions } from "framer-motion";
+import type { AutoEdgeLightProProps } from "@/components/ui/AutoEdgeLight";
 
 export type CardSize = "tiny" | "large";
 export type CardThemeMode = "light" | "dark";
 
+export type TinyNoEdgeTone = "glassGlowNeon" | "glassGlowPremium";
+
+export type EdgeLightOptions = Omit<
+    AutoEdgeLightProProps,
+    "active" | "parentRef"
+>;
+
 export const CARD_MOTION = {
-    tiltMaxDeg: 6,
+    tiltMaxDeg: 60,
     spring: { stiffness: 180, damping: 24, mass: 0.7 },
     hover: { y: -2, scale: 1.008, duration: 0.16 },
     reveal: {
         durationMs: 900,
         delayMs: 0,
-        margin: "0px 0px -120px 0px" as NonNullable<CardProps["revealViewportMargin"]>,
+        margin: "0px 0px -120px 0px" as NonNullable<UseInViewOptions["margin"]>,
     },
 } as const;
 
-// ------------------------------------------------------------------
-// 1. DOM / Wrapper Styles (Now handled entirely by CSS/Tailwind)
-// ------------------------------------------------------------------
-
-export const CARD_STYLE = {
-    large: "rounded-[1.4rem] card-surface shadow-card border-card-border",
-    tiny: "rounded-[1.25rem] card-surface shadow-card-sm border-card-border",
-    largeInner: "relative z-10 rounded-[1.4rem] p-5 md:p-6",
-    tinyInner: "relative z-10 flex items-center gap-3 rounded-[1.25rem] p-3.5 md:p-4",
+export const CARD_VARIANT_CLASSES = {
+    large: {
+        root: "ui-card ui-card--large",
+        inner: "ui-card__inner ui-card__inner--large",
+    },
+    tiny: {
+        root: "ui-card ui-card--tiny",
+        inner: "ui-card__inner ui-card__inner--tiny",
+    },
+    promoLarge: {
+        root: "ui-card ui-card--promo-large",
+        inner: "ui-card__inner ui-card__inner--large",
+    },
+    promoTiny: {
+        root: "ui-card ui-card--promo-tiny",
+        inner: "ui-card__inner ui-card__inner--tiny",
+    },
+    glassNeon: {
+        root: "ui-card ui-card--glass-neon glass-glow glass-glow-neon",
+        inner: "ui-card__inner--glass",
+    },
+    glassPremium: {
+        root: "ui-card ui-card--glass-premium glass-glow glass-glow-premium",
+        inner: "ui-card__inner--glass",
+    },
+    compact: {
+        root: "ui-card ui-card--compact",
+        inner: "ui-card__inner ui-card__inner--compact",
+    },
 } as const;
 
-// Note: getCardStyle has been deprecated as styles are now theme-agnostic via CSS variables
-
-// ------------------------------------------------------------------
-// 2. Canvas Edge Light Properties
-// ------------------------------------------------------------------
-
-const EDGE_BASE: Pick<
-    EdgeLightOptions,
-    | "inset"
-    | "trailCount"
-    | "trailGap"
-    | "idleSpeed"
-    | "hoverSpeedBoost"
-    | "attractStrength"
-    | "proximityRadius"
-    | "pulseDurationMs"
-    | "pulseIntensity"
-    | "enableIdleScan"
-    | "enableCursorProximity"
-    | "enablePulse"
-    | "interactionBoostDecay"
-    | "interactionBoostAmount"
-> = {
+const EDGE_BASE = {
     inset: 0,
-    trailCount: 4,
-    trailGap: 1.05,
-    idleSpeed: 0.22,
-    hoverSpeedBoost: 0.2,
-    attractStrength: 6,
+    quality: "balanced",
+    dashCount: 1,
+    syncColorToDash: false,
+    dashRatio: 1,
+    idleSpeed: 0,
+    hoverSpeedBoost: 0.4,
+    attractStrength: 1,
     proximityRadius: 120,
     pulseDurationMs: 620,
     pulseIntensity: 0.7,
-    enableIdleScan: true,
-    enableCursorProximity: true,
-    enablePulse: true,
-    /** NEW: short interaction burst strength (0..1 recommended) */
-    interactionBoostDecay: 1,
-    interactionBoostAmount: 20,
-};
+    enableIdleScan: false,
+    enableCursorProximity: false,
+    enablePulse: false,
+    interactionBoostDecay: 10,
+    interactionBoostAmount: 75,
+} satisfies Partial<EdgeLightOptions>;
 
-// Colors centralized via CSS variables
-const EDGE_COLORS = {
-    colorA: "var(--edge-light-a)",
-    colorB: "var(--edge-light-b)",
-    highlightColor: "var(--edge-highlight)",
-};
+const EDGE_THEME_COLORS = {
+    colorA: "var(--ael-color-a)",
+    colorB: "var(--ael-color-b)",
+    highlightColor: "var(--ael-highlight)",
+} satisfies Partial<EdgeLightOptions>;
 
-const EDGE_DARK: Record<CardSize, EdgeLightOptions> = {
+const EDGE_PRESETS = {
     tiny: {
         ...EDGE_BASE,
-        ...EDGE_COLORS,
-        strokeWidth: 16,
-        glowWidth: 5.5,
-        glowBlur: 7,
-        segmentRatio: 0.24,
-        coreOpacity: 0.62,
-        glowOpacity: 0.28,
-        highlightOpacity: 0.14,
-    },
-    large: {
-        ...EDGE_BASE,
-        ...EDGE_COLORS,
-        strokeWidth: 1.6,
-        glowWidth: 6.8,
-        glowBlur: 8.5,
-        segmentRatio: 0.16,
-        coreOpacity: 0.58,
-        glowOpacity: 0.24,
-        highlightOpacity: 0.12,
-    },
-};
-
-const EDGE_LIGHT: Record<CardSize, EdgeLightOptions> = {
-    tiny: {
-        ...EDGE_BASE,
-        ...EDGE_COLORS,
-        strokeWidth: 1.4,
-        glowWidth: 4.2,
+        ...EDGE_THEME_COLORS,
+        strokeWidth: 1.5,
+        glowWidth: 7.5,
         glowBlur: 5.5,
+        dashRatio: 0.9,
         segmentRatio: 0.22,
-        coreOpacity: 0.42,
-        glowOpacity: 0.14,
-        highlightOpacity: 0.08,
+        coreOpacity: 0.8,
+        glowOpacity: 0.3,
+        highlightOpacity: 0.15,
     },
     large: {
         ...EDGE_BASE,
-        ...EDGE_COLORS,
-        strokeWidth: 1.8,
-        glowWidth: 5.2,
-        glowBlur: 6.2,
-        segmentRatio: 0.15,
-        coreOpacity: 0.4,
-        glowOpacity: 0.12,
-        highlightOpacity: 0.07,
+        ...EDGE_THEME_COLORS,
+        strokeWidth: 2,
+        glowWidth: 9,
+        glowBlur: 8,
+        dashRatio: 1,
+        segmentRatio: 0.16,
+        coreOpacity: 0.86,
+        glowOpacity: 0.34,
+        highlightOpacity: 0.16,
     },
-};
+} satisfies Record<CardSize, EdgeLightOptions>;
 
-export function getEdgeLightPreset(size: CardSize, mode: CardThemeMode): EdgeLightOptions {
-    return mode === "dark" ? EDGE_DARK[size] : EDGE_LIGHT[size];
+export function getEdgeLightPreset(
+    size: CardSize,
+    _mode?: CardThemeMode
+): EdgeLightOptions {
+    return EDGE_PRESETS[size];
 }
 
 export const NO_EDGE_DEFAULT_TONE: TinyNoEdgeTone = "glassGlowNeon";
+
+export const PROMO_EDGE_DEFAULTS = {
+    durationSec: 8,
+    colorSpeed: 1,
+    segmentRatio: 0.22,
+    inset: 0,
+    strokeWidth: 2.2,
+    glowWidth: 10,
+    glowBlur: 10,
+    coreOpacity: 0.95,
+    glowOpacity: 0.42,
+    highlightOpacity: 0.38,
+    colorA: "var(--promo-glow-primary)",
+    colorB: "var(--promo-glow-secondary)",
+    highlightColor: "var(--promo-edge-highlight)",
+    quality: "balanced",
+    dashCount: 1,
+    syncColorToDash: false,
+} as const;
+
+export const TINY_PROMO_EDGE_DEFAULTS = {
+    durationSec: 5.5,
+    inset: 0,
+    strokeWidth: 2,
+    glowWidth: 8,
+    glowBlur: 8,
+    coreOpacity: 0.95,
+    glowOpacity: 0.45,
+    highlightOpacity: 0.38,
+    colorA: "var(--promo-glow-primary)",
+    colorB: "var(--promo-glow-secondary)",
+    highlightColor: "var(--promo-edge-highlight)",
+    colorSpeed: 1,
+    segmentRatio: 0.22,
+    quality: "balanced",
+    dashCount: 1,
+    syncColorToDash: false,
+} as const;

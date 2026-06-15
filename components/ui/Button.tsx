@@ -2,8 +2,10 @@
 
 import * as React from "react";
 import Link from "next/link";
+
+import AutoEdgeLight from "@/components/ui/AutoEdgeLight";
+import type { EdgeLightOptions } from "@/components/ui/card.tokens";
 import { cn } from "@/lib/utils";
-import AutoEdgeLight from "./AutoEdgeLight"; // adjust path if needed
 
 type ButtonVariant = "primary" | "secondary" | "ghost";
 type ButtonSize = "sm" | "md" | "lg";
@@ -14,106 +16,49 @@ type ButtonProps = {
     variant?: ButtonVariant;
     size?: ButtonSize;
     className?: string;
-
-    /**
-     * Optional override:
-     * - true  => always show edge light
-     * - false => never show edge light
-     * - undefined => variant default (primary on, secondary subtle on, ghost off)
-     */
     edgeLight?: boolean;
+    edgeLightProps?: Partial<EdgeLightOptions>;
 };
 
-type EdgePreset = {
-    strokeWidth: number;
-    glowWidth: number;
-    glowBlur: number;
-    segmentRatio: number;
-    trailCount: number;
-    trailGap: number;
-    idleSpeed: number;
-    hoverSpeedBoost: number;
-    attractStrength: number;
-    proximityRadius: number;
-    pulseDurationMs: number;
-    pulseIntensity: number;
-    interactionBoostAmount: number;
-    interactionBoostDecay: number;
-    coreOpacity: number;
-    glowOpacity: number;
-    highlightOpacity: number;
-    colorA: string;
-    colorB: string;
-    highlightColor: string;
+const EDGE_BASE: Partial<EdgeLightOptions> = {
+    durationSec: 2.8,
+    strokeWidth: 1.65,
+    glowWidth: 6.5,
+    glowBlur: 5,
+    coreOpacity: 0.74,
+    glowOpacity: 0.24,
+    highlightOpacity: 0.12,
+    colorA: "var(--ael-color-a)",
+    colorB: "var(--ael-color-b)",
+    highlightColor: "var(--ael-highlight)",
+    colorSpeed: 1,
+    segmentRatio: 0.2,
+    quality: "balanced",
+    dashCount: 1,
+    syncColorToDash: false,
 };
 
-const EDGE_PRESETS: Record<ButtonVariant, EdgePreset> = {
+const EDGE_PRESETS: Record<ButtonVariant, Partial<EdgeLightOptions>> = {
     primary: {
-        strokeWidth: 1.8,
-        glowWidth: 7.5,
-        glowBlur: 8,
-        segmentRatio: 0.26,
-        trailCount: 4,
-        trailGap: 1.0,
-        idleSpeed: 0.26,
-        hoverSpeedBoost: 0.28,
-        attractStrength: 6.5,
-        proximityRadius: 130,
-        pulseDurationMs: 700,
-        pulseIntensity: 1.0,
-        interactionBoostAmount: 30,
-        interactionBoostDecay: 1.12,
-        coreOpacity: 0.75,
-        glowOpacity: 0.38,
-        highlightOpacity: 0.2,
-        colorA: "rgb(56 189 248)",   // cyan-400
-        colorB: "rgb(129 140 248)",  // indigo-400
-        highlightColor: "rgb(255 255 255)",
+        ...EDGE_BASE,
+        durationSec: 2.55,
+        coreOpacity: 0.8,
+        glowOpacity: 0.28,
+        highlightOpacity: 0.15,
     },
     secondary: {
-        strokeWidth: 1.3,
-        glowWidth: 4.8,
-        glowBlur: 6,
-        segmentRatio: 0.2,
-        trailCount: 3,
-        trailGap: 1.15,
-        idleSpeed: 0.17,
-        hoverSpeedBoost: 0.18,
-        attractStrength: 4.8,
-        proximityRadius: 110,
-        pulseDurationMs: 560,
-        pulseIntensity: 0.65,
-        interactionBoostAmount: 16,
-        interactionBoostDecay: 1.28,
-        coreOpacity: 0.45,
-        glowOpacity: 0.22,
-        highlightOpacity: 0.12,
-        colorA: "rgb(148 163 184)",  // slate-400
-        colorB: "rgb(99 102 241)",   // indigo-500
-        highlightColor: "rgb(255 255 255)",
+        ...EDGE_BASE,
+        durationSec: 2.85,
+        coreOpacity: 0.62,
+        glowOpacity: 0.18,
+        highlightOpacity: 0.1,
     },
     ghost: {
-        // Not used by default (ghost edge light is off), but kept for override edgeLight={true}
-        strokeWidth: 1.1,
-        glowWidth: 3.8,
-        glowBlur: 5,
-        segmentRatio: 0.18,
-        trailCount: 2,
-        trailGap: 1.2,
-        idleSpeed: 0.14,
-        hoverSpeedBoost: 0.14,
-        attractStrength: 4.2,
-        proximityRadius: 100,
-        pulseDurationMs: 520,
-        pulseIntensity: 0.5,
-        interactionBoostAmount: 12,
-        interactionBoostDecay: 1.32,
-        coreOpacity: 0.35,
-        glowOpacity: 0.16,
-        highlightOpacity: 0.1,
-        colorA: "rgb(148 163 184)",
-        colorB: "rgb(125 211 252)",
-        highlightColor: "rgb(255 255 255)",
+        ...EDGE_BASE,
+        durationSec: 3.1,
+        coreOpacity: 0.42,
+        glowOpacity: 0.1,
+        highlightOpacity: 0.06,
     },
 };
 
@@ -124,30 +69,32 @@ export function Button({
                            size = "md",
                            className,
                            edgeLight,
+                           edgeLightProps,
                        }: ButtonProps) {
-    const surfaceRef = React.useRef<HTMLSpanElement | null>(null);
-    const [burstKey, setBurstKey] = React.useState(0);
+    const surfaceRef = React.useRef<HTMLElement | null>(null);
 
-    // Variant defaults
+    const setSurfaceRef = React.useCallback(
+        (node: HTMLAnchorElement | HTMLButtonElement | null) => {
+            surfaceRef.current = node;
+        },
+        []
+    );
+
     const variantDefaultEdgeLight = variant !== "ghost";
     const showEdgeLight = edgeLight ?? variantDefaultEdgeLight;
 
-    const preset = EDGE_PRESETS[variant];
-
-    const triggerBurst = () => {
-        if (!showEdgeLight) return;
-        setBurstKey((k) => k + 1);
-    };
-
     const classes = cn(
-        "relative overflow-hidden focus-ring inline-flex items-center justify-center rounded-full font-semibold transition-all duration-200",
+        "focus-ring theme-color-fade relative isolate inline-flex items-center justify-center overflow-hidden rounded-full font-semibold",
         "disabled:pointer-events-none disabled:opacity-50",
+        "transition-transform duration-200",
         variant === "primary" &&
-        "bg-brand text-text-inverse shadow-soft hover:-translate-y-0.5 hover:bg-brand-hover",
+        "bg-linear-to-b from-[var(--button-primary-bg-from)] to-[var(--button-primary-bg-to)] text-[var(--button-primary-text)] shadow-[var(--button-primary-shadow)] hover:-translate-y-0.5 hover:from-[var(--button-primary-bg-hover-from)] hover:to-[var(--button-primary-bg-hover-to)] hover:shadow-[var(--button-primary-shadow-hover)]"
+,
         variant === "secondary" &&
-        "border border-border bg-background-surface text-text-primary hover:-translate-y-0.5 hover:border-brand-light hover:shadow-soft",
+        "border border-[var(--button-secondary-border)] bg-[var(--button-secondary-bg)] text-[var(--button-secondary-text)] hover:-translate-y-0.5 hover:border-[var(--button-secondary-border-hover)] hover:bg-[var(--button-secondary-bg-hover)] hover:shadow-[var(--button-secondary-shadow-hover)]"
+,
         variant === "ghost" &&
-        "text-text-secondary hover:bg-black/5 hover:text-text-primary dark:hover:bg-white/10",
+        "bg-transparent text-[var(--button-ghost-text)] hover:bg-[var(--button-ghost-bg-hover)] hover:text-[var(--button-ghost-text-hover)]",
         size === "sm" && "h-9 px-4 text-sm",
         size === "md" && "h-11 px-5 text-sm",
         size === "lg" && "h-13 px-7 py-4 text-base",
@@ -155,37 +102,36 @@ export function Button({
     );
 
     const edge = showEdgeLight ? (
-        <>
-      <span
-          ref={surfaceRef}
-          className="pointer-events-none absolute inset-0 rounded-full"
-      />
-
-            <AutoEdgeLight
-                active={false} key={burstKey}
-                parentRef={surfaceRef}
-                inset={-1}
-                className="pointer-events-none absolute inset-0 z-10"
-                enableIdleScan
-                enableCursorProximity
-                enablePulse
-                {...preset}            />
-        </>
+        <AutoEdgeLight
+            active
+            parentRef={surfaceRef}
+            inset={0}
+            className="edge-light-root pointer-events-none absolute inset-0 z-10"
+            {...EDGE_PRESETS[variant]}
+            {...edgeLightProps}
+        />
     ) : null;
+
+    const content = (
+        <>
+            {edge}
+            <span className="relative z-20 inline-flex items-center">
+                {children}
+            </span>
+        </>
+    );
 
     if (href) {
         return (
-            <Link href={href} className={classes} onPointerDown={triggerBurst}>
-                {edge}
-                <span className="relative z-20 inline-flex items-center">{children}</span>
+            <Link href={href} ref={setSurfaceRef} className={classes}>
+                {content}
             </Link>
         );
     }
 
     return (
-        <button type="button" className={classes} onPointerDown={triggerBurst}>
-            {edge}
-            <span className="relative z-20 inline-flex items-center">{children}</span>
+        <button ref={setSurfaceRef} type="button" className={classes}>
+            {content}
         </button>
     );
 }

@@ -1,7 +1,8 @@
-"use client"
+"use client";
 
-import { Container } from "@/components/ui/Container"
-import { TinyCard } from "@/components/ui/CardVariants"
+import { Container } from "@/components/ui/Container";
+import { TinyCard } from "@/components/ui/CardVariants";
+import { cn } from "@/lib/utils";
 
 const items = [
     "Next.js Web Platform",
@@ -10,44 +11,54 @@ const items = [
     "PostgreSQL",
     "Redis",
     "S3-compatible Storage",
-]
+];
 
-export function TrustedStrip() {
+function TrustedStrip() {
     return (
-        <section className="py-14">
-            <Container>
-                {/*
-                    Replaced hardcoded white/55 and dark:white/4 with your semantic card variables.
-                    This assumes you have `.card-surface` and `.border-card-border` defined in globals.css
-                    from our previous step, or you can use standard bg-[rgb(...)] syntax.
-                */}
-                <div className="card-surface border border-card-border rounded-4xl px-6 py-5 shadow-soft backdrop-blur-xl">
-                    <p className="text-center text-xs font-semibold uppercase tracking-[0.24em] text-text-tertiary">
-                        Designed around a secure, scalable architecture
-                    </p>
+        <Container
+            as="section"
+            variant="shell"
+            width="wide"
+            className="relative"
+            contentClassName="relative overflow-hidden rounded-4xl border border-[var(--trusted-strip-border)] bg-[var(--trusted-strip-bg)] px-5 py-6 shadow-[var(--trusted-strip-shadow)] backdrop-blur-xl sm:px-7 sm:py-7 lg:px-8"
+        >
+            <div className="pointer-events-none absolute inset-0 rounded-4xl bg-[radial-gradient(circle_at_50%_0%,var(--trusted-strip-glow),transparent_58%)]" />
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-linear-to-r from-transparent via-[var(--trusted-strip-highlight)] to-transparent" />
 
-                    <div className="mt-5 grid items-stretch grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-                        {items.map((item, index) => (
-                            <TinyCard
-                                key={item}
-                                animateIn
-                                delay={Math.min(index, 3)}
-                                interactive
-                                glow
-                                className="h-full rounded-[1.25rem]"
-                                // Simplified to use standard surface variables, relying on the unified theme
-                                contentClassName="card-surface flex h-full rounded-[1.25rem]"
+            <div className="relative">
+                <p className="theme-color-fade text-center text-xs font-semibold uppercase tracking-[0.24em] text-[var(--trusted-strip-eyebrow)]">
+                    Designed around a secure, scalable architecture
+                </p>
+
+                <div className="mt-5 grid grid-cols-2 items-stretch gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                    {items.map((item, index) => (
+                        <TinyCard
+                            key={item}
+                            animateIn
+                            delay={Math.min(index, 3)}
+                            interactive
+                            glow
+                            activateGlowOnReveal
+                            revealGlowDurationMs={1200}
+                            revealGlowDelayMs={index * 70}
+                            revealViewportMargin="0px 0px -100px 0px"
+                            className="h-full"
+                            contentClassName="h-full min-h-[4.75rem] justify-center"
+                        >
+                            <span
+                                className={cn(
+                                    "theme-color-fade block text-center text-sm font-semibold leading-snug",
+                                    "text-[var(--trusted-strip-item-text)]"
+                                )}
                             >
-                                <div className="flex h-full min-h-[4.75rem] items-center justify-center px-3 py-3 text-center">
-                                  <span className="text-sm font-semibold leading-snug text-text-secondary">
-                                    {item}
-                                  </span>
-                                </div>
-                            </TinyCard>
-                        ))}
-                    </div>
+                                {item}
+                            </span>
+                        </TinyCard>
+                    ))}
                 </div>
-            </Container>
-        </section>
-    )
+            </div>
+        </Container>
+    );
 }
+
+export default TrustedStrip

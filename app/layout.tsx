@@ -1,7 +1,9 @@
-import type { Metadata } from "next"
-import "./globals.css"
-import { ThemeProvider } from "@/components/providers/theme-provider"
-import { ThemeFxProvider } from "@/components/providers/theme-fx-provider"
+import type { Metadata } from "next";
+
+import { ThemeFxProvider } from "@/components/providers/theme-fx-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+
+import "./globals.css";
 
 export const metadata: Metadata = {
     title: "Cursify — AI-powered IDE platform",
@@ -20,16 +22,16 @@ export const metadata: Metadata = {
         title: "Cursify — AI-powered IDE platform",
         description: "Professional AI IDE platform for serious developers.",
     },
-}
+};
 
 export default function RootLayout({
                                        children,
                                    }: Readonly<{
-    children: React.ReactNode
+    children: React.ReactNode;
 }>) {
     return (
         <html lang="en" suppressHydrationWarning>
-        <body className="bg-background text-text-primary">
+        <body className="min-h-dvh overflow-x-hidden overflow-y-auto bg-[var(--bg-0)] text-[var(--text-primary)]">
         <ThemeProvider>
             <ThemeFxProvider>
                 {children}
@@ -38,5 +40,5 @@ export default function RootLayout({
         </ThemeProvider>
         </body>
         </html>
-    )
+    );
 }

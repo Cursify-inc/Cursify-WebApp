@@ -17,22 +17,117 @@
 @property --background { syntax: "<color>"; inherits: true; initial-value: #e6eefc; }
 @property --background-surface { syntax: "<color>"; inherits: true; initial-value: #edf3ff; }
 @property --background-elevated { syntax: "<color>"; inherits: true; initial-value: #f5f8ff; }
+
 @property --text-primary { syntax: "<color>"; inherits: true; initial-value: #101a2b; }
 @property --text-secondary { syntax: "<color>"; inherits: true; initial-value: #475977; }
 @property --text-tertiary { syntax: "<color>"; inherits: true; initial-value: #7585a0; }
+
 @property --border { syntax: "<color>"; inherits: true; initial-value: rgba(76, 97, 140, 0.16); }
 @property --brand { syntax: "<color>"; inherits: true; initial-value: #3b82f6; }
+@property --brand-2 { syntax: "<color>"; inherits: true; initial-value: #c13bf6; }
 @property --brand-hover { syntax: "<color>"; inherits: true; initial-value: #2f8fff; }
 @property --brand-light { syntax: "<color>"; inherits: true; initial-value: #8fd0ff; }
+
 @property --surface-bg { syntax: "<color>"; inherits: true; initial-value: rgba(237, 243, 255, 0.74); }
 @property --surface-bg-strong { syntax: "<color>"; inherits: true; initial-value: rgba(245, 248, 255, 0.9); }
 @property --surface-border { syntax: "<color>"; inherits: true; initial-value: rgba(255, 255, 255, 0.62); }
 @property --surface-border-strong { syntax: "<color>"; inherits: true; initial-value: rgba(255, 255, 255, 0.1); }
+
 @property --ael-color-a { syntax: '<color>'; inherits: true; initial-value: #006dff; }
 @property --ael-color-b { syntax: '<color>'; inherits: true; initial-value: #7c3aed; }
 @property --ael-highlight { syntax: '<color>'; inherits: true; initial-value: #10b981; }
 @property --ael-gradient-start { syntax: '<color>'; inherits: true; initial-value: #00263c; }
 @property --ael-gradient-end { syntax: '<color>'; inherits: true; initial-value: #12001b; }
+
+@property --button-primary-bg-from { syntax: "<color>"; inherits: true; initial-value: #00cfff; }
+@property --button-primary-bg-to { syntax: "<color>"; inherits: true; initial-value: #00b8ff; }
+@property --button-primary-bg-hover-from { syntax: "<color>"; inherits: true; initial-value: #33dcff; }
+@property --button-primary-bg-hover-to { syntax: "<color>"; inherits: true; initial-value: #00b8ff; }
+@property --button-primary-text { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
+
+@property --button-secondary-bg { syntax: "<color>"; inherits: true; initial-value: rgba(236, 246, 255, 0.72); }
+@property --button-secondary-bg-hover { syntax: "<color>"; inherits: true; initial-value: rgba(246, 251, 255, 0.9); }
+@property --button-secondary-text { syntax: "<color>"; inherits: true; initial-value: #081226; }
+@property --button-secondary-border { syntax: "<color>"; inherits: true; initial-value: rgba(168, 85, 247, 0.28); }
+@property --button-secondary-border-hover { syntax: "<color>"; inherits: true; initial-value: #86e7ff; }
+
+@property --button-ghost-bg-hover { syntax: "<color>"; inherits: true; initial-value: rgba(8, 18, 38, 0.06); }
+@property --button-ghost-text { syntax: "<color>"; inherits: true; initial-value: #1f365c; }
+@property --button-ghost-text-hover { syntax: "<color>"; inherits: true; initial-value: #081226; }
+
+@property --badge-bg { syntax: "<color>"; inherits: true; initial-value: rgba(255, 255, 255, 0.7); }
+@property --badge-text { syntax: "<color>"; inherits: true; initial-value: #00cfff; }
+@property --badge-border { syntax: "<color>"; inherits: true; initial-value: rgba(0, 207, 255, 0.22); }
+
+@property --section-heading-title { syntax: "<color>"; inherits: true; initial-value: #081226;}
+@property --section-heading-description {syntax: "<color>";inherits: true;initial-value: #1f365c;}
+
+@property --trusted-strip-bg {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.72);}
+@property --trusted-strip-border {syntax: "<color>";inherits: true;initial-value: rgba(0, 207, 255, 0.16);}
+@property --trusted-strip-eyebrow {syntax: "<color>";inherits: true;initial-value: #60708f;}
+@property --trusted-strip-item-text {syntax: "<color>";inherits: true;initial-value: #1f365c;}
+@property --trusted-strip-glow {syntax: "<color>";inherits: true;initial-value: rgba(0, 207, 255, 0.16);}
+@property --trusted-strip-highlight {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.86);}
+
+@property --sync-flow-grid-line {syntax: "<color>";inherits: true;initial-value: rgba(0, 207, 255, 0.08);}
+@property --sync-flow-divider {syntax: "<color>";inherits: true;initial-value: rgba(0, 207, 255, 0.12);}
+@property --sync-flow-scanline {syntax: "<color>";inherits: true;initial-value: rgba(0, 207, 255, 0.25);}
+@property --sync-flow-icon-bg {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.72);}
+@property --sync-flow-icon-border {syntax: "<color>";inherits: true;initial-value: rgba(0, 207, 255, 0.18);}
+@property --sync-flow-icon-highlight {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.72);}
+@property --sync-flow-icon-color {syntax: "<color>";inherits: true;initial-value: #081226}
+@property --sync-flow-step-label {syntax: "<color>";inherits: true;initial-value: #60708f;}
+@property --sync-flow-step-title {syntax: "<color>";inherits: true;initial-value: #081226;}
+@property --sync-flow-step-description {syntax: "<color>";inherits: true;initial-value: #1f365c;}
+
+@property --security-shell-bg {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.72);}
+@property --security-shell-border {syntax: "<color>";inherits: true;initial-value: rgba(0, 207, 255, 0.16);}
+@property --security-shell-divider {syntax: "<color>";inherits: true;initial-value: rgba(0, 207, 255, 0.14);}
+@property --security-shell-glow {syntax: "<color>";inherits: true;initial-value: rgba(0, 207, 255, 0.14);}
+@property --security-shell-highlight {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.82);}
+@property --security-icon-chip-bg {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.76);}
+@property --security-icon-chip-border {syntax: "<color>";inherits: true;initial-value: rgba(0, 207, 255, 0.18);}
+@property --security-icon-chip-highlight {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.7);}
+@property --security-icon-chip-color {syntax: "<color>";inherits: true;initial-value: #081226;}
+@property --security-title {syntax: "<color>";inherits: true;initial-value: #081226;}
+@property --security-description {syntax: "<color>";inherits: true;initial-value: #1f365c;}
+@property --security-feature-icon {syntax: "<color>";inherits: true;initial-value: #081226;}
+@property --security-feature-title {syntax: "<color>";inherits: true;initial-value: #081226;}
+@property --security-item-text {syntax: "<color>";inherits: true;initial-value: #1f365c;}
+
+
+@property --product-feature-icon-bg {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.76);}
+@property --product-feature-icon-border {syntax: "<color>";inherits: true;initial-value: rgba(0, 207, 255, 0.18);}
+@property --product-feature-icon-highlight {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.72);}
+@property --product-feature-icon-color {syntax: "<color>";inherits: true;initial-value: #081226;}
+@property --product-feature-title {syntax: "<color>";inherits: true;initial-value: #081226;}
+@property --product-feature-description {syntax: "<color>";inherits: true;initial-value: #1f365c;}
+
+@property --pricing-card-featured-bg {syntax: "<color>";inherits: true;initial-value: #00cfff;}
+@property --pricing-card-featured-bg-hover {syntax: "<color>";inherits: true;initial-value: #19d8ff;}
+@property --pricing-card-featured-border {syntax: "<color>";inherits: true;initial-value: rgba(0, 207, 255, 0.55);}
+@property --pricing-card-featured-border-hover {syntax: "<color>";inherits: true;initial-value: rgba(0, 207, 255, 0.78);}
+@property --pricing-card-featured-glow {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.24);}
+@property --pricing-card-featured-highlight {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.58);}
+@property --pricing-plan-title {syntax: "<color>";inherits: true;initial-value: #081226;}
+@property --pricing-plan-price {syntax: "<color>";inherits: true;initial-value: #081226;}
+@property --pricing-plan-period {syntax: "<color>";inherits: true;initial-value: #60708f;}
+@property --pricing-plan-description {syntax: "<color>";inherits: true;initial-value: #1f365c;}
+@property --pricing-plan-feature {syntax: "<color>";inherits: true;initial-value: #1f365c;}
+@property --pricing-check {syntax: "<color>";inherits: true;initial-value: #00a86b;}
+@property --pricing-check-bg {syntax: "<color>";inherits: true;initial-value: rgba(0, 168, 107, 0.1);}
+@property --pricing-featured-title {syntax: "<color>";inherits: true;initial-value: #ffffff;}
+@property --pricing-featured-price {syntax: "<color>";inherits: true;initial-value: #ffffff;}
+@property --pricing-featured-period {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.68);}
+@property --pricing-featured-description {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.76);}
+@property --pricing-featured-feature {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.84);}
+@property --pricing-featured-check {syntax: "<color>";inherits: true;initial-value: #081226;}
+@property --pricing-featured-check-bg {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.9);}
+@property --pricing-badge-bg {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.92);}
+@property --pricing-badge-text {syntax: "<color>";inherits: true;initial-value: #081226;}
+@property --pricing-badge-border {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.5);}
+
+
 @layer utilities {
     .grid-synthwave {
         position: fixed;
@@ -178,15 +273,143 @@
         --promo-glow-primary: rgb(34 211 238);   /* Cyan/Teal glow */
         --promo-glow-secondary: rgb(129 140 248); /* Indigo/Purple glow */
         --promo-edge-highlight: rgb(255 255 255); /* Leading edge highlight */
-        --edge-light-a: rgb(14 116 144);
-        --edge-light-b: rgb(79 70 229);
+        --edge-light-a: rgb(255 0 0);
+        --edge-light-b: rgb(247 255 0);
         --edge-highlight: rgb(255 255 255 / 0.9);
 
-        --badge-bg: 255 255 255; /* white */
-        --badge-bg-opacity: 0.7;
-        --badge-text: var(--brand); /* assuming --brand is defined, or use raw HSL */
-        --badge-border: rgba(255, 255, 255, 0.1);
-        --badge-border-opacity: 0.15;
+        /* Button Component Tokens */
+        --button-primary-bg-from: var(--brand);
+        --button-primary-bg-to: var(--brand-hover);
+        --button-primary-bg-hover-from: color-mix(in oklab, var(--brand) 88%, white);
+        --button-primary-bg-hover-to: var(--brand-hover);
+
+        --button-primary-text: var(--text-inverse);
+
+        --button-secondary-bg: var(--surface-bg);
+        --button-secondary-bg-hover: var(--surface-bg-strong);
+        --button-secondary-text: var(--text-primary);
+        --button-secondary-border: var(--surface-border-strong);
+        --button-secondary-border-hover: var(--brand-light);
+
+        --button-ghost-bg-hover: color-mix(in oklab, var(--text-primary) 7%, transparent);
+        --button-ghost-text: var(--text-secondary);
+        --button-ghost-text-hover: var(--text-primary);
+
+        --button-primary-shadow: 0 12px 30px rgba(0, 207, 255, 0.24), 0 0 34px rgba(168, 85, 247, 0.14);
+        --button-primary-shadow-hover: 0 16px 38px rgba(0, 207, 255, 0.3), 0 0 42px rgba(168, 85, 247, 0.2);
+        --button-secondary-shadow-hover: var(--surface-shadow-hover);
+
+        /* Badge Component Tokens */
+        --badge-bg: color-mix(in oklab, var(--brand) 12%, white 68%);
+        --badge-text: color-mix(in oklab, var(--brand) 82%, #081226);
+        --badge-border: color-mix(in oklab, var(--brand) 28%, transparent);
+
+        /* Section Heading Component Tokens */
+        --section-heading-title: var(--text-primary);
+        --section-heading-description: var(--text-secondary);
+
+        /* Trusted Strip Component Tokens */
+        --trusted-strip-bg: color-mix(in oklab, var(--surface-bg) 86%, white);
+        --trusted-strip-border: var(--surface-border);
+        --trusted-strip-eyebrow: var(--text-tertiary);
+        --trusted-strip-item-text: var(--text-secondary);
+        --trusted-strip-glow: color-mix(in oklab, var(--brand) 16%, transparent);
+        --trusted-strip-highlight: rgba(255, 255, 255, 0.86);
+        --trusted-strip-shadow: var(--surface-shadow);
+
+        /* Sync Flow Section Tokens */
+        --sync-flow-bg:
+                radial-gradient(circle at 18% 20%, color-mix(in oklab, var(--brand) 10%, transparent), transparent 28%),
+                radial-gradient(circle at 82% 18%, color-mix(in oklab, var(--brand-2) 10%, transparent), transparent 26%),
+                radial-gradient(circle at 50% 80%, color-mix(in oklab, var(--brand-hover) 8%, transparent), transparent 26%);
+        --sync-flow-grid-line: color-mix(in oklab, var(--surface-border) 80%, transparent);
+        --sync-flow-grid-opacity: 0.5;
+        --sync-flow-divider: color-mix(in oklab, var(--surface-border-strong) 70%, transparent);
+        --sync-flow-scanline: color-mix(in oklab, var(--brand) 24%, transparent);
+
+        --sync-flow-icon-bg: var(--surface-bg-strong);
+        --sync-flow-icon-border: var(--surface-border-strong);
+        --sync-flow-icon-highlight: color-mix(in oklab, white 72%, transparent);
+        --sync-flow-icon-color: var(--text-primary);
+        --sync-flow-icon-shadow: var(--surface-shadow);
+
+        --sync-flow-step-label: var(--text-tertiary);
+        --sync-flow-step-title: var(--text-primary);
+        --sync-flow-step-description: var(--text-secondary);
+
+        /* Security Section Tokens */
+        --security-section-bg:
+                radial-gradient(circle at 14% 18%, color-mix(in oklab, var(--brand) 6%, transparent), transparent 28%),
+                radial-gradient(circle at 86% 78%, color-mix(in oklab, var(--brand-2) 6%, transparent), transparent 30%);
+
+        --security-shell-bg: color-mix(in oklab, var(--surface-bg) 88%, white);
+        --security-shell-border: var(--surface-border);
+        --security-shell-divider: color-mix(in oklab, var(--surface-border-strong) 72%, transparent);
+        --security-shell-glow: color-mix(in oklab, var(--brand) 14%, transparent);
+        --security-shell-highlight: rgba(255, 255, 255, 0.82);
+        --security-shell-shadow: var(--surface-shadow);
+
+        --security-icon-chip-bg: var(--surface-bg-strong);
+        --security-icon-chip-border: var(--surface-border-strong);
+        --security-icon-chip-highlight: color-mix(in oklab, white 72%, transparent);
+        --security-icon-chip-color: var(--text-primary);
+        --security-icon-chip-shadow: var(--surface-shadow);
+
+        --security-title: var(--text-primary);
+        --security-description: var(--text-secondary);
+        --security-feature-icon: var(--text-primary);
+        --security-feature-title: var(--text-primary);
+        --security-item-text: var(--text-secondary);
+
+        /* Product Overview Tokens */
+        --product-overview-bg:
+                radial-gradient(circle at 16% 14%, color-mix(in oklab, var(--brand) 8%, transparent), transparent 30%),
+                radial-gradient(circle at 86% 74%, color-mix(in oklab, var(--brand-2) 7%, transparent), transparent 30%);
+
+        --product-feature-icon-bg: var(--surface-bg-strong);
+        --product-feature-icon-border: var(--surface-border-strong);
+        --product-feature-icon-highlight: color-mix(in oklab, white 72%, transparent);
+        --product-feature-icon-color: var(--text-primary);
+        --product-feature-icon-shadow: var(--surface-shadow);
+
+        --product-feature-title: var(--text-primary);
+        --product-feature-description: var(--text-secondary);
+
+        /* Pricing Section Tokens */
+        --pricing-section-bg:
+                radial-gradient(circle at 18% 18%, color-mix(in oklab, var(--brand) 7%, transparent), transparent 30%),
+                radial-gradient(circle at 84% 74%, color-mix(in oklab, var(--brand-2) 7%, transparent), transparent 30%);
+
+        --pricing-card-featured-bg: color-mix(in oklab, var(--brand) 86%, var(--brand-2));
+        --pricing-card-featured-bg-hover: color-mix(in oklab, var(--brand-hover) 88%, var(--brand-2));
+        --pricing-card-featured-border: color-mix(in oklab, var(--brand-light) 64%, white);
+        --pricing-card-featured-border-hover: color-mix(in oklab, var(--brand-light) 82%, white);
+        --pricing-card-featured-glow: color-mix(in oklab, white 26%, transparent);
+        --pricing-card-featured-highlight: color-mix(in oklab, white 58%, transparent);
+        --pricing-card-featured-shadow: 0 28px 90px rgba(0, 207, 255, 0.28);
+        --pricing-card-featured-shadow-hover: 0 34px 110px rgba(0, 207, 255, 0.36);
+
+        --pricing-plan-title: var(--text-primary);
+        --pricing-plan-price: var(--text-primary);
+        --pricing-plan-period: var(--text-tertiary);
+        --pricing-plan-description: var(--text-secondary);
+        --pricing-plan-feature: var(--text-secondary);
+        --pricing-check: var(--success);
+        --pricing-check-bg: color-mix(in oklab, var(--success) 12%, transparent);
+
+        --pricing-featured-title: var(--text-inverted);
+        --pricing-featured-price: var(--text-inverted);
+        --pricing-featured-period: color-mix(in oklab, var(--text-inverted) 68%, transparent);
+        --pricing-featured-description: color-mix(in oklab, var(--text-inverted) 76%, transparent);
+        --pricing-featured-feature: color-mix(in oklab, var(--text-inverted) 84%, transparent);
+        --pricing-featured-check: var(--brand);
+        --pricing-featured-check-bg: color-mix(in oklab, white 92%, transparent);
+
+        --pricing-badge-bg: color-mix(in oklab, white 92%, transparent);
+        --pricing-badge-text: var(--brand);
+        --pricing-badge-border: color-mix(in oklab, white 52%, transparent);
+        --pricing-badge-shadow: 0 12px 30px rgba(8, 18, 38, 0.12);
+
     }
 
 
@@ -270,9 +493,9 @@
         --edge-light-violet-glow: rgba(139, 92, 246, 0.28);
 
         /* AutoEdgeLight Tokens */
-        --ael-color-a: #2ae0ff;
-        --ael-color-b: #c084fc;
-        --ael-highlight: #6ee7b7;
+        --ael-color-a: #ee00ff;
+        --ael-color-b: #00ffbb;
+        --ael-highlight: #fff300;
         --ael-gradient-start: #00263c;
         --ael-gradient-end: #12001b;
         --ael-stroke-width: 2;
@@ -299,19 +522,143 @@
         --promo-glow-primary: rgb(134 211 238);   /* Cyan/Teal glow */
         --promo-glow-secondary: rgb(255 140 248); /* Indigo/Purple glow */
         --promo-edge-highlight: rgb(0 255 255);
-        --edge-light-a: rgb(34 211 238);
-        --edge-light-b: rgb(99 102 241);
+        --edge-light-a: rgb(0 225 255);
+        --edge-light-b: rgb(255 0 0);
         --edge-highlight: rgb(255 255 255);
 
-        --badge-bg-opacity: 0.05;
-        --badge-text: var(--brand-light); /* assuming --brand-light is defined */
-        --badge-border-opacity: 0.1; /* subtle border for dark mode */
-        /* Text and borders */
-        --badge-bg: rgba(255, 255, 255, 0.05);
-        --badge-border: rgba(255, 255, 255, 0.1);
+        /* Button Component Tokens */
+        --button-primary-bg-from: color-mix(in oklab, var(--brand) 86%, white);
+        --button-primary-bg-to: var(--brand-hover);
+        --button-primary-bg-hover-from: color-mix(in oklab, var(--brand) 72%, white);
+        --button-primary-bg-hover-to: color-mix(in oklab, var(--brand-hover) 84%, #000);
 
-        /* Brand color stays consistent, or you can adjust for dark mode glow */
-        --brand-primary: #3b82f6; /* Example brand color */
+        --button-primary-text: var(--text-inverse);
+
+        --button-secondary-bg: var(--surface-bg);
+        --button-secondary-bg-hover: var(--surface-bg-strong);
+        --button-secondary-text: var(--text-primary);
+        --button-secondary-border: var(--surface-border-strong);
+        --button-secondary-border-hover: var(--brand-light);
+
+        --button-ghost-bg-hover: color-mix(in oklab, white 9%, transparent);
+        --button-ghost-text: var(--text-secondary);
+        --button-ghost-text-hover: var(--text-primary);
+
+        --button-primary-shadow: 0 14px 34px rgba(0, 179, 254, 0.3), 0 0 42px rgba(254, 0, 254, 0.22);
+        --button-primary-shadow-hover: 0 18px 44px rgba(0, 179, 254, 0.38), 0 0 54px rgba(254, 0, 254, 0.3);
+        --button-secondary-shadow-hover: var(--surface-shadow-hover);
+
+        /* Badge Component Tokens */
+        --badge-bg: color-mix(in oklab, var(--brand) 13%, transparent);
+        --badge-text: var(--brand-light);
+        --badge-border: color-mix(in oklab, var(--brand-light) 28%, transparent);
+
+        /* Section Heading Component Tokens */
+        --section-heading-title: var(--text-primary);
+        --section-heading-description: var(--text-secondary);
+
+        /* Trusted Strip Component Tokens */
+        --trusted-strip-bg: color-mix(in oklab, var(--surface-bg) 84%, transparent);
+        --trusted-strip-border: var(--surface-border);
+        --trusted-strip-eyebrow: var(--text-tertiary);
+        --trusted-strip-item-text: var(--text-secondary);
+        --trusted-strip-glow: color-mix(in oklab, var(--brand-light) 18%, transparent);
+        --trusted-strip-highlight: color-mix(in oklab, var(--brand-light) 42%, transparent);
+        --trusted-strip-shadow: var(--surface-shadow);
+
+        /* Sync Flow Section Tokens */
+        --sync-flow-bg:
+                radial-gradient(circle at 18% 20%, color-mix(in oklab, var(--brand-light) 12%, transparent), transparent 28%),
+                radial-gradient(circle at 82% 18%, color-mix(in oklab, var(--brand-2) 12%, transparent), transparent 26%),
+                radial-gradient(circle at 50% 80%, color-mix(in oklab, var(--brand-hover) 10%, transparent), transparent 26%);
+        --sync-flow-grid-line: color-mix(in oklab, var(--surface-border) 78%, transparent);
+        --sync-flow-grid-opacity: 0.5;
+        --sync-flow-divider: color-mix(in oklab, var(--surface-border-strong) 72%, transparent);
+        --sync-flow-scanline: color-mix(in oklab, var(--brand-light) 32%, transparent);
+
+        --sync-flow-icon-bg: color-mix(in oklab, var(--surface-bg-strong) 92%, transparent);
+        --sync-flow-icon-border: var(--surface-border-strong);
+        --sync-flow-icon-highlight: color-mix(in oklab, white 12%, transparent);
+        --sync-flow-icon-color: var(--text-primary);
+        --sync-flow-icon-shadow: var(--surface-shadow);
+
+        --sync-flow-step-label: var(--text-tertiary);
+        --sync-flow-step-title: var(--text-primary);
+        --sync-flow-step-description: var(--text-secondary);
+
+        /* Security Section Tokens */
+        --security-section-bg:
+                radial-gradient(circle at 14% 18%, color-mix(in oklab, var(--brand-light) 8%, transparent), transparent 28%),
+                radial-gradient(circle at 86% 78%, color-mix(in oklab, var(--brand-2) 8%, transparent), transparent 30%);
+
+        --security-shell-bg: color-mix(in oklab, var(--surface-bg) 86%, transparent);
+        --security-shell-border: var(--surface-border);
+        --security-shell-divider: color-mix(in oklab, var(--surface-border-strong) 74%, transparent);
+        --security-shell-glow: color-mix(in oklab, var(--brand-light) 16%, transparent);
+        --security-shell-highlight: color-mix(in oklab, var(--brand-light) 38%, transparent);
+        --security-shell-shadow: var(--surface-shadow);
+
+        --security-icon-chip-bg: color-mix(in oklab, var(--surface-bg-strong) 92%, transparent);
+        --security-icon-chip-border: var(--surface-border-strong);
+        --security-icon-chip-highlight: color-mix(in oklab, white 12%, transparent);
+        --security-icon-chip-color: var(--text-primary);
+        --security-icon-chip-shadow: var(--surface-shadow);
+
+        --security-title: var(--text-primary);
+        --security-description: var(--text-secondary);
+        --security-feature-icon: var(--text-primary);
+        --security-feature-title: var(--text-primary);
+        --security-item-text: var(--text-secondary);
+
+        /* Product Overview Tokens */
+        --product-overview-bg:
+                radial-gradient(circle at 16% 14%, color-mix(in oklab, var(--brand-light) 10%, transparent), transparent 30%),
+                radial-gradient(circle at 86% 74%, color-mix(in oklab, var(--brand-2) 9%, transparent), transparent 30%);
+
+        --product-feature-icon-bg: color-mix(in oklab, var(--surface-bg-strong) 92%, transparent);
+        --product-feature-icon-border: var(--surface-border-strong);
+        --product-feature-icon-highlight: color-mix(in oklab, white 12%, transparent);
+        --product-feature-icon-color: var(--text-primary);
+        --product-feature-icon-shadow: var(--surface-shadow);
+
+        --product-feature-title: var(--text-primary);
+        --product-feature-description: var(--text-secondary);
+
+        /* Pricing Section Tokens */
+        --pricing-section-bg:
+                radial-gradient(circle at 18% 18%, color-mix(in oklab, var(--brand-light) 9%, transparent), transparent 30%),
+                radial-gradient(circle at 84% 74%, color-mix(in oklab, var(--brand-2) 9%, transparent), transparent 30%);
+
+        --pricing-card-featured-bg: color-mix(in oklab, var(--brand) 72%, #07111f);
+        --pricing-card-featured-bg-hover: color-mix(in oklab, var(--brand-hover) 76%, #07111f);
+        --pricing-card-featured-border: color-mix(in oklab, var(--brand-light) 58%, transparent);
+        --pricing-card-featured-border-hover: color-mix(in oklab, var(--brand-light) 78%, transparent);
+        --pricing-card-featured-glow: color-mix(in oklab, var(--brand-light) 28%, transparent);
+        --pricing-card-featured-highlight: color-mix(in oklab, white 14%, transparent);
+        --pricing-card-featured-shadow: 0 30px 100px rgba(0, 207, 255, 0.22);
+        --pricing-card-featured-shadow-hover: 0 36px 120px rgba(0, 207, 255, 0.3);
+
+        --pricing-plan-title: var(--text-primary);
+        --pricing-plan-price: var(--text-primary);
+        --pricing-plan-period: var(--text-tertiary);
+        --pricing-plan-description: var(--text-secondary);
+        --pricing-plan-feature: var(--text-secondary);
+        --pricing-check: var(--success);
+        --pricing-check-bg: color-mix(in oklab, var(--success) 14%, transparent);
+
+        --pricing-featured-title: var(--text-primary);
+        --pricing-featured-price: var(--text-primary);
+        --pricing-featured-period: color-mix(in oklab, var(--text-primary) 68%, transparent);
+        --pricing-featured-description: color-mix(in oklab, var(--text-primary) 76%, transparent);
+        --pricing-featured-feature: color-mix(in oklab, var(--text-primary) 84%, transparent);
+        --pricing-featured-check: var(--brand);
+        --pricing-featured-check-bg: color-mix(in oklab, white 90%, transparent);
+
+        --pricing-badge-bg: color-mix(in oklab, white 90%, transparent);
+        --pricing-badge-text: var(--brand);
+        --pricing-badge-border: color-mix(in oklab, white 28%, transparent);
+        --pricing-badge-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+
     }
 }
 
@@ -385,7 +732,7 @@
 
     .surface-content { position: relative; z-index: 1; }
 
-    .surface-edge-light { position: relative; overflow: hidden; }
+    .surface-edge-light { position: relative; overflow: visible; }
     .surface-edge-light > .edge-light-layer,
     .surface-edge-light-layer {
         pointer-events: none; position: absolute; inset: 0; border-radius: inherit; opacity: 0.9;
@@ -403,7 +750,6 @@
         box-shadow: none;
 
         isolation: isolate;
-        overflow: hidden;
         border-radius: inherit;
 
         /* anti-compositing seam guards */
@@ -449,7 +795,7 @@
         backface-visibility: hidden;
         -webkit-backface-visibility: hidden;
     }
-
+/*fix*/
     .edge-light-root {
         pointer-events: none;
         position: absolute;
@@ -496,7 +842,135 @@
         transform: translateY(-1px); filter: saturate(112%);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 16px 36px rgba(92, 185, 255, 0.36), 0 0 46px rgba(186, 104, 255, 0.26);
     }
+
+    .ui-card {
+        --card-radius: 1.25rem;
+        border-radius: var(--card-radius);
+    }
+
+    .ui-card--interactive .card-shadow-host {
+        transition: box-shadow 200ms ease;
+    }
+
+    .ui-card--interactive:hover .card-shadow-host {
+        box-shadow: var(--surface-shadow-hover, var(--card-shadow)), var(--card-ambient);
+    }
+
+    .ui-card__inner {
+        position: relative;
+        z-index: 10;
+        border-radius: inherit;
+    }
+
+    /* Large */
+    .ui-card--large {
+        --card-radius: 1.4rem;
+    }
+
+    .ui-card__inner--large {
+        padding: 1.25rem;
+    }
+
+    @media (min-width: 768px) {
+        .ui-card__inner--large {
+            padding: 1.5rem;
+        }
+    }
+
+    /* Tiny */
+    .ui-card--tiny {
+        --card-radius: 1.25rem;
+    }
+
+    .ui-card__inner--tiny {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.875rem;
+    }
+
+    @media (min-width: 768px) {
+        .ui-card__inner--tiny {
+            padding: 1rem;
+        }
+    }
+
+    .ui-card__title {
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .ui-card__description {
+        margin-top: 0.125rem;
+        color: var(--tiny-card-description);
+        font-size: 0.75rem;
+        line-height: 1rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .ui-card__slot {
+        flex-shrink: 0;
+    }
+
+    .ui-card__content {
+        min-width: 0;
+        flex: 1 1 0%;
+    }
+
+    /* Promo variants */
+    .ui-card--promo-large {
+        --card-radius: 1.4rem;
+    }
+
+    .ui-card--promo-tiny {
+        --card-radius: 1.25rem;
+    }
+
+    /* No-edge glass variants */
+    .ui-card--glass-neon {
+        --card-radius: 1.25rem;
+    }
+
+    .ui-card--glass-premium {
+        --card-radius: 1.25rem;
+    }
+
+    .ui-card__inner--glass {
+        position: relative;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        border-radius: inherit;
+        background: transparent;
+        padding: 0.875rem;
+    }
+
+    @media (min-width: 768px) {
+        .ui-card__inner--glass {
+            padding: 1rem;
+        }
+    }
+
+    .ui-card--compact {
+        --card-radius: 1rem;
+    }
+
+    .ui-card__inner--compact {
+        position: relative;
+        z-index: 10;
+        border-radius: inherit;
+        padding: 0.75rem 1rem;
+    }
 }
+
 
 /* =========================================
    5. Utilities & Effects
@@ -551,6 +1025,40 @@
             transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 300ms cubic-bezier(0.22, 1, 0.36, 1), border-color 220ms ease, background-color 220ms ease;
         }
         .surface-interactive:hover { transform: translateY(var(--surface-lift)) scale(var(--surface-scale)); box-shadow: var(--surface-shadow-hover); }
+    }
+
+    .card-reveal {
+        opacity: 0;
+        transform: translateY(1rem);
+        animation: cardAnimateIn 520ms var(--ease-premium) both;
+    }
+
+    .card-reveal-delay-0 {
+        animation-delay: 0ms;
+    }
+
+    .card-reveal-delay-1 {
+        animation-delay: 75ms;
+    }
+
+    .card-reveal-delay-2 {
+        animation-delay: 100ms;
+    }
+
+    .card-reveal-delay-3 {
+        animation-delay: 150ms;
+    }
+
+    .card-reveal-delay-4 {
+        animation-delay: 200ms;
+    }
+
+    .card-reveal-delay-5 {
+        animation-delay: 300ms;
+    }
+
+    .card-reveal-delay-6 {
+        animation-delay: 500ms;
     }
 }
 

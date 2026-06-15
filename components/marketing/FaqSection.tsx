@@ -1,6 +1,6 @@
-import { LargeCard } from "@/components/ui/CardVariants"
-import { Container } from "@/components/ui/Container"
-import { SectionHeading } from "@/components/ui/SectionHeading"
+import { LargeCard } from "@/components/ui/CardVariants";
+import { Container } from "@/components/ui/Container";
+import { SectionHeading } from "@/components/ui/SectionHeading";
 
 const faqs = [
     {
@@ -28,33 +28,40 @@ const faqs = [
         answer:
             "The recommended backend uses Go for APIs and product services, Rust for security-sensitive signing and verification, PostgreSQL for durable data, Redis for sessions/rate limits/queues, and S3-compatible storage for binaries.",
     },
-]
+];
 
 export function FaqSection() {
     return (
-        <section className="py-24">
-            <Container>
-                <SectionHeading
-                    eyebrow="FAQ"
-                    title="Built for a serious developer platform."
-                    description="Clear answers about the product model, security posture, desktop pairing, and platform architecture."
-                />
+        <Container
+            as="section"
+            id="faq"
+            variant="fit"
+            width="wide"
+            className="relative overflow-hidden"
+        >
+            <SectionHeading
+                eyebrow="FAQ"
+                title="Built for a serious developer platform."
+                description="Clear answers about the product model, security posture, desktop pairing, and platform architecture."
+            />
+            <div className="mx-auto mt-14 max-w-4xl space-y-4">
+                {faqs.map((faq, index) => (
+                    <LargeCard
+                        key={faq.question}
+                        animateIn
+                        delay={Math.min(index, 5)}
+                        className="transition-colors duration-300 hover:border-[color:color-mix(in_srgb,var(--brand-primary)_30%,transparent)]"
+                    >
+                        <h3 className="text-lg font-bold text-[var(--text-primary)]">
+                            {faq.question}
+                        </h3>
 
-                <div className="mx-auto mt-14 max-w-4xl space-y-4">
-                    {faqs.map((faq) => (
-                        <LargeCard
-                            key={faq.question}
-                            className="transition-colors duration-300 hover:border-brand-primary/30"
-                            contentClassName="p-6 md:p-8"
-                        >
-                            <h3 className="text-lg font-bold text-text-primary">
-                                {faq.question}
-                            </h3>
-                            <p className="mt-3 leading-7 text-text-secondary">{faq.answer}</p>
-                        </LargeCard>
-                    ))}
-                </div>
-            </Container>
-        </section>
-    )
+                        <p className="mt-3 leading-7 text-[var(--text-secondary)]">
+                            {faq.answer}
+                        </p>
+                    </LargeCard>
+                ))}
+            </div>
+        </Container>
+    );
 }

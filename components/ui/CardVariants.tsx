@@ -7,7 +7,16 @@ import { useReducedMotion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { Card, type CardProps } from "./Card";
-import { CARD_STYLE, getEdgeLightPreset, NO_EDGE_DEFAULT_TONE } from "./card.tokens";
+import {
+    CARD_VARIANT_CLASSES,
+    getEdgeLightPreset,
+    NO_EDGE_DEFAULT_TONE,
+    PROMO_EDGE_DEFAULTS,
+    TINY_PROMO_EDGE_DEFAULTS,
+    type CardSize,
+    type EdgeLightOptions,
+    type TinyNoEdgeTone,
+} from "./card.tokens";
 import type { AutoEdgeLightContinuousProps } from "./AutoEdgeLightContinuous";
 
 const AutoEdgeLightContinuous = dynamic(
@@ -15,17 +24,151 @@ const AutoEdgeLightContinuous = dynamic(
     { ssr: false }
 );
 
-/**
- * EdgeLight options accepted by <Card edgeLightProps={...} />
- */
-export type EdgeLightOptions = NonNullable<CardProps["edgeLightProps"]>;
+type PromoEdgeProps = Partial<
+    Omit<AutoEdgeLightContinuousProps, "parentRef" | "className" | "reducedMotion">
+>;
 
-export interface LargeCardProps extends Omit<CardProps, "children" | "edgeLightProps"> {
+const revealDelayClasses = [
+    "card-reveal-delay-0",
+    "card-reveal-delay-1",
+    "card-reveal-delay-2",
+    "card-reveal-delay-3",
+    "card-reveal-delay-4",
+    "card-reveal-delay-5",
+    "card-reveal-delay-6",
+] as const;
+
+function getRevealClass(animateIn?: boolean, delay?: number) {
+    if (!animateIn) return undefined;
+
+    const delayClass =
+        typeof delay === "number"
+            ? revealDelayClasses[Math.max(0, Math.min(delay, revealDelayClasses.length - 1))]
+            : undefined;
+
+    return cn("card-reveal", delayClass);
+}
+
+function useThemeMode() {
+    const { resolvedTheme } = useTheme();
+    return resolvedTheme === "dark" ? "dark" : "light";
+}
+
+function useResolvedEdgeLightPreset(
+    size: CardSize,
+    edgeLightProps?: Partial<EdgeLightOptions>
+): EdgeLightOptions {
+    const mode = useThemeMode();
+
+    return React.useMemo(() => {
+        const preset = getEdgeLightPreset(size, mode);
+
+        return {
+            ...preset,
+            ...edgeLightProps,
+        };
+    }, [edgeLightProps, mode, size]);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Shared base variant                                                        */
+/* -------------------------------------------------------------------------- */
+
+type BaseCardVariant = "large" | "tiny" | "compact";
+
+const CARD_VARIANT_DEFS = {
+    large: {
+        size: "large",
+        classes: CARD_VARIANT_CLASSES.large,
+        defaultGlow: false,
+    },
+    tiny: {
+        size: "tiny",
+        classes: CARD_VARIANT_CLASSES.tiny,
+        defaultGlow: false,
+    },
+    compact: {
+        size: "tiny",
+        classes: CARD_VARIANT_CLASSES.compact,
+        defaultGlow: false,
+    },
+
+
+} satisfies Record<
+    BaseCardVariant,
+    {
+        size: CardSize;
+        classes: {
+            root: string;
+            inner: string;
+        };
+        defaultGlow: boolean;
+    }
+>;
+
+type VariantCardProps = Omit<CardProps, "children" | "edgeLightProps"> & {
+    variant: BaseCardVariant;
+    children: React.ReactNode;
+    className?: string;
+    contentClassName?: string;
+    edgeLightProps?: Partial<EdgeLightOptions>;
+};
+
+function VariantCard({
+                         variant,
+                         className,
+                         contentClassName,
+                         children,
+                         interactive,
+                         glow,
+                         glowActiveOverride,
+                         animateIn,
+                         delay,
+                         edgeLightProps,
+                         ...props
+                     }: VariantCardProps) {
+    const def = CARD_VARIANT_DEFS[variant];
+
+    const resolvedGlow = glow ?? def.defaultGlow;
+    const resolvedEdgeLightProps = useResolvedEdgeLightPreset(def.size, edgeLightProps);
+
+    return (
+        <Card
+            {...props}
+            className={cn(
+                def.classes.root,
+                getRevealClass(animateIn, delay),
+                className
+            )}
+            interactive={interactive}
+            glow={resolvedGlow}
+            glowActiveOverride={glowActiveOverride}
+            edgeLightProps={resolvedGlow ? resolvedEdgeLightProps : undefined}
+        >
+            <div className={cn(def.classes.inner, contentClassName)}>{children}</div>
+        </Card>
+    );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Public large card                                                          */
+/* -------------------------------------------------------------------------- */
+
+export interface LargeCardProps
+    extends Omit<CardProps, "children" | "edgeLightProps"> {
     className?: string;
     contentClassName?: string;
     children: React.ReactNode;
-    edgeLightProps?: EdgeLightOptions;
+    edgeLightProps?: Partial<EdgeLightOptions>;
 }
+
+export function LargeCard(props: LargeCardProps) {
+    return <VariantCard {...props} variant="large" />;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Public tiny card                                                           */
+/* -------------------------------------------------------------------------- */
 
 export interface TinyCardProps
     extends Omit<CardProps, "children" | "edgeLightProps" | "title"> {
@@ -34,12 +177,75 @@ export interface TinyCardProps
     leading?: React.ReactNode;
     title?: React.ReactNode;
     subtitle?: React.ReactNode;
+    description?: React.ReactNode;
     trailing?: React.ReactNode;
     children?: React.ReactNode;
-    edgeLightProps?: EdgeLightOptions;
+    edgeLightProps?: Partial<EdgeLightOptions>;
 }
 
-export type TinyNoEdgeTone = "glassGlowNeon" | "glassGlowPremium";
+function TinyCardContent({
+                             leading,
+                             title,
+                             subtitle,
+                             description,
+                             trailing,
+                             children,
+                         }: Pick<
+    TinyCardProps,
+    "leading" | "title" | "subtitle" | "description" | "trailing" | "children"
+>) {
+    const resolvedDescription = description ?? subtitle;
+
+    return (
+        <>
+            {leading ? <div className="ui-card__slot">{leading}</div> : null}
+
+            <div className="ui-card__content">
+                {title ? (
+                    <div className="ui-card__title theme-color-fade">{title}</div>
+                ) : null}
+
+                {resolvedDescription ? (
+                    <div className="ui-card__description theme-color-fade">
+                        {resolvedDescription}
+                    </div>
+                ) : null}
+
+                {children}
+            </div>
+
+            {trailing ? <div className="ui-card__slot">{trailing}</div> : null}
+        </>
+    );
+}
+
+export function TinyCard({
+                             leading,
+                             title,
+                             subtitle,
+                             description,
+                             trailing,
+                             children,
+                             ...props
+                         }: TinyCardProps) {
+    return (
+        <VariantCard {...props} variant="tiny">
+            <TinyCardContent
+                leading={leading}
+                title={title}
+                subtitle={subtitle}
+                description={description}
+                trailing={trailing}
+            >
+                {children}
+            </TinyCardContent>
+        </VariantCard>
+    );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tiny no-edge card                                                          */
+/* -------------------------------------------------------------------------- */
 
 export interface TinyCardNoEdgeProps
     extends Omit<CardProps, "children" | "glow" | "edgeLightProps" | "title"> {
@@ -53,80 +259,6 @@ export interface TinyCardNoEdgeProps
     tone?: TinyNoEdgeTone;
 }
 
-function useThemeMode() {
-    const { resolvedTheme } = useTheme();
-    return resolvedTheme === "dark" ? "dark" : "light";
-}
-
-function useResolvedEdgeLightPreset(
-    size: "large" | "tiny",
-    edgeLightProps?: EdgeLightOptions
-): EdgeLightOptions {
-    const mode = useThemeMode();
-    return React.useMemo(
-        () => edgeLightProps ?? getEdgeLightPreset(size, mode),
-        [edgeLightProps, mode, size]
-    );
-}
-
-export function LargeCard({
-                              className,
-                              contentClassName,
-                              children,
-                              glow = true,
-                              edgeLightProps,
-                              ...props
-                          }: LargeCardProps) {
-    const resolvedEdgeLightProps = useResolvedEdgeLightPreset("large", edgeLightProps);
-
-    return (
-        <Card
-            {...props}
-            className={cn(CARD_STYLE.large, className)}
-            glow={glow}
-            edgeLightProps={resolvedEdgeLightProps}
-        >
-            <div className={cn(CARD_STYLE.largeInner, contentClassName)}>{children}</div>
-        </Card>
-    );
-}
-
-export function TinyCard({
-                             className,
-                             contentClassName,
-                             leading,
-                             title,
-                             subtitle,
-                             trailing,
-                             children,
-                             glow = true,
-                             edgeLightProps,
-                             ...props
-                         }: TinyCardProps) {
-    const resolvedEdgeLightProps = useResolvedEdgeLightPreset("tiny", edgeLightProps);
-
-    return (
-        <Card
-            {...props}
-            className={cn(CARD_STYLE.tiny, className)}
-            glow={glow}
-            edgeLightProps={resolvedEdgeLightProps}
-        >
-            <div className={cn(CARD_STYLE.tinyInner, contentClassName)}>
-                {leading ? <div className="shrink-0">{leading}</div> : null}
-
-                <div className="min-w-0 flex-1">
-                    {title ? <div className="truncate text-sm font-medium">{title}</div> : null}
-                    {subtitle ? <div className="mt-0.5 truncate text-xs opacity-75">{subtitle}</div> : null}
-                    {children}
-                </div>
-
-                {trailing ? <div className="shrink-0">{trailing}</div> : null}
-            </div>
-        </Card>
-    );
-}
-
 export function TinyCardNoEdge({
                                    className,
                                    contentClassName,
@@ -136,111 +268,137 @@ export function TinyCardNoEdge({
                                    trailing,
                                    children,
                                    tone = NO_EDGE_DEFAULT_TONE,
+                                   animateIn,
+                                   delay,
                                    ...props
                                }: TinyCardNoEdgeProps) {
-    const toneClass =
-        tone === "glassGlowPremium" ? "glass-glow glass-glow-premium" : "glass-glow glass-glow-neon";
+    const classes =
+        tone === "glassGlowPremium"
+            ? CARD_VARIANT_CLASSES.glassPremium
+            : CARD_VARIANT_CLASSES.glassNeon;
 
     return (
-        <Card {...props} className={cn("rounded-[1.25rem]", toneClass, className)} glow={false}>
-            <div
-                className={cn(
-                    "relative z-10 flex items-center gap-3 rounded-[1.25rem] bg-transparent p-3.5 md:p-4",
-                    contentClassName
-                )}
-            >
-                {leading ? <div className="shrink-0">{leading}</div> : null}
-
-                <div className="min-w-0 flex-1">
-                    {title ? <div className="truncate text-sm font-medium">{title}</div> : null}
-                    {subtitle ? <div className="mt-0.5 truncate text-xs opacity-75">{subtitle}</div> : null}
+        <Card
+            {...props}
+            className={cn(classes.root, getRevealClass(animateIn, delay), className)}
+            glow={false}
+        >
+            <div className={cn(classes.inner, contentClassName)}>
+                <TinyCardContent
+                    leading={leading}
+                    title={title}
+                    subtitle={subtitle}
+                    trailing={trailing}
+                >
                     {children}
-                </div>
-
-                {trailing ? <div className="shrink-0">{trailing}</div> : null}
+                </TinyCardContent>
             </div>
         </Card>
     );
 }
 
-// ✅ Derived directly from AutoEdgeLightContinuous
-type PromoEdgeProps = Partial<
-    Omit<AutoEdgeLightContinuousProps, "parentRef" | "className" | "reducedMotion">
->;
+/* -------------------------------------------------------------------------- */
+/* Promo cards                                                                */
+/* -------------------------------------------------------------------------- */
 
-export interface PromoCardProps extends Omit<CardProps, "glow" | "interactive" | "edgeLightProps"> {
+export interface PromoCardProps
+    extends Omit<CardProps, "glow" | "interactive" | "edgeLightProps"> {
     edge?: PromoEdgeProps;
     contentClassName?: string;
     className?: string;
 }
 
-export function PromoCard({
-                              className,
-                              contentClassName,
-                              children,
-                              edge,
-                              ...props
-                          }: PromoCardProps) {
+type PromoVariant = "large" | "tiny";
+
+const PROMO_VARIANT_DEFS = {
+    large: {
+        classes: CARD_VARIANT_CLASSES.promoLarge,
+        defaultEdge: PROMO_EDGE_DEFAULTS,
+    },
+    tiny: {
+        classes: CARD_VARIANT_CLASSES.promoTiny,
+        defaultEdge: TINY_PROMO_EDGE_DEFAULTS,
+    },
+} as const;
+
+interface PromoCardBaseProps extends PromoCardProps {
+    variant: PromoVariant;
+}
+
+function PromoCardBase({
+                           variant,
+                           className,
+                           contentClassName,
+                           children,
+                           edge,
+                           animateIn,
+                           delay,
+                           ...props
+                       }: PromoCardBaseProps) {
     const reducedMotion = useReducedMotion();
     const ringHostRef = React.useRef<HTMLDivElement>(null);
+
+    const def = PROMO_VARIANT_DEFS[variant];
+
+    const resolvedEdge = React.useMemo(
+        () => ({
+            ...def.defaultEdge,
+            ...edge,
+        }),
+        [def.defaultEdge, edge]
+    );
 
     return (
         <Card
             {...props}
             glow={false}
             interactive={false}
-            className={cn("relative overflow-visible", CARD_STYLE.large, className)}
+            className={cn(
+                "relative overflow-visible",
+                def.classes.root,
+                getRevealClass(animateIn, delay),
+                className
+            )}
         >
-            <div ref={ringHostRef} className={cn("relative z-10 rounded-[inherit]", contentClassName)}>
+            <div ref={ringHostRef} className={cn(def.classes.inner, contentClassName)}>
                 <AutoEdgeLightContinuous
                     parentRef={ringHostRef}
                     reducedMotion={!!reducedMotion}
                     className="rounded-[inherit]"
-                    durationSec={edge?.durationSec ?? 8}
-                    colorSpeed={edge?.colorSpeed ?? 120}
-                    segmentRatio={edge?.segmentRatio ?? 0.22}
-                    radius={edge?.radius}
-                    inset={edge?.inset ?? 0}
-                    strokeWidth={edge?.strokeWidth ?? 2.2}
-                    glowWidth={edge?.glowWidth ?? 10}
-                    glowBlur={edge?.glowBlur ?? 12}
-                    coreOpacity={edge?.coreOpacity ?? 0.95}
-                    glowOpacity={edge?.glowOpacity ?? 0.75}
-                    highlightOpacity={edge?.highlightOpacity ?? 0.38}
-                    colorA={edge?.colorA ?? "var(--promo-glow-primary)"}
-                    colorB={edge?.colorB ?? "var(--promo-glow-secondary)"}
-                    highlightColor={edge?.highlightColor ?? "var(--promo-edge-highlight)"}
+                    durationSec={resolvedEdge.durationSec}
+                    colorSpeed={resolvedEdge.colorSpeed}
+                    segmentRatio={resolvedEdge.segmentRatio}
+                    inset={resolvedEdge.inset}
+                    strokeWidth={resolvedEdge.strokeWidth}
+                    glowWidth={resolvedEdge.glowWidth}
+                    glowBlur={resolvedEdge.glowBlur}
+                    coreOpacity={resolvedEdge.coreOpacity}
+                    glowOpacity={resolvedEdge.glowOpacity}
+                    highlightOpacity={resolvedEdge.highlightOpacity}
+                    colorA={resolvedEdge.colorA}
+                    colorB={resolvedEdge.colorB}
+                    highlightColor={resolvedEdge.highlightColor}
+                    quality={resolvedEdge.quality}
+                    dashCount={resolvedEdge.dashCount}
+                    syncColorToDash={resolvedEdge.syncColorToDash}
                 />
+
                 {children}
             </div>
         </Card>
     );
 }
 
-export function TinyPromoCard({ className, edge, ...props }: PromoCardProps) {
-    return (
-        <PromoCard
-            {...props}
-            className={cn("relative overflow-visible", CARD_STYLE.tiny, className)}
-            edge={{
-                durationSec: 0.25,
-                radius: 16,
-                inset: 0,
-                strokeWidth: 22,
-                glowWidth: 10,
-                glowBlur: 12,
-                coreOpacity: 0.95,
-                glowOpacity: 0.78,
-                highlightOpacity: 0.42,
-                colorA: "var(--promo-glow-primary)",
-                colorB: "var(--promo-glow-secondary)",
-                highlightColor: "var(--promo-edge-highlight)",
-                colorSpeed: 120,
-                segmentRatio: 0.22,
-                ...edge,
-            }}
-        />
-    );
+export function PromoCard(props: PromoCardProps) {
+    return <PromoCardBase {...props} variant="large" />;
+}
+
+export function TinyPromoCard(props: PromoCardProps) {
+    return <PromoCardBase {...props} variant="tiny" />;
 }
 
 export default PromoCard;
+
+export function CompactCard(props: LargeCardProps) {
+    return <VariantCard {...props} variant="compact" />;
+}
