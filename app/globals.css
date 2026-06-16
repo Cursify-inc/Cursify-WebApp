@@ -127,6 +127,17 @@
 @property --pricing-badge-text {syntax: "<color>";inherits: true;initial-value: #081226;}
 @property --pricing-badge-border {syntax: "<color>";inherits: true;initial-value: rgba(255, 255, 255, 0.5);}
 
+@property --brand-2 {syntax: "<color>";inherits: true;initial-value: #7c3aed;}
+@property --success {syntax: "<color>";inherits: true;initial-value: #22c55e;}
+
+@property --tiny-card-description {syntax: "<color>";inherits: true;initial-value: #64748b;}
+@property --card-radius {syntax: "<length>";inherits: true;initial-value: 20px;}
+@property --card-bg-light {syntax: "*";inherits: true;initial-value: #ffffff;}
+@property --card-bg-dark {syntax: "*";inherits: true;initial-value: #0f172a;}
+@property --fx-fill {syntax: "*";inherits: true;initial-value: transparent;}
+@property --fx-neon {syntax: "<color>";inherits: true;initial-value: #6366f1;}
+@property --fx-fill-scale {syntax: "<number>";inherits: true;initial-value: 18;}
+@property --fx-ring-scale {syntax: "<number>";inherits: true;initial-value: 22;}
 
 @layer utilities {
     .grid-synthwave {
@@ -493,9 +504,9 @@
         --edge-light-violet-glow: rgba(139, 92, 246, 0.28);
 
         /* AutoEdgeLight Tokens */
-        --ael-color-a: #ee00ff;
-        --ael-color-b: #00ffbb;
-        --ael-highlight: #fff300;
+        --ael-color-a: #ff4fd8;
+        --ael-color-b: #29f0ff;
+        --ael-highlight: #ffd84d;
         --ael-gradient-start: #00263c;
         --ael-gradient-end: #12001b;
         --ael-stroke-width: 2;
@@ -921,7 +932,7 @@
 
     .ui-card__content {
         min-width: 0;
-        flex: 1 1 0%;
+        flex: 1 1 0;
     }
 
     /* Promo variants */

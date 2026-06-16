@@ -1,7 +1,15 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-type ContainerVariant = "section" | "hero" | "reading" | "bleed" | "shell" | "fit";
+type ContainerVariant =
+    | "section"
+    | "hero"
+    | "reading"
+    | "bleed"
+    | "shell"
+    | "fit"
+    | "transparent";
+
 type ContainerWidth = "narrow" | "default" | "wide" | "full";
 type ContainerGutter = "none" | "sm" | "md" | "lg";
 
@@ -40,6 +48,7 @@ const VARIANT_STYLES: Record<ContainerVariant, string> = {
     bleed: "py-0",
     shell: "py-8 sm:py-10 lg:py-12",
     fit: "py-0",
+    transparent: "py-0 bg-transparent",
 };
 
 const VARIANT_DEFAULT_WIDTH: Record<ContainerVariant, ContainerWidth> = {
@@ -49,6 +58,7 @@ const VARIANT_DEFAULT_WIDTH: Record<ContainerVariant, ContainerWidth> = {
     bleed: "full",
     shell: "default",
     fit: "default",
+    transparent: "wide",
 };
 
 const VARIANT_DEFAULT_GUTTER: Record<ContainerVariant, ContainerGutter> = {
@@ -58,6 +68,7 @@ const VARIANT_DEFAULT_GUTTER: Record<ContainerVariant, ContainerGutter> = {
     bleed: "none",
     shell: "md",
     fit: "md",
+    transparent: "md",
 };
 
 export const Container = React.forwardRef<HTMLElement, ContainerProps>(
@@ -89,9 +100,7 @@ export const Container = React.forwardRef<HTMLElement, ContainerProps>(
                 )}
                 {...props}
             >
-                <div className={cn("w-full", contentClassName)}>
-                    {children}
-                </div>
+                <div className={cn("w-full", contentClassName)}>{children}</div>
             </Component>
         );
     }

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
-import { useTheme } from "next-themes";
+
 import { useReducedMotion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
@@ -49,25 +49,19 @@ function getRevealClass(animateIn?: boolean, delay?: number) {
     return cn("card-reveal", delayClass);
 }
 
-function useThemeMode() {
-    const { resolvedTheme } = useTheme();
-    return resolvedTheme === "dark" ? "dark" : "light";
-}
-
 function useResolvedEdgeLightPreset(
     size: CardSize,
     edgeLightProps?: Partial<EdgeLightOptions>
 ): EdgeLightOptions {
-    const mode = useThemeMode();
 
     return React.useMemo(() => {
-        const preset = getEdgeLightPreset(size, mode);
+        const preset = getEdgeLightPreset(size);
 
         return {
             ...preset,
             ...edgeLightProps,
         };
-    }, [edgeLightProps, mode, size]);
+    }, [edgeLightProps, size]);
 }
 
 /* -------------------------------------------------------------------------- */

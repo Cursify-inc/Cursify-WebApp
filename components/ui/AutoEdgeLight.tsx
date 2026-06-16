@@ -1,6 +1,6 @@
 "use client";
 
-import React, { RefObject, useEffect, useId, useMemo, useRef, useState } from "react";
+import React, {RefObject, useCallback, useEffect, useId, useMemo, useRef, useState} from "react";
 import {
     motion,
     MotionValue,
@@ -104,14 +104,48 @@ function useResolvedCssColors({
 
 
 export type AutoEdgeLightQuality = "ultra" | "balanced" | "performance";
+
+function normalizeCssColor(baseEl: HTMLElement, value: string) {
+    if (typeof document === "undefined") return value;
+
+    const probe = document.createElement("span");
+    probe.style.color = value;
+    probe.style.display = "none";
+
+    baseEl.appendChild(probe);
+
+    const resolved = getComputedStyle(probe).color || value;
+
+    probe.remove();
+
+    return resolved;
+}
+
 function resolveCssColorToken(el: HTMLElement, value: string) {
     const trimmed = value.trim();
-    const match = trimmed.match(/^var\(\s*(--[^,\s)]+)\s*(?:,[^)]+)?\)$/);
+    if (!trimmed) return trimmed;
 
-    if (!match) return trimmed;
+    const varMatch = trimmed.match(/^var\(\s*(--[^,\s)]+)\s*(?:,\s*(.+))?\)$/);
 
-    return getCssVar(el, match[1], trimmed);
+    if (varMatch) {
+        const cssValue = getComputedStyle(el).getPropertyValue(varMatch[1]).trim();
+
+        if (cssValue) {
+            return resolveCssColorToken(el, cssValue);
+        }
+
+        const fallback = varMatch[2]?.trim();
+
+        if (fallback) {
+            return resolveCssColorToken(el, fallback);
+        }
+
+        return trimmed;
+    }
+
+    return normalizeCssColor(el, trimmed);
 }
+
 
 export type AutoEdgeLightProProps = {
     active: boolean;
@@ -124,9 +158,7 @@ export type AutoEdgeLightProProps = {
     glowWidth?: number;
     glowBlur?: number;
 
-    segmentRatio?: number;
     trailCount?: number;
-    trailGap?: number;
 
     idleSpeed?: number;
     hoverSpeedBoost?: number;
@@ -139,11 +171,8 @@ export type AutoEdgeLightProProps = {
     proximityRadius?: number;
     pulseDurationMs?: number;
     pulseIntensity?: number;
-
     coreOpacity?: number;
     glowOpacity?: number;
-    highlightOpacity?: number;
-
     colorA?: string;
     colorB?: string;
     highlightColor?: string;
@@ -155,15 +184,10 @@ export type AutoEdgeLightProProps = {
     interactionBoostAmount?: number;
     interactionBoostDecay?: number;
 
-    durationSec?: number;
     colorSpeed?: number;
     dashRatio?: number;
 
     dashCount?: number;
-    dashAccel?: number;
-    maxDashSpeed?: number;
-    initialDashSpeed?: number;
-    bumpSize?: number;
     syncColorToDash?: boolean;
 
     quality?: AutoEdgeLightQuality;
@@ -232,54 +256,91 @@ type ParsedColor = {
     a: number;
 };
 
+function parseCssChannel(value: string, scale = 255) {
+    const trimmed = value.trim();
+
+    if (trimmed.endsWith("%")) {
+        const percentage = parseFloat(trimmed);
+        return Number.isFinite(percentage) ? clamp((percentage / 100) * scale, 0, scale) : null;
+    }
+
+    const numeric = parseFloat(trimmed);
+    return Number.isFinite(numeric) ? clamp(numeric, 0, scale) : null;
+}
+
+function parseCssAlpha(value: string | undefined) {
+    if (!value) return 1;
+
+    const trimmed = value.trim();
+
+    if (trimmed.endsWith("%")) {
+        const percentage = parseFloat(trimmed);
+        return Number.isFinite(percentage) ? clamp(percentage / 100, 0, 1) : 1;
+    }
+
+    const numeric = parseFloat(trimmed);
+    return Number.isFinite(numeric) ? clamp(numeric, 0, 1) : 1;
+}
+
 function parseCssColor(color: string): ParsedColor | null {
     const trimmed = color.trim();
+
+    if (!trimmed || trimmed === "transparent") {
+        return trimmed === "transparent" ? { r: 0, g: 0, b: 0, a: 0 } : null;
+    }
 
     if (trimmed.startsWith("#")) {
         const hex = trimmed.slice(1);
 
-        if (hex.length === 3 || hex.length === 4) {
-            const r = parseInt(hex[0] + hex[0], 16);
-            const g = parseInt(hex[1] + hex[1], 16);
-            const b = parseInt(hex[2] + hex[2], 16);
-            const a = hex.length === 4 ? parseInt(hex[3] + hex[3], 16) / 255 : 1;
+        if (!/^[\da-f]+$/i.test(hex)) return null;
 
-            return { r, g, b, a };
+        if (hex.length === 3 || hex.length === 4) {
+            return {
+                r: parseInt(hex[0] + hex[0], 16),
+                g: parseInt(hex[1] + hex[1], 16),
+                b: parseInt(hex[2] + hex[2], 16),
+                a: hex.length === 4 ? parseInt(hex[3] + hex[3], 16) / 255 : 1,
+            };
         }
 
         if (hex.length === 6 || hex.length === 8) {
-            const r = parseInt(hex.slice(0, 2), 16);
-            const g = parseInt(hex.slice(2, 4), 16);
-            const b = parseInt(hex.slice(4, 6), 16);
-            const a = hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1;
-
-            return { r, g, b, a };
+            return {
+                r: parseInt(hex.slice(0, 2), 16),
+                g: parseInt(hex.slice(2, 4), 16),
+                b: parseInt(hex.slice(4, 6), 16),
+                a: hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1,
+            };
         }
 
         return null;
     }
 
     const rgbMatch = trimmed.match(/^rgba?\((.+)\)$/i);
+    if (!rgbMatch) return null;
 
-    if (rgbMatch) {
-        const parts = rgbMatch[1]
-            .replace(/\//g, " ")
-            .replace(/,/g, " ")
-            .split(/\s+/)
-            .filter(Boolean)
-            .map(Number);
+    const [channelPart, alphaPart] = rgbMatch[1].split("/").map((part) => part.trim());
 
-        if (parts.length < 3 || parts.some(Number.isNaN)) return null;
+    const channels = channelPart
+        .replace(/,/g, " ")
+        .split(/\s+/)
+        .filter(Boolean);
 
-        return {
-            r: parts[0],
-            g: parts[1],
-            b: parts[2],
-            a: parts[3] ?? 1,
-        };
-    }
+    if (channels.length < 3) return null;
 
-    return null;
+    const r = parseCssChannel(channels[0]);
+    const g = parseCssChannel(channels[1]);
+    const b = parseCssChannel(channels[2]);
+
+    if (r === null || g === null || b === null) return null;
+
+    const commaAlpha = channels[3];
+
+    return {
+        r,
+        g,
+        b,
+        a: parseCssAlpha(alphaPart ?? commaAlpha),
+    };
 }
 
 function mixParsedCssColor(
@@ -296,7 +357,7 @@ function mixParsedCssColor(
     const r = Math.round(lerp(parsedA.r, parsedB.r, clampedT));
     const g = Math.round(lerp(parsedA.g, parsedB.g, clampedT));
     const b = Math.round(lerp(parsedA.b, parsedB.b, clampedT));
-    const a = lerp(parsedA.a, parsedB.a, clampedT);
+    const a = Number(lerp(parsedA.a, parsedB.a, clampedT).toFixed(4));
 
     return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
@@ -567,7 +628,8 @@ function getClosestPerimeterPoint(
     height: number,
     r: CornerRadii,
     proximityRadius: number
-) {
+): { progress: number; proximity: number } {
+
     const metrics = getRoundedRectMetricsCached(width, height, r);
     const perimeter = metrics.perimeter;
 
@@ -640,6 +702,8 @@ export function sameTheme(a: ThemeVars, b: ThemeVars) {
     );
 }
 
+
+
 type TailLayer = {
     length: number;
     opacity: number;
@@ -656,7 +720,6 @@ interface CometDashProps {
     dashLen: number;
     perimeterOffset: MotionValue<number>;
     glowStrokeOpacity: MotionValue<number>;
-    glowFilterCss: MotionValue<string>;
     tailLayers: TailLayer[];
     headStrokeWidth: number;
     quality: AutoEdgeLightQuality;
@@ -680,7 +743,6 @@ interface CometTailLayerProps {
     offset: number;
     dashLen: number;
     perimeterOffset: MotionValue<number>;
-    glowFilterCss: MotionValue<string>;
     layer: TailLayer;
     strokeColor: MotionValue<string>;
 }
@@ -691,7 +753,6 @@ const CometTailLayer = React.memo(function CometTailLayer({
                                                               offset,
                                                               dashLen,
                                                               perimeterOffset,
-                                                              glowFilterCss,
                                                               layer,
                                                               strokeColor,
                                                           }: CometTailLayerProps) {
@@ -712,7 +773,6 @@ const CometTailLayer = React.memo(function CometTailLayer({
             style={{
                 stroke: strokeColor,
                 strokeDashoffset: tailDashoffset,
-                filter: layer.blur ? glowFilterCss : undefined,
                 mixBlendMode: "screen",
             }}
             opacity={layer.opacity}
@@ -728,7 +788,6 @@ const CometDash = React.memo(function CometDash({
                                                     dashLen,
                                                     perimeterOffset,
                                                     glowStrokeOpacity,
-                                                    glowFilterCss,
                                                     tailLayers,
                                                     headStrokeWidth,
                                                     quality,
@@ -762,7 +821,7 @@ const CometDash = React.memo(function CometDash({
     const coreLen = Math.max(5, dashLen * 0.24);
     const glowHeadWidth = Math.max(headStrokeWidth * 2.1, headStrokeWidth + 2);
     const showInteractionHalo = quality !== "performance";
-    const haloLen = Math.max(6, dashLen * 0.38);
+    const haloLen = Math.max(6, dashLen * 4);
     const haloWidth = Math.max(headStrokeWidth * 1.45, headStrokeWidth + 1.2);
 
     return (
@@ -775,7 +834,6 @@ const CometDash = React.memo(function CometDash({
                     offset={offset}
                     dashLen={dashLen}
                     perimeterOffset={perimeterOffset}
-                    glowFilterCss={glowFilterCss}
                     layer={layer}
                     strokeColor={cometColor}
                 />
@@ -790,9 +848,8 @@ const CometDash = React.memo(function CometDash({
                 style={{
                     stroke: cometColor,
                     strokeDashoffset: headDashoffset,
-                    filter: glowFilterCss,
                 }}
-                opacity={0.34}
+                opacity={4}
             />
 
             {showInteractionHalo ? (
@@ -806,7 +863,7 @@ const CometDash = React.memo(function CometDash({
                         stroke: cometColor,
                         strokeDashoffset: headDashoffset,
                     }}
-                    opacity={0.3}
+                    opacity={1}
                 />
             ) : null}
 
@@ -818,7 +875,7 @@ const CometDash = React.memo(function CometDash({
                 strokeLinecap="round"
                 strokeDasharray={`${coreLen} ${Math.max(1, effectivePathLength - coreLen)}`}
                 style={{ strokeDashoffset: headDashoffset }}
-                opacity={0.92}
+                opacity={2}
             />
         </motion.g>
     );
@@ -828,46 +885,47 @@ const CometDash = React.memo(function CometDash({
 
 
 export function AutoEdgeLight({
-                           active,
-                           parentRef,
-                           reducedMotion = false,
-                           className = "",
-                           inset,
-                           strokeWidth,
-                           glowWidth,
-                           glowBlur,
-                           idleSpeed = 0.06,
-                           hoverSpeedBoost = 0.34,
-                           attractStrength = 8,
-                           speedSpring = { stiffness: 120, damping: 24, mass: 0.9 },
-                           proximitySpring = { stiffness: 150, damping: 20, mass: 0.65 },
-                           activationSpring = { stiffness: 140, damping: 26, mass: 0.9 },
-                           proximityRadius = 150,
-                           pulseDurationMs = 700,
-                           pulseIntensity = 1,
-                           glowOpacity,
-                           colorA,
-                           colorB,
-                           highlightColor,
-                           enableIdleScan = true,
-                           enableCursorProximity = true,
-                           enablePulse = true,
-                           interactionBoostAmount = 0.75,
-                           interactionBoostDecay = 2.2,
-                           colorSpeed = 1,
-                           dashRatio = 0.22,
-                           trailCount,
-                           dashCount = 1,
-                           syncColorToDash,
-                           quality = "balanced",
-                       }: AutoEdgeLightProProps) {
-
+                                  active,
+                                  parentRef,
+                                  reducedMotion = false,
+                                  className = "",
+                                  inset,
+                                  strokeWidth,
+                                  glowWidth,
+                                  glowBlur,
+                                  idleSpeed = 0.06,
+                                  hoverSpeedBoost = 0.34,
+                                  attractStrength = 8,
+                                  speedSpring = { stiffness: 120, damping: 24, mass: 0.9 },
+                                  proximitySpring = { stiffness: 150, damping: 20, mass: 0.65 },
+                                  activationSpring = { stiffness: 140, damping: 26, mass: 0.9 },
+                                  proximityRadius = 150,
+                                  pulseDurationMs = 700,
+                                  pulseIntensity = 1,
+                                  glowOpacity,
+                                  colorA,
+                                  colorB,
+                                  highlightColor,
+                                  enableIdleScan = false,
+                                  enableCursorProximity = true,
+                                  enablePulse = true,
+                                  interactionBoostAmount = 0.75,
+                                  interactionBoostDecay = 2.2,
+                                  colorSpeed = 1,
+                                  dashRatio = 0.22,
+                                  trailCount,
+                                  dashCount = 1,
+                                  syncColorToDash,
+                                  quality = "balanced",
+                              }: AutoEdgeLightProProps) {
     const { resolvedTheme } = useTheme();
 
     const [themeVars, setThemeVars] = useState<ThemeVars>(DEFAULT_THEME);
-    const [isVisible, setIsVisible] = useState(true);
+    const [isVisible, setIsVisible] = useState(false);
+    const [isUserEngaged, setIsUserEngaged] = useState(false);
 
     const safeInset = inset ?? -2;
+    const effectiveActive = active && isUserEngaged;
 
     const [geometry, setGeometry] = useState<Geometry>({
         width: 0,
@@ -879,9 +937,10 @@ export function AutoEdgeLight({
         perimeter: 0,
     });
 
-    const lastActiveRef = useRef(active);
+    const lastEffectiveActiveRef = useRef(effectiveActive);
     const pulseStartRef = useRef<number | null>(null);
     const releaseTimeoutRef = useRef<number | null>(null);
+    const engagementReleaseRef = useRef<number | null>(null);
     const prevPathLengthRef = useRef<number>(0);
 
     const rawGradientId = useId();
@@ -895,7 +954,7 @@ export function AutoEdgeLight({
     const proximityRaw = useMotionValue(0);
     const proximity = useSpring(proximityRaw, proximitySpring);
 
-    const activeProgressRaw = useMotionValue(active ? 1 : 0);
+    const activeProgressRaw = useMotionValue(effectiveActive ? 1 : 0);
     const activeProgress = useSpring(activeProgressRaw, activationSpring);
 
     const hoverRaw = useMotionValue(0);
@@ -903,6 +962,60 @@ export function AutoEdgeLight({
 
     const pulse = useMotionValue(0);
     const interactionBoost = useMotionValue(0);
+    const colorTravel = useMotionValue(0);
+
+    const resetTransientMotion = useCallback(() => {
+        proximityRaw.set(0);
+        hoverRaw.set(0);
+        targetSpeed.set(0);
+        interactionBoost.set(0);
+        pulse.set(0);
+        pulseStartRef.current = null;
+
+        if (releaseTimeoutRef.current !== null) {
+            window.clearTimeout(releaseTimeoutRef.current);
+            releaseTimeoutRef.current = null;
+        }
+    }, [hoverRaw, interactionBoost, proximityRaw, pulse, targetSpeed]);
+
+    const clearEngagementRelease = useCallback(() => {
+        if (engagementReleaseRef.current !== null) {
+            window.clearTimeout(engagementReleaseRef.current);
+            engagementReleaseRef.current = null;
+        }
+    }, []);
+
+    const activateUserEngagement = useCallback(
+        (options?: { pulse?: boolean }) => {
+            if (!active) return;
+
+            clearEngagementRelease();
+            setIsUserEngaged(true);
+
+            interactionBoost.set(Math.max(interactionBoost.get(), interactionBoostAmount));
+
+            if (options?.pulse && enablePulse) {
+                pulseStartRef.current = performance.now();
+            }
+        },
+        [
+            active,
+            clearEngagementRelease,
+            enablePulse,
+            interactionBoost,
+            interactionBoostAmount,
+        ]
+    );
+
+    const releaseUserEngagement = useCallback(() => {
+        clearEngagementRelease();
+
+        engagementReleaseRef.current = window.setTimeout(() => {
+            setIsUserEngaged(false);
+            resetTransientMotion();
+            engagementReleaseRef.current = null;
+        }, 160);
+    }, [clearEngagementRelease, resetTransientMotion]);
 
     const qualityConfig = useMemo(() => {
         if (quality === "ultra") {
@@ -927,7 +1040,7 @@ export function AutoEdgeLight({
             trailCount: trailCount ?? 2,
             syncColorToDash: syncColorToDash ?? false,
             blurDuringIdle: false,
-            maxDashCount: 2,
+            maxDashCount: 200,
         };
     }, [quality, syncColorToDash, trailCount]);
 
@@ -978,11 +1091,36 @@ export function AutoEdgeLight({
         }),
         [resolvedColorA, resolvedColorB]
     );
+
     const resolvedGlowOpacity = glowOpacity ?? themeVars.glowOpacity;
 
     useEffect(() => {
-        activeProgressRaw.set(active ? 1 : 0);
-    }, [active, activeProgressRaw]);
+        activeProgressRaw.set(effectiveActive ? 1 : 0);
+    }, [activeProgressRaw, effectiveActive]);
+
+    // useEffect(() => {
+    //     if (active) return;
+    //
+    //     clearEngagementRelease();
+    //     setIsUserEngaged(false);
+    //     activeProgressRaw.set(0);
+    //     resetTransientMotion();
+    // }, [active, activeProgressRaw, clearEngagementRelease, resetTransientMotion]);
+    //
+    // useEffect(() => {
+    //     if (isVisible) return;
+    //
+    //     setIsUserEngaged(false);
+    //     activeProgressRaw.set(0);
+    //     resetTransientMotion();
+    // }, [activeProgressRaw, isVisible, resetTransientMotion]);
+
+    useEffect(() => {
+        return () => {
+            clearEngagementRelease();
+            resetTransientMotion();
+        };
+    }, [clearEngagementRelease, resetTransientMotion]);
 
     useEffect(() => {
         const el = parentRef.current;
@@ -1015,6 +1153,7 @@ export function AutoEdgeLight({
 
     useEffect(() => {
         const el = parentRef.current;
+
         if (!el || typeof IntersectionObserver === "undefined") {
             setIsVisible(true);
             return;
@@ -1038,9 +1177,10 @@ export function AutoEdgeLight({
     useUnifiedPointerGlow({
         parentRef,
         reducedMotion,
-        enableCursorProximity: enableCursorProximity && isVisible,
-        enablePulse,
-        active,
+        enableCursorProximity:
+            enableCursorProximity && isVisible && effectiveActive && !reducedMotion,
+        enablePulse: enablePulse && effectiveActive,
+        active: effectiveActive,
         geometry,
         pathLength: geometry.perimeter,
         proximityRadius,
@@ -1050,8 +1190,8 @@ export function AutoEdgeLight({
         targetOffset,
         targetSpeed,
         pulse,
-        pulseStartRef: pulseStartRef as RefObject<number | null>,
-        releaseTimeoutRef: releaseTimeoutRef as RefObject<number | null>,
+        pulseStartRef,
+        releaseTimeoutRef,
         getClosestPerimeterPoint,
     });
 
@@ -1059,42 +1199,75 @@ export function AutoEdgeLight({
         const el = parentRef.current;
         if (!el) return;
 
-        const triggerBoost = () => {
-            interactionBoost.set(Math.max(interactionBoost.get(), interactionBoostAmount));
-        };
-
         let lastMoveBoostTs = 0;
         const moveThrottleMs = 60;
 
-        const onPointerEnter = () => triggerBoost();
-        const onPointerDown = () => triggerBoost();
+        const onPointerEnter = () => {
+            activateUserEngagement();
+        };
+
+        const onPointerDown = () => {
+            activateUserEngagement({ pulse: true });
+        };
+
         const onPointerMove = () => {
+            if (!isUserEngaged) return;
+
             const now = performance.now();
 
             if (now - lastMoveBoostTs >= moveThrottleMs) {
                 lastMoveBoostTs = now;
-                triggerBoost();
+                activateUserEngagement();
             }
+        };
+
+        const onPointerLeave = () => {
+            releaseUserEngagement();
+        };
+
+        const onPointerCancel = () => {
+            releaseUserEngagement();
+        };
+
+        const onFocusIn = () => {
+            activateUserEngagement();
+        };
+
+        const onFocusOut = () => {
+            releaseUserEngagement();
         };
 
         el.addEventListener("pointerenter", onPointerEnter, { passive: true });
         el.addEventListener("pointerdown", onPointerDown, { passive: true });
         el.addEventListener("pointermove", onPointerMove, { passive: true });
+        el.addEventListener("pointerleave", onPointerLeave, { passive: true });
+        el.addEventListener("pointercancel", onPointerCancel, { passive: true });
+        el.addEventListener("focusin", onFocusIn);
+        el.addEventListener("focusout", onFocusOut);
 
         return () => {
             el.removeEventListener("pointerenter", onPointerEnter);
             el.removeEventListener("pointerdown", onPointerDown);
             el.removeEventListener("pointermove", onPointerMove);
+            el.removeEventListener("pointerleave", onPointerLeave);
+            el.removeEventListener("pointercancel", onPointerCancel);
+            el.removeEventListener("focusin", onFocusIn);
+            el.removeEventListener("focusout", onFocusOut);
         };
-    }, [parentRef, interactionBoost, interactionBoostAmount]);
+    }, [
+        activateUserEngagement,
+        isUserEngaged,
+        parentRef,
+        releaseUserEngagement,
+    ]);
 
     useEffect(() => {
-        if (active && !lastActiveRef.current && enablePulse) {
+        if (effectiveActive && !lastEffectiveActiveRef.current && enablePulse) {
             pulseStartRef.current = performance.now();
         }
 
-        lastActiveRef.current = active;
-    }, [active, enablePulse]);
+        lastEffectiveActiveRef.current = effectiveActive;
+    }, [effectiveActive, enablePulse]);
 
     useEffect(() => {
         const oldLen = prevPathLengthRef.current;
@@ -1111,10 +1284,10 @@ export function AutoEdgeLight({
         prevPathLengthRef.current = newLen;
     }, [geometry.perimeter, perimeterOffset, targetOffset]);
 
-    const colorTravel = useMotionValue(0);
-
     useAnimationFrame((time, delta) => {
-        if (!isVisible || !geometry.path || geometry.perimeter <= 0) return;
+        if (!isVisible || !effectiveActive || !geometry.path || geometry.perimeter <= 0) {
+            return;
+        }
 
         const ap = activeProgress.get();
         const pr = proximity.get();
@@ -1122,7 +1295,14 @@ export function AutoEdgeLight({
         const hv = hover.get();
         const ibCurrent = interactionBoost.get();
 
-        if (reducedMotion || (ap < 0.001 && pr < 0.001 && pu < 0.001 && hv < 0.001 && ibCurrent < 0.001)) {
+        if (
+            reducedMotion ||
+            (ap < 0.001 &&
+                pr < 0.001 &&
+                pu < 0.001 &&
+                hv < 0.001 &&
+                ibCurrent < 0.001)
+        ) {
             return;
         }
 
@@ -1138,7 +1318,9 @@ export function AutoEdgeLight({
         const wantsAnimation = !reducedMotion && visibility > 0.001;
 
         const desiredSpeed = wantsAnimation
-            ? geometry.perimeter * ((enableIdleScan ? idleSpeed : 0) + hoverSpeedBoost * engagement) * visibility
+            ? geometry.perimeter *
+            ((enableIdleScan ? idleSpeed : 0) + hoverSpeedBoost * engagement) *
+            visibility
             : 0;
 
         targetSpeed.set(desiredSpeed);
@@ -1146,10 +1328,15 @@ export function AutoEdgeLight({
         if (wantsAnimation) {
             const scannerOffset = perimeterOffset.get() - smoothSpeed.get() * dt;
             const followMix = clamp(attractStrength * engagement * dt, 0, 0.24);
-            perimeterOffset.set(wrap(lerp(scannerOffset, targetOffset.get(), followMix), geometry.perimeter));
+
+            perimeterOffset.set(
+                wrap(
+                    lerp(scannerOffset, targetOffset.get(), followMix),
+                    geometry.perimeter
+                )
+            );
 
             colorTravel.set(colorTravel.get() + Math.abs(smoothSpeed.get()) * dt);
-
         }
 
         if (pulseStartRef.current !== null) {
@@ -1165,24 +1352,29 @@ export function AutoEdgeLight({
         }
     });
 
+    const glowStrokeOpacity = useTransform(
+        [proximity, pulse, activeProgress, interactionBoost],
+        (values: number[]) => {
+            const [p, pu, ap, ib] = values;
+            return clamp(
+                (resolvedGlowOpacity + p * 0.18 + pu * 0.24 + ib * 0.22) * ap,
+                0,
+                1
+            );
+        }
+    );
 
-    const glowStrokeOpacity = useTransform([proximity, pulse, activeProgress, interactionBoost], (values: number[]) => {
-        const [p, pu, ap, ib] = values;
-        return clamp((resolvedGlowOpacity + p * 0.18 + pu * 0.24 + ib * 0.22) * ap, 0, 1);
-    });
+    const glowFilterStrength = useTransform(
+        [activeProgress, proximity, pulse, interactionBoost],
+        (values: number[]) => {
+            const [ap, p, pu, ib] = values;
+            const interaction = Math.max(p, pu, ib);
 
-    const glowFilterStrength = useTransform([activeProgress, proximity, pulse, interactionBoost], (values: number[]) => {
-        const [ap, p, pu, ib] = values;
-        const interaction = Math.max(p, pu, ib);
+            if (ap <= 0.01) return 0;
+            if (qualityConfig.blurDuringIdle) return 1;
 
-        if (ap <= 0.01) return 0;
-        if (qualityConfig.blurDuringIdle) return 1;
-
-        return interaction > 0.03 ? clamp(interaction, 0.35, 1) : 0;
-    });
-
-    const glowFilterCss = useTransform(glowFilterStrength, (v: number) =>
-        v > 0 ? `blur(${Math.max(0, v * resolvedGlowBlur)}px)` : "none"
+            return interaction > 0.03 ? clamp(interaction, 0.35, 1) : 0;
+        }
     );
 
     const effectivePathLength = Math.max(geometry.perimeter, 1);
@@ -1223,9 +1415,9 @@ export function AutoEdgeLight({
     return (
         <svg
             className={className}
-            viewBox={`${geometry.offsetX - bleed} ${geometry.offsetY - bleed} ${geometry.width + bleed * 2} ${
-                geometry.height + bleed * 2
-            }`}
+            viewBox={`${geometry.offsetX - bleed} ${geometry.offsetY - bleed} ${
+                geometry.width + bleed * 2
+            } ${geometry.height + bleed * 2}`}
             preserveAspectRatio="none"
             style={{
                 position: "absolute",
@@ -1258,8 +1450,8 @@ export function AutoEdgeLight({
                     stroke={`url(#${gradientId})`}
                     strokeWidth={Math.max(1, resolvedGlowWidth)}
                     strokeLinecap="round"
-                    opacity={active ? resolvedGlowOpacity : 0}
-                    style={{ filter: active ? glowFilterCss : "none" }}
+                    opacity={effectiveActive ? resolvedGlowOpacity : 0}
+                    style={{}}
                 />
             ) : isReady ? (
                 Array.from({ length: clampedDashCount }, (_, cometIndex) => {
@@ -1274,11 +1466,14 @@ export function AutoEdgeLight({
                             dashLen={dashLen}
                             perimeterOffset={perimeterOffset}
                             glowStrokeOpacity={glowStrokeOpacity}
-                            glowFilterCss={glowFilterCss}
                             headStrokeWidth={headStrokeWidth}
                             quality={quality}
                             colorTravel={colorTravel}
-                            colorSeed={clampedDashCount <= 1 ? 0 : cometIndex / clampedDashCount}
+                            colorSeed={
+                                clampedDashCount <= 1
+                                    ? 0
+                                    : cometIndex / clampedDashCount
+                            }
                             colorA={resolvedColorA}
                             colorB={resolvedColorB}
                             highlightColor={resolvedHighlightColor}
@@ -1292,8 +1487,6 @@ export function AutoEdgeLight({
             ) : null}
         </svg>
     );
-
-
 }
 
 export default AutoEdgeLight;

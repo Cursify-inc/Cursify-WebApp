@@ -2,8 +2,6 @@ import type { UseInViewOptions } from "framer-motion";
 import type { AutoEdgeLightProProps } from "@/components/ui/AutoEdgeLight";
 
 export type CardSize = "tiny" | "large";
-export type CardThemeMode = "light" | "dark";
-
 export type TinyNoEdgeTone = "glassGlowNeon" | "glassGlowPremium";
 
 export type EdgeLightOptions = Omit<
@@ -16,8 +14,6 @@ export const CARD_MOTION = {
     spring: { stiffness: 180, damping: 24, mass: 0.7 },
     hover: { y: -2, scale: 1.008, duration: 0.16 },
     reveal: {
-        durationMs: 900,
-        delayMs: 0,
         margin: "0px 0px -120px 0px" as NonNullable<UseInViewOptions["margin"]>,
     },
 } as const;
@@ -56,18 +52,18 @@ export const CARD_VARIANT_CLASSES = {
 const EDGE_BASE = {
     inset: 0,
     quality: "balanced",
-    dashCount: 1,
-    syncColorToDash: false,
-    dashRatio: 1,
+    dashCount: 2,
+    syncColorToDash: true,
+    dashRatio: 0.3,
     idleSpeed: 0,
-    hoverSpeedBoost: 0.4,
+    hoverSpeedBoost: 0.14,
     attractStrength: 1,
     proximityRadius: 120,
     pulseDurationMs: 620,
     pulseIntensity: 0.7,
     enableIdleScan: false,
     enableCursorProximity: false,
-    enablePulse: false,
+    enablePulse: true,
     interactionBoostDecay: 10,
     interactionBoostAmount: 75,
 } satisfies Partial<EdgeLightOptions>;
@@ -84,12 +80,10 @@ const EDGE_PRESETS = {
         ...EDGE_THEME_COLORS,
         strokeWidth: 1.5,
         glowWidth: 7.5,
-        glowBlur: 5.5,
-        dashRatio: 0.9,
-        segmentRatio: 0.22,
-        coreOpacity: 0.8,
-        glowOpacity: 0.3,
-        highlightOpacity: 0.15,
+        glowBlur: 55,
+        dashRatio: 0.25,
+        coreOpacity: 0.08,
+        glowOpacity: 0.1,
     },
     large: {
         ...EDGE_BASE,
@@ -98,16 +92,13 @@ const EDGE_PRESETS = {
         glowWidth: 9,
         glowBlur: 8,
         dashRatio: 1,
-        segmentRatio: 0.16,
         coreOpacity: 0.86,
         glowOpacity: 0.34,
-        highlightOpacity: 0.16,
     },
 } satisfies Record<CardSize, EdgeLightOptions>;
 
 export function getEdgeLightPreset(
     size: CardSize,
-    _mode?: CardThemeMode
 ): EdgeLightOptions {
     return EDGE_PRESETS[size];
 }

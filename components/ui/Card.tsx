@@ -42,8 +42,6 @@ export type CardProps = React.HTMLAttributes<CardElement> &
 
     edgeLightProps?: EdgeLightOptions;
     activateGlowOnReveal?: boolean;
-    revealGlowDurationMs?: number;
-    revealGlowDelayMs?: number;
     revealViewportMargin?: ViewportMargin;
     revealOnce?: boolean;
 
@@ -65,8 +63,6 @@ export function Card({
                          delay = 0,
                          edgeLightProps,
                          activateGlowOnReveal = false,
-                         revealGlowDurationMs = CARD_MOTION.reveal.durationMs,
-                         revealGlowDelayMs = CARD_MOTION.reveal.delayMs,
                          revealViewportMargin = DEFAULT_VIEWPORT_MARGIN,
                          revealOnce = true,
                          glowActiveOverride,
@@ -85,7 +81,6 @@ export function Card({
     const cardRef = React.useRef<HTMLDivElement>(null);
 
     const [active, setActive] = React.useState(false);
-    const [revealActive, setRevealActive] = React.useState(false);
 
     // Pointer tracking is only needed for the sheen overlay.
     const needsPointerTracking = !reducedMotion && sheen;
@@ -96,10 +91,6 @@ export function Card({
     const rafRef = React.useRef<number | null>(null);
     const lastPointRef = React.useRef<{ x: number; y: number } | null>(null);
     const lastMoveTsRef = React.useRef(0);
-
-    const hasRevealedRef = React.useRef(false);
-    const startTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-    const endTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const flushPointer = React.useCallback(() => {
         rafRef.current = null;
@@ -162,49 +153,13 @@ export function Card({
         margin: "240px 0px 240px 0px",
     });
 
-    const clearTimers = React.useCallback(() => {
-        if (startTimeoutRef.current) {
-            clearTimeout(startTimeoutRef.current);
-            startTimeoutRef.current = null;
-        }
-
-        if (endTimeoutRef.current) {
-            clearTimeout(endTimeoutRef.current);
-            endTimeoutRef.current = null;
-        }
-    }, []);
-
-    React.useEffect(() => {
-        if (!activateGlowOnReveal || !inView) return;
-        if (revealOnce && hasRevealedRef.current) return;
-
-        hasRevealedRef.current = true;
-
-        startTimeoutRef.current = setTimeout(() => {
-            setRevealActive(true);
-
-            endTimeoutRef.current = setTimeout(() => {
-                setRevealActive(false);
-            }, Math.max(0, revealGlowDurationMs));
-        }, Math.max(0, revealGlowDelayMs));
-
-        return clearTimers;
-    }, [
-        activateGlowOnReveal,
-        inView,
-        revealGlowDelayMs,
-        revealGlowDurationMs,
-        clearTimers,
-        revealOnce,
-    ]);
-
-    React.useEffect(() => clearTimers, [clearTimers]);
-
     const pointerGlowActive = glow && active;
-    const computedGlowActive = pointerGlowActive || revealActive;
+    const revealGlowActive = glow && activateGlowOnReveal && inView;
+    const computedGlowActive = pointerGlowActive || revealGlowActive;
     const glowActive = glowActiveOverride ?? computedGlowActive;
 
-    const shouldRenderEdgeLight = glow && (edgeLightInView || glowActive);
+    const shouldRenderEdgeLight =
+        glow && (edgeLightInView || glowActive || revealGlowActive);
 
     const getRelativePointer = React.useCallback((e: React.PointerEvent<HTMLDivElement>) => {
         const rect = cardRef.current?.getBoundingClientRect();
@@ -312,11 +267,10 @@ export function Card({
         <motion.div
             ref={cardRef}
             className={cn(
-                "card-root relative isolate w-full overflow-visible outline-none focus-ring theme-color-fade",
+                "card-root relative isolate w-full h-full overflow-visible outline-none focus-ring theme-color-fade",
                 interactive && "ui-card--interactive",
                 className
             )}
-
             style={{ backfaceVisibility: "hidden", ...style }}
             tabIndex={isFocusable ? 0 : undefined}
             onFocus={handleFocus}
@@ -360,8 +314,8 @@ export function Card({
         >
             {shouldRenderEdgeLight ? (
                 <AutoEdgeLight
-                    {...edgeLightProps}
                     inset={0}
+                    {...edgeLightProps}
                     active={glowActive}
                     reducedMotion={!!reducedMotion}
                     parentRef={cardRef}
@@ -370,10 +324,9 @@ export function Card({
             ) : null}
 
             <div className="card-shadow-host relative z-[10] overflow-visible rounded-[inherit]">
-
                 <div
                     className={cn(
-                        "card-surface relative h-full overflow-hidden rounded-[inherit]",
+                        "card-surface relative h-full overflow-hidden rounded-[inherit] flex flex-col",
                         contentClassName
                     )}
                 >

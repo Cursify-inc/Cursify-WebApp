@@ -99,7 +99,6 @@ export function PricingPreview() {
                                     syncColorToDash: true,
                                     coreOpacity: isHighlighted ? 0.86 : 0.68,
                                     glowOpacity: isHighlighted ? 0.32 : 0.2,
-                                    highlightOpacity: isHighlighted ? 0.18 : 0.1,
                                 }}
                             >
                                 {isHighlighted ? (

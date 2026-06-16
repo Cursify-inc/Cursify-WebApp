@@ -3,135 +3,151 @@
 import * as React from "react";
 import Link from "next/link";
 
-import AutoEdgeLight from "@/components/ui/AutoEdgeLight";
-import type { EdgeLightOptions } from "@/components/ui/card.tokens";
 import { cn } from "@/lib/utils";
 
 type ButtonVariant = "primary" | "secondary" | "ghost";
 type ButtonSize = "sm" | "md" | "lg";
 
-type ButtonProps = {
+type CommonButtonProps = {
     children: React.ReactNode;
-    href?: string;
     variant?: ButtonVariant;
     size?: ButtonSize;
     className?: string;
-    edgeLight?: boolean;
-    edgeLightProps?: Partial<EdgeLightOptions>;
+    disabled?: boolean;
+    "aria-label"?: string;
 };
 
-const EDGE_BASE: Partial<EdgeLightOptions> = {
-    durationSec: 2.8,
-    strokeWidth: 1.65,
-    glowWidth: 6.5,
-    glowBlur: 5,
-    coreOpacity: 0.74,
-    glowOpacity: 0.24,
-    highlightOpacity: 0.12,
-    colorA: "var(--ael-color-a)",
-    colorB: "var(--ael-color-b)",
-    highlightColor: "var(--ael-highlight)",
-    colorSpeed: 1,
-    segmentRatio: 0.2,
-    quality: "balanced",
-    dashCount: 1,
-    syncColorToDash: false,
+type LinkButtonProps = CommonButtonProps & {
+    href: string;
+    target?: React.HTMLAttributeAnchorTarget;
+    rel?: string;
+    type?: never;
 };
 
-const EDGE_PRESETS: Record<ButtonVariant, Partial<EdgeLightOptions>> = {
-    primary: {
-        ...EDGE_BASE,
-        durationSec: 2.55,
-        coreOpacity: 0.8,
-        glowOpacity: 0.28,
-        highlightOpacity: 0.15,
-    },
-    secondary: {
-        ...EDGE_BASE,
-        durationSec: 2.85,
-        coreOpacity: 0.62,
-        glowOpacity: 0.18,
-        highlightOpacity: 0.1,
-    },
-    ghost: {
-        ...EDGE_BASE,
-        durationSec: 3.1,
-        coreOpacity: 0.42,
-        glowOpacity: 0.1,
-        highlightOpacity: 0.06,
-    },
+type NativeButtonProps = CommonButtonProps & {
+    href?: never;
+    type?: "button" | "submit" | "reset";
+    target?: never;
+    rel?: never;
 };
 
-export function Button({
-                           children,
-                           href,
-                           variant = "primary",
-                           size = "md",
-                           className,
-                           edgeLight,
-                           edgeLightProps,
-                       }: ButtonProps) {
-    const surfaceRef = React.useRef<HTMLElement | null>(null);
+type ButtonProps = LinkButtonProps | NativeButtonProps;
 
-    const setSurfaceRef = React.useCallback(
-        (node: HTMLAnchorElement | HTMLButtonElement | null) => {
-            surfaceRef.current = node;
-        },
-        []
-    );
+const SIZE_CLASSES: Record<ButtonSize, string> = {
+    sm: "h-9 px-4 text-sm",
+    md: "h-11 px-5 text-sm",
+    lg: "h-13 px-7 py-4 text-base",
+};
 
-    const variantDefaultEdgeLight = variant !== "ghost";
-    const showEdgeLight = edgeLight ?? variantDefaultEdgeLight;
+const ROOT_VARIANT_CLASSES: Record<ButtonVariant, string> = {
+    primary: cn(
+        "text-[var(--button-primary-text)]",
+        "shadow-[var(--button-primary-shadow)]",
+        "hover:-translate-y-0.5 hover:shadow-[var(--button-primary-shadow-hover)]",
+        "active:translate-y-0 active:scale-[0.99]"
+    ),
+    secondary: cn(
+        "text-[var(--button-secondary-text)]",
+        "hover:-translate-y-0.5 hover:shadow-[var(--button-secondary-shadow-hover)]",
+        "active:translate-y-0 active:scale-[0.99]"
+    ),
+    ghost: cn(
+        "text-[var(--button-ghost-text)]",
+        "hover:text-[var(--button-ghost-text-hover)]",
+        "active:scale-[0.99]"
+    ),
+};
 
-    const classes = cn(
-        "focus-ring theme-color-fade relative isolate inline-flex items-center justify-center overflow-hidden rounded-full font-semibold",
+const SURFACE_CLASSES: Record<ButtonVariant, string> = {
+    primary: cn(
+        "bg-linear-to-b",
+        "from-[var(--button-primary-bg-from)]",
+        "to-[var(--button-primary-bg-to)]",
+        "group-hover/button:from-[var(--button-primary-bg-hover-from)]",
+        "group-hover/button:to-[var(--button-primary-bg-hover-to)]"
+    ),
+    secondary: cn(
+        "border border-[var(--button-secondary-border)]",
+        "bg-[var(--button-secondary-bg)]",
+        "group-hover/button:border-[var(--button-secondary-border-hover)]",
+        "group-hover/button:bg-[var(--button-secondary-bg-hover)]"
+    ),
+    ghost: cn(
+        "bg-transparent",
+        "group-hover/button:bg-[var(--button-ghost-bg-hover)]"
+    ),
+};
+
+export function Button(props: ButtonProps) {
+    const {
+        children,
+        variant = "primary",
+        size = "md",
+        className,
+        disabled = false,
+        "aria-label": ariaLabel,
+    } = props;
+
+    const rootClasses = cn(
+        "focus-ring theme-color-fade group/button relative isolate inline-flex items-center justify-center overflow-hidden rounded-full font-semibold",
+        "outline-none select-none",
+        "transition-[transform,box-shadow,color,background-color,border-color] duration-200 ease-out",
+        "motion-reduce:transition-none motion-reduce:hover:translate-y-0",
         "disabled:pointer-events-none disabled:opacity-50",
-        "transition-transform duration-200",
-        variant === "primary" &&
-        "bg-linear-to-b from-[var(--button-primary-bg-from)] to-[var(--button-primary-bg-to)] text-[var(--button-primary-text)] shadow-[var(--button-primary-shadow)] hover:-translate-y-0.5 hover:from-[var(--button-primary-bg-hover-from)] hover:to-[var(--button-primary-bg-hover-to)] hover:shadow-[var(--button-primary-shadow-hover)]"
-,
-        variant === "secondary" &&
-        "border border-[var(--button-secondary-border)] bg-[var(--button-secondary-bg)] text-[var(--button-secondary-text)] hover:-translate-y-0.5 hover:border-[var(--button-secondary-border-hover)] hover:bg-[var(--button-secondary-bg-hover)] hover:shadow-[var(--button-secondary-shadow-hover)]"
-,
-        variant === "ghost" &&
-        "bg-transparent text-[var(--button-ghost-text)] hover:bg-[var(--button-ghost-bg-hover)] hover:text-[var(--button-ghost-text-hover)]",
-        size === "sm" && "h-9 px-4 text-sm",
-        size === "md" && "h-11 px-5 text-sm",
-        size === "lg" && "h-13 px-7 py-4 text-base",
+        disabled && "pointer-events-none opacity-50",
+        SIZE_CLASSES[size],
+        ROOT_VARIANT_CLASSES[variant],
         className
     );
 
-    const edge = showEdgeLight ? (
-        <AutoEdgeLight
-            active
-            parentRef={surfaceRef}
-            inset={0}
-            className="edge-light-root pointer-events-none absolute inset-0 z-10"
-            {...EDGE_PRESETS[variant]}
-            {...edgeLightProps}
-        />
-    ) : null;
-
     const content = (
         <>
-            {edge}
-            <span className="relative z-20 inline-flex items-center">
+            <span
+                aria-hidden="true"
+                className={cn(
+                    "pointer-events-none absolute inset-0 z-0 rounded-[inherit]",
+                    "transition-[background-color,border-color,background-image] duration-200 ease-out",
+                    SURFACE_CLASSES[variant]
+                )}
+            />
+
+            <span className="relative z-10 inline-flex items-center justify-center gap-2">
                 {children}
             </span>
         </>
     );
 
-    if (href) {
+    if (props.href !== undefined) {
+        const safeRel =
+            props.target === "_blank"
+                ? props.rel ?? "noopener noreferrer"
+                : props.rel;
+
         return (
-            <Link href={href} ref={setSurfaceRef} className={classes}>
+            <Link
+                href={props.href}
+                className={rootClasses}
+                target={props.target}
+                rel={safeRel}
+                aria-label={ariaLabel}
+                aria-disabled={disabled || undefined}
+                tabIndex={disabled ? -1 : undefined}
+            >
                 {content}
             </Link>
         );
     }
 
     return (
-        <button ref={setSurfaceRef} type="button" className={classes}>
+        <button
+            type={props.type ?? "button"}
+            className={rootClasses}
+            disabled={disabled}
+            aria-label={ariaLabel}
+        >
             {content}
         </button>
     );
 }
+
+export default Button;

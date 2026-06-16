@@ -1,23 +1,20 @@
 import { RefObject, useEffect, useRef } from "react";
 import { MotionValue } from "framer-motion";
+import type { Geometry } from "./AutoEdgeLight";
 
-type CornerRadius = { rx: number; ry: number };
-type CornerRadii = {
-    tl: CornerRadius;
-    tr: CornerRadius;
-    br: CornerRadius;
-    bl: CornerRadius;
+type ClosestPerimeterPoint = {
+    progress: number;
+    proximity: number;
 };
 
-type Geometry = {
-    width: number;
-    height: number;
-    offsetX: number;
-    offsetY: number;
-    radii: CornerRadii;
-};
-
-type NumberRef = RefObject<number | null>;
+type GetClosestPerimeterPoint = (
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radii: Geometry["radii"],
+    proximityRadius: number
+) => ClosestPerimeterPoint;
 
 type UseUnifiedPointerGlowParams = {
     parentRef: RefObject<HTMLElement | null>;
@@ -25,7 +22,6 @@ type UseUnifiedPointerGlowParams = {
     enableCursorProximity: boolean;
     enablePulse: boolean;
     active: boolean;
-
     geometry: Geometry;
     pathLength: number;
     proximityRadius: number;
@@ -37,18 +33,20 @@ type UseUnifiedPointerGlowParams = {
     targetSpeed: MotionValue<number>;
     pulse: MotionValue<number>;
 
-    pulseStartRef: NumberRef;
-    releaseTimeoutRef: NumberRef;
+    pulseStartRef: RefObject<number | null>;
+    releaseTimeoutRef: RefObject<number | null>;
 
-    getClosestPerimeterPoint: (
-        x: number,
-        y: number,
-        width: number,
-        height: number,
-        r: CornerRadii,
-        proximityRadius: number
-    ) => { progress: number; proximity: number };
+    getClosestPerimeterPoint: GetClosestPerimeterPoint;
 };
+
+const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(n, max));
+
+function clearTimer(ref: RefObject<number | null>) {
+    if (ref.current !== null) {
+        window.clearTimeout(ref.current);
+        ref.current = null;
+    }
+}
 
 export function useUnifiedPointerGlow({
                                           parentRef,
@@ -69,51 +67,52 @@ export function useUnifiedPointerGlow({
                                           releaseTimeoutRef,
                                           getClosestPerimeterPoint,
                                       }: UseUnifiedPointerGlowParams) {
-    const activePointerIdRef = useRef<number | null>(null);
-    const downFallbackRef = useRef<number | null>(null);
-
-    const rafIdRef = useRef<number | null>(null);
-    const pendingPointRef = useRef<{ x: number; y: number } | null>(null);
+    const frameRef = useRef<number | null>(null);
+    const latestPointerRef = useRef<{ clientX: number; clientY: number } | null>(null);
 
     useEffect(() => {
-        const el = parentRef.current;
-        if (!el || reducedMotion || !enableCursorProximity) return;
+        const resetPointerState = () => {
+            proximityRaw.set(0);
+            hoverRaw.set(0);
+            targetSpeed.set(0);
+            pulse.set(0);
+            pulseStartRef.current = null;
+            latestPointerRef.current = null;
 
-        const clearTimer = (ref: NumberRef) => {
-            if (ref.current !== null) {
-                window.clearTimeout(ref.current);
-                // cast to writable in case your RefObject typing is readonly in this setup
-                (ref as { current: number | null }).current = null;
-            }
-        };
-
-        const cancelRaf = () => {
-            if (rafIdRef.current !== null) {
-                cancelAnimationFrame(rafIdRef.current);
-                rafIdRef.current = null;
-            }
-        };
-
-        const clearAllTimers = () => {
             clearTimer(releaseTimeoutRef);
-            clearTimer(downFallbackRef);
-            cancelRaf();
-            pendingPointRef.current = null;
+
+            if (frameRef.current !== null) {
+                window.cancelAnimationFrame(frameRef.current);
+                frameRef.current = null;
+            }
         };
 
-        const flushPointUpdate = () => {
-            rafIdRef.current = null;
-            const p = pendingPointRef.current;
-            if (!p) return;
-            pendingPointRef.current = null;
+        if (
+            !active ||
+            reducedMotion ||
+            !enableCursorProximity ||
+            !parentRef.current ||
+            !geometry.path ||
+            pathLength <= 0
+        ) {
+            resetPointerState();
+            return;
+        }
 
-            if (!geometry.width || !geometry.height) return;
+        const el = parentRef.current;
+
+        const flushPointer = () => {
+            frameRef.current = null;
+
+            const pointer = latestPointerRef.current;
+            if (!pointer) return;
 
             const rect = el.getBoundingClientRect();
-            const localX = p.x - rect.left - geometry.offsetX;
-            const localY = p.y - rect.top - geometry.offsetY;
 
-            const result = getClosestPerimeterPoint(
+            const localX = pointer.clientX - rect.left - geometry.offsetX;
+            const localY = pointer.clientY - rect.top - geometry.offsetY;
+
+            const closest = getClosestPerimeterPoint(
                 localX,
                 localY,
                 geometry.width,
@@ -122,170 +121,80 @@ export function useUnifiedPointerGlow({
                 proximityRadius
             );
 
-            proximityRaw.set(result.proximity);
+            const proximity = clamp(closest.proximity, 0, 1);
+            const progress = clamp(closest.progress, 0, 1);
 
-            if (pathLength > 0) {
-                targetOffset.set(-result.progress * pathLength);
+            proximityRaw.set(proximity);
+            hoverRaw.set(proximity > 0 ? 1 : 0);
+            targetOffset.set(progress * pathLength);
+        };
+
+        const schedulePointerFlush = (event: PointerEvent) => {
+            latestPointerRef.current = {
+                clientX: event.clientX,
+                clientY: event.clientY,
+            };
+
+            clearTimer(releaseTimeoutRef);
+
+            if (frameRef.current === null) {
+                frameRef.current = window.requestAnimationFrame(flushPointer);
             }
         };
 
-        const queuePointUpdate = (clientX: number, clientY: number) => {
-            pendingPointRef.current = { x: clientX, y: clientY };
-            if (rafIdRef.current === null) {
-                rafIdRef.current = requestAnimationFrame(flushPointUpdate);
-            }
-        };
-
-        const engage = () => {
+        const releasePointer = () => {
             clearTimer(releaseTimeoutRef);
-            clearTimer(downFallbackRef);
-            hoverRaw.set(1);
-        };
 
-        const scheduleDisengage = (delay = releaseDelayMs) => {
-            clearTimer(releaseTimeoutRef);
-            (releaseTimeoutRef as { current: number | null }).current = window.setTimeout(() => {
-                hoverRaw.set(0);
+            releaseTimeoutRef.current = window.setTimeout(() => {
                 proximityRaw.set(0);
-                activePointerIdRef.current = null;
-            }, delay);
+                hoverRaw.set(0);
+                latestPointerRef.current = null;
+                releaseTimeoutRef.current = null;
+            }, releaseDelayMs);
         };
 
-        const resetNow = () => {
-            clearAllTimers();
-            hoverRaw.set(0);
-            proximityRaw.set(0);
-            targetSpeed.set(0);
-            pulse.set(0);
-            activePointerIdRef.current = null;
+        const triggerPulse = () => {
+            if (!enablePulse) return;
+            pulseStartRef.current = performance.now();
         };
 
-        const onPointerEnter = (e: PointerEvent) => {
-            if (e.pointerType !== "mouse") return;
-            engage();
-            queuePointUpdate(e.clientX, e.clientY);
-        };
-
-        const onPointerMove = (e: PointerEvent) => {
-            const isMouse = e.pointerType === "mouse";
-            const isActivePointer =
-                activePointerIdRef.current !== null &&
-                e.pointerId === activePointerIdRef.current;
-
-            if (!isMouse && !isActivePointer) return;
-
-            engage();
-            queuePointUpdate(e.clientX, e.clientY);
-        };
-
-        const onPointerDown = (e: PointerEvent) => {
-            activePointerIdRef.current = e.pointerId;
-            engage();
-            queuePointUpdate(e.clientX, e.clientY);
-
-            try {
-                (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
-            } catch {}
-
-            clearTimer(downFallbackRef);
-            downFallbackRef.current = window.setTimeout(() => {
-                if (activePointerIdRef.current === e.pointerId) {
-                    scheduleDisengage(0);
-                }
-            }, 220);
-
-            if (enablePulse && active) {
-                (pulseStartRef as { current: number | null }).current = performance.now();
-            }
-        };
-
-        const onPointerUpOrCancel = (e: PointerEvent) => {
-            const activeId = activePointerIdRef.current;
-            if (activeId === null) return;
-
-            const exactMatch = e.pointerId === activeId;
-            const tolerantTouchFallback =
-                (e.pointerType === "touch" || e.pointerType === "pen") && true;
-
-            if (!exactMatch && !tolerantTouchFallback) return;
-
-            activePointerIdRef.current = null;
-            clearTimer(downFallbackRef);
-
-            if (exactMatch) {
-                try {
-                    if (el.hasPointerCapture?.(e.pointerId)) {
-                        el.releasePointerCapture?.(e.pointerId);
-                    }
-                } catch {}
-            }
-
-            scheduleDisengage();
-        };
-
-        const onPointerLeave = (e: PointerEvent) => {
-            if (e.pointerType !== "mouse") return;
-            if (
-                activePointerIdRef.current !== null &&
-                e.pointerId === activePointerIdRef.current
-            ) {
-                return;
-            }
-            scheduleDisengage();
-        };
-
-        const onVisibilityChange = () => {
-            if (document.hidden) resetNow();
-        };
-
-        el.addEventListener("pointerenter", onPointerEnter, { passive: true });
-        el.addEventListener("pointermove", onPointerMove, { passive: true });
-        el.addEventListener("pointerdown", onPointerDown, { passive: true });
-        el.addEventListener("pointerleave", onPointerLeave, { passive: true });
-
-        window.addEventListener("pointerup", onPointerUpOrCancel, { passive: true });
-        window.addEventListener("pointercancel", onPointerUpOrCancel, { passive: true });
-
-        document.addEventListener("visibilitychange", onVisibilityChange);
-        window.addEventListener("blur", resetNow, { passive: true });
-        window.addEventListener("pagehide", resetNow, { passive: true });
+        el.addEventListener("pointermove", schedulePointerFlush, { passive: true });
+        el.addEventListener("pointerenter", schedulePointerFlush, { passive: true });
+        el.addEventListener("pointerdown", triggerPulse, { passive: true });
+        el.addEventListener("pointerleave", releasePointer, { passive: true });
+        el.addEventListener("pointercancel", releasePointer, { passive: true });
 
         return () => {
-            clearAllTimers();
+            el.removeEventListener("pointermove", schedulePointerFlush);
+            el.removeEventListener("pointerenter", schedulePointerFlush);
+            el.removeEventListener("pointerdown", triggerPulse);
+            el.removeEventListener("pointerleave", releasePointer);
+            el.removeEventListener("pointercancel", releasePointer);
 
-            el.removeEventListener("pointerenter", onPointerEnter);
-            el.removeEventListener("pointermove", onPointerMove);
-            el.removeEventListener("pointerdown", onPointerDown);
-            el.removeEventListener("pointerleave", onPointerLeave);
-
-            window.removeEventListener("pointerup", onPointerUpOrCancel);
-            window.removeEventListener("pointercancel", onPointerUpOrCancel);
-
-            document.removeEventListener("visibilitychange", onVisibilityChange);
-            window.removeEventListener("blur", resetNow);
-            window.removeEventListener("pagehide", resetNow);
+            resetPointerState();
         };
     }, [
-        parentRef,
-        reducedMotion,
+        active,
         enableCursorProximity,
         enablePulse,
-        active,
-        geometry.width,
         geometry.height,
         geometry.offsetX,
         geometry.offsetY,
+        geometry.path,
         geometry.radii,
+        geometry.width,
+        getClosestPerimeterPoint,
+        hoverRaw,
+        parentRef,
         pathLength,
         proximityRadius,
-        releaseDelayMs,
         proximityRaw,
-        hoverRaw,
-        targetOffset,
-        targetSpeed,
         pulse,
         pulseStartRef,
+        reducedMotion,
+        releaseDelayMs,
         releaseTimeoutRef,
-        getClosestPerimeterPoint,
+        targetOffset,
+        targetSpeed,
     ]);
 }

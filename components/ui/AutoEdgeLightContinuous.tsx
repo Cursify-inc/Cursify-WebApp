@@ -107,11 +107,9 @@ export function AutoEdgeLightContinuous({
             glowBlur={glowBlur}
             coreOpacity={coreOpacity}
             glowOpacity={glowOpacity}
-            highlightOpacity={highlightOpacity}
             colorA={colorA}
             colorB={colorB}
             highlightColor={highlightColor}
-            durationSec={durationSec}
             colorSpeed={colorSpeed}
             dashRatio={segmentRatio}
             dashCount={dashCount}

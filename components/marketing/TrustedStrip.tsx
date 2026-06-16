@@ -23,10 +23,10 @@ function TrustedStrip() {
             contentClassName="relative overflow-hidden rounded-4xl border border-[var(--trusted-strip-border)] bg-[var(--trusted-strip-bg)] px-5 py-6 shadow-[var(--trusted-strip-shadow)] backdrop-blur-xl sm:px-7 sm:py-7 lg:px-8"
         >
             <div className="pointer-events-none absolute inset-0 rounded-4xl bg-[radial-gradient(circle_at_50%_0%,var(--trusted-strip-glow),transparent_58%)]" />
-            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-linear-to-r from-transparent via-[var(--trusted-strip-highlight)] to-transparent" />
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-linear-to-r from-transparent via-(--trusted-strip-highlight) to-transparent" />
 
             <div className="relative">
-                <p className="theme-color-fade text-center text-xs font-semibold uppercase tracking-[0.24em] text-[var(--trusted-strip-eyebrow)]">
+                <p className="theme-color-fade text-center text-xs font-semibold uppercase tracking-[0.24em] text-(--trusted-strip-eyebrow)">
                     Designed around a secure, scalable architecture
                 </p>
 
@@ -39,16 +39,13 @@ function TrustedStrip() {
                             interactive
                             glow
                             activateGlowOnReveal
-                            revealGlowDurationMs={1200}
-                            revealGlowDelayMs={index * 70}
-                            revealViewportMargin="0px 0px -100px 0px"
                             className="h-full"
                             contentClassName="h-full min-h-[4.75rem] justify-center"
                         >
                             <span
                                 className={cn(
                                     "theme-color-fade block text-center text-sm font-semibold leading-snug",
-                                    "text-[var(--trusted-strip-item-text)]"
+                                    "text-(--trusted-strip-item-text)"
                                 )}
                             >
                                 {item}

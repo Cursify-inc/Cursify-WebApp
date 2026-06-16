@@ -35,7 +35,7 @@ export default function RootLayout({
         <ThemeProvider>
             <ThemeFxProvider>
                 {children}
-                <div className="noise-overlay" />
+                <div className="noise-overlay pointer-events-none" />
             </ThemeFxProvider>
         </ThemeProvider>
         </body>
