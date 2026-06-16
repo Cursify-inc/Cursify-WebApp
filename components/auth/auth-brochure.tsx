@@ -95,8 +95,8 @@ export function AuthBrochure() {
   const Icon = activeSlide.icon;
 
   return (
-    <section className="px-6 pt-6">
-      <div className="overflow-hidden rounded-[2rem] bg-[#f7f8ff] px-5 py-7 text-center">
+    <section className="p-6">
+      <div className="overflow-hidden rounded-[2rem]  bg-[#f7f8ff] p-10 text-center">
         <div className="relative mx-auto h-[220px] max-w-[310px]">
           <motion.div
             className={`absolute left-5 top-16 h-36 w-52 cursor-pointer overflow-hidden rounded-2xl ${activeSlide.backTwo} opacity-90 shadow-xl`}
