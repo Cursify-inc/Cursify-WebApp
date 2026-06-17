@@ -1,4 +1,3 @@
-
 import {
   CircleHelp,
   CreditCard,
@@ -16,7 +15,6 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-
 import type { ElementType } from "react";
 
 const sidebarItems = [
@@ -46,7 +44,7 @@ export function DashboardSidebar({
 }) {
   return (
     <>
-      <aside className="hidden min-h-screen border-r border-border bg-background-surface px-4 py-7 lg:flex lg:flex-col">
+      <aside className="dashboard-sidebar-scroll hidden h-screen overflow-y-auto border-r border-border bg-background-surface px-4 py-7 lg:flex lg:flex-col">
         <SidebarContent />
       </aside>
 
@@ -59,7 +57,7 @@ export function DashboardSidebar({
             aria-label="Close dashboard menu overlay"
           />
 
-          <aside className="relative z-10 flex h-full w-[82%] max-w-[320px] flex-col border-r border-border bg-background-surface px-4 py-6 shadow-2xl">
+          <aside className="dashboard-sidebar-scroll relative z-10 flex h-full w-[82%] max-w-[320px] flex-col overflow-y-auto border-r border-border bg-background-surface px-4 py-6 shadow-2xl">
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-black tracking-[-0.04em] text-text-primary">
@@ -74,7 +72,7 @@ export function DashboardSidebar({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-border text-text-primary transition-colors duration-200 hover:bg-[#EEF2FF] hover:text-brand"
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-border text-text-primary transition-colors duration-200 hover:bg-[#EEF2FF] hover:text-brand dark:hover:bg-background-elevated dark:hover:text-text-primary"
                 aria-label="Close dashboard menu"
               >
                 <X className="h-5 w-5" />
@@ -119,7 +117,7 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
       <div className="mt-auto space-y-3">
         <div className="h-px bg-border" />
 
-        <button className="flex h-11 w-full cursor-pointer items-center justify-center rounded-xl border border-border bg-[#E9EDFF] font-mono text-sm font-bold text-brand transition-colors duration-200 hover:bg-[#DCE3FF]">
+        <button className="flex h-11 w-full cursor-pointer items-center justify-center rounded-xl border border-border bg-[#E9EDFF] font-mono text-sm font-bold text-brand transition-colors duration-200 hover:bg-[#DCE3FF] dark:bg-background-elevated dark:text-text-primary dark:hover:bg-brand-hover">
           Upgrade Plan
         </button>
 
