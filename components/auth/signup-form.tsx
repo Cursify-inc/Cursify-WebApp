@@ -198,7 +198,7 @@ export function SignupForm() {
         )}
 
         <button
-          className="auth-button-primary group"
+          className="group flex w-full cursor-pointer items-center justify-center gap-2 rounded-none border border-border bg-text-primary px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-text-inverse shadow-sm transition-all hover:bg-text-secondary active:border-2 active:border-white disabled:cursor-not-allowed disabled:opacity-65"
           type="submit"
           disabled={isPending}
         >
