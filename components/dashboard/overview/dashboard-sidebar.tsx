@@ -16,6 +16,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
+
 import type { ElementType } from "react";
 
 const sidebarItems = [
@@ -146,13 +147,15 @@ function SidebarLink({
       onClick={onClick}
       className={`group flex w-full cursor-pointer items-center gap-3 px-3 py-3 text-left font-mono text-sm transition-colors duration-200 ${
         active
-          ? "border-l-4 border-brand bg-[#E8EBFF] font-bold text-text-primary"
-          : "border-l-4 border-transparent text-text-primary hover:border-brand-light hover:bg-[#EEF2FF] hover:text-brand"
+          ? "border-l-4 border-brand bg-[#E8EBFF] font-bold text-[#0F1522] dark:border-brand-light dark:bg-background-elevated dark:text-text-primary"
+          : "border-l-4 border-transparent text-text-primary hover:border-brand-light hover:bg-[#EEF2FF] hover:text-brand dark:text-text-secondary dark:hover:border-brand-light dark:hover:bg-background-elevated dark:hover:text-text-primary"
       }`}
     >
       <Icon
         className={`h-5 w-5 shrink-0 transition-colors duration-200 ${
-          active ? "text-brand" : "text-text-secondary group-hover:text-brand"
+          active
+            ? "text-[#0F1522] dark:text-text-primary"
+            : "text-text-secondary group-hover:text-brand dark:text-text-tertiary dark:group-hover:text-text-primary"
         }`}
       />
 

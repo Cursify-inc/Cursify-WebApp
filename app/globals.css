@@ -1,20 +1,93 @@
 @import "tailwindcss";
 
-:root {
+:root,
+.dark {
+  color-scheme: dark;
+
+  /* Base - default dark mode */
+  --background: #151e30;
+  --background-light: #3a4b6b;
+  --background-surface: #24314a;
+  --background-elevated: #3a4b6b;
+
+  /* Text */
+  --text-primary: #ffffff;
+  --text-secondary: #f0f2f5;
+  --text-tertiary: #c4c9d4;
+  --text-inverse: #0f1522;
+
+  /* Border */
+  --border: rgba(196, 201, 212, 0.22);
+
+  /* Brand */
+  --brand: #5e7194;
+  --brand-hover: #3a4b6b;
+  --brand-light: #c4c9d4;
+  --brand-dark: #151e30;
+
+  /* Semantic */
+  --success: #2d8a56;
+  --success-light: rgba(45, 138, 86, 0.18);
+
+  --danger: #d32f2f;
+  --danger-light: rgba(211, 47, 47, 0.18);
+
+  --warning: #ed8936;
+  --warning-light: rgba(237, 137, 54, 0.18);
+
+  --info: #3182ce;
+  --info-light: rgba(49, 130, 206, 0.18);
+
+  /* Auth legacy tokens */
+  --surface: #24314a;
+  --surface-base: #151e30;
+  --surface-container-lowest: #24314a;
+  --surface-container-low: #3a4b6b;
+  --surface-container: #3a4b6b;
+  --surface-container-high: #5e7194;
+  --surface-container-highest: #5e7194;
+
+  --on-surface: #ffffff;
+  --on-surface-variant: #f0f2f5;
+
+  --outline: rgba(196, 201, 212, 0.35);
+  --outline-variant: rgba(196, 201, 212, 0.22);
+
+  --surface-tint: #5e7194;
+  --primary: #ffffff;
+  --primary-container: #24314a;
+  --on-primary: #ffffff;
+  --on-primary-fixed-variant: #3a4b6b;
+
+  /* Effects */
+  --selection-bg: #5e7194;
+  --selection-text: #ffffff;
+  --ring: rgba(94, 113, 148, 0.55);
+
+  /* Page background accents */
+  --bg-radial-1: rgba(94, 113, 148, 0.2);
+  --bg-radial-2: rgba(36, 49, 74, 0.22);
+
+  /* Noise */
+  --noise-opacity: 0.045;
+}
+
+.light {
   color-scheme: light;
 
   /* Base */
   --background: #e1e4ea;
-  --background-surface: #f4f7fb;
+  --background-light: #f0f2f5;
+  --background-surface: #ffffff;
   --background-elevated: #ffffff;
 
   /* Text */
   --text-primary: #0f1522;
-  --text-secondary: #42506a;
-  --text-tertiary: #6f7d96;
+  --text-secondary: #4a5568;
+  --text-tertiary: #828d9f;
   --text-inverse: #ffffff;
 
-  /* Borders */
+  /* Border */
   --border: #c4c9d4;
 
   /* Brand */
@@ -26,35 +99,41 @@
   /* Semantic */
   --success: #2d8a56;
   --success-light: #e6f4ea;
+
   --danger: #d32f2f;
   --danger-light: #fdecea;
+
   --warning: #ed8936;
   --warning-light: #fef4e8;
+
   --info: #3182ce;
   --info-light: #ebf8ff;
 
   /* Auth legacy tokens */
-  --surface: #f7f9ff;
+  --surface: #f0f2f5;
   --surface-base: #e1e4ea;
   --surface-container-lowest: #ffffff;
-  --surface-container-low: #f1f4fa;
-  --surface-container: #ebeef4;
-  --surface-container-high: #e5e8ee;
-  --surface-container-highest: #e0e3e9;
-  --on-surface: #181c20;
-  --on-surface-variant: #45474d;
-  --outline: #75777e;
-  --outline-variant: #c5c6ce;
-  --surface-tint: #525e7a;
-  --primary: #0e1c34;
+  --surface-container-low: #f0f2f5;
+  --surface-container: #e1e4ea;
+  --surface-container-high: #c4c9d4;
+  --surface-container-highest: #c4c9d4;
+
+  --on-surface: #0f1522;
+  --on-surface-variant: #4a5568;
+
+  --outline: #c4c9d4;
+  --outline-variant: #c4c9d4;
+
+  --surface-tint: #5e7194;
+  --primary: #24314a;
   --primary-container: #24314a;
   --on-primary: #ffffff;
-  --on-primary-fixed-variant: #3a4761;
+  --on-primary-fixed-variant: #3a4b6b;
 
   /* Effects */
   --selection-bg: #24314a;
   --selection-text: #ffffff;
-  --ring: rgba(49, 130, 206, 0.55);
+  --ring: rgba(94, 113, 148, 0.55);
 
   /* Page background accents */
   --bg-radial-1: rgba(94, 113, 148, 0.24);
@@ -64,63 +143,9 @@
   --noise-opacity: 0.035;
 }
 
-.dark {
-  color-scheme: dark;
-
-  --background: #0a0f18;
-  --background-surface: #0f1724;
-  --background-elevated: #131d2c;
-
-  --text-primary: #f3f7ff;
-  --text-secondary: #a7b4c8;
-  --text-tertiary: #73829a;
-  --text-inverse: #ffffff;
-
-  --border: rgba(255, 255, 255, 0.1);
-
-  --brand: #67b7ff;
-  --brand-hover: #8cc9ff;
-  --brand-light: #9ed6ff;
-  --brand-dark: #151e30;
-
-  --success: #2d8a56;
-  --success-light: #123524;
-  --danger: #ff8a80;
-  --danger-light: #3a1414;
-  --warning: #f6ad55;
-  --warning-light: #3a2714;
-  --info: #63b3ed;
-  --info-light: #102a43;
-
-  --surface: #0f1724;
-  --surface-base: #0a0f18;
-  --surface-container-lowest: #131d2c;
-  --surface-container-low: #182235;
-  --surface-container: #1d2940;
-  --surface-container-high: #24314a;
-  --surface-container-highest: #2f3d59;
-  --on-surface: #f3f7ff;
-  --on-surface-variant: #a7b4c8;
-  --outline: rgba(255, 255, 255, 0.2);
-  --outline-variant: rgba(255, 255, 255, 0.12);
-  --surface-tint: #67b7ff;
-  --primary: #67b7ff;
-  --primary-container: #24314a;
-  --on-primary: #ffffff;
-  --on-primary-fixed-variant: #3a4b6b;
-
-  --selection-bg: #67b7ff;
-  --selection-text: #08111d;
-  --ring: rgba(103, 183, 255, 0.45);
-
-  --bg-radial-1: rgba(95, 156, 255, 0.16);
-  --bg-radial-2: rgba(146, 86, 255, 0.1);
-
-  --noise-opacity: 0.045;
-}
-
 @theme inline {
   --color-background: var(--background);
+  --color-background-light: var(--background-light);
   --color-background-surface: var(--background-surface);
   --color-background-elevated: var(--background-elevated);
 
@@ -138,10 +163,13 @@
 
   --color-success: var(--success);
   --color-success-light: var(--success-light);
+
   --color-danger: var(--danger);
   --color-danger-light: var(--danger-light);
+
   --color-warning: var(--warning);
   --color-warning-light: var(--warning-light);
+
   --color-info: var(--info);
   --color-info-light: var(--info-light);
 
@@ -152,10 +180,13 @@
   --color-surface-container: var(--surface-container);
   --color-surface-container-high: var(--surface-container-high);
   --color-surface-container-highest: var(--surface-container-highest);
+
   --color-on-surface: var(--on-surface);
   --color-on-surface-variant: var(--on-surface-variant);
+
   --color-outline: var(--outline);
   --color-outline-variant: var(--outline-variant);
+
   --color-surface-tint: var(--surface-tint);
   --color-primary: var(--primary);
   --color-primary-container: var(--primary-container);
@@ -225,17 +256,43 @@ body {
 
 /* Dashboard */
 .dashboard-grid-bg {
-  background-color: #e1e4ea;
+  background-color: var(--background);
   background-image:
-    linear-gradient(rgba(36, 49, 74, 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(36, 49, 74, 0.055) 1px, transparent 1px);
+    linear-gradient(rgba(196, 201, 212, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(196, 201, 212, 0.08) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
-/* Auth pages imported from cursify-project 2 */
+.light .dashboard-grid-bg {
+  background-image:
+    linear-gradient(rgba(36, 49, 74, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(36, 49, 74, 0.055) 1px, transparent 1px);
+}
+
+/* Auth pages */
 .auth-page-background {
-  background-color: #e1e4ea;
-  color: #181c20;
+  background-color: var(--surface-base);
+  color: var(--on-surface);
+  background-image:
+    linear-gradient(
+      45deg,
+      rgba(94, 113, 148, 0.08) 25%,
+      transparent 25%,
+      transparent 75%,
+      rgba(94, 113, 148, 0.08) 75%
+    ),
+    linear-gradient(
+      45deg,
+      rgba(94, 113, 148, 0.08) 25%,
+      transparent 25%,
+      transparent 75%,
+      rgba(94, 113, 148, 0.08) 75%
+    );
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+}
+
+.light .auth-page-background {
   background-image:
     linear-gradient(
       45deg,
@@ -251,8 +308,6 @@ body {
       transparent 75%,
       rgba(58, 75, 107, 0.035) 75%
     );
-  background-size: 20px 20px;
-  background-position: 0 0, 10px 10px;
 }
 
 .auth-input {
@@ -303,6 +358,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  border: 0;
   border-radius: 0;
   background: var(--primary-container);
   padding: 0.75rem 1rem;

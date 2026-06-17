@@ -1,3 +1,4 @@
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { Bell, Cable, Menu, Search, Workflow } from "lucide-react";
 
 export function DashboardTopbar({
@@ -39,6 +40,8 @@ export function DashboardTopbar({
             placeholder="Search..."
           />
         </label>
+
+        <ThemeToggle/>
 
         <button className="cursor-pointer text-text-primary transition hover:text-brand">
           <Workflow className="h-5 w-5" />
