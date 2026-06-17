@@ -7,6 +7,7 @@ import { RotateCcw, ShieldCheck, Siren } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { TinyCard } from "@/components/ui/CardVariants";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { Surface } from "@/components/ui/Surface";
 
 const securityItems = [
     "HTTP-only session cookies",
@@ -28,7 +29,6 @@ export function SecuritySection() {
     return (
         <Container
             as="section"
-            ref={ref}
             id="security"
             variant="section"
             width="wide"
@@ -37,13 +37,15 @@ export function SecuritySection() {
             <div className="pointer-events-none absolute inset-0 bg-[var(--security-section-bg)]" />
 
             <div className="relative z-10">
-                <SectionHeading
-                    eyebrow="Security"
-                    title="Designed for account-bound desktop software from day one."
-                    description="Cursify avoids unrealistic security claims. The platform uses layered controls, signed short-lived responses, server-side entitlement checks, and clear revocation paths."
-                />
+                <Surface size="lg" className="mb-16">
+                    <SectionHeading
+                        eyebrow="Security"
+                        title="Designed for account-bound desktop software from day one."
+                        description="Cursify avoids unrealistic security claims. The platform uses layered controls, signed short-lived responses, server-side entitlement checks, and clear revocation paths."
+                    />
+                </Surface>
 
-                <div className="relative mt-10 w-full overflow-hidden rounded-[28px] border border-[var(--security-shell-border)] bg-[var(--security-shell-bg)] shadow-[var(--security-shell-shadow)] backdrop-blur-xl">
+                <div className="relative w-full overflow-hidden rounded-[28px] border border-[var(--security-shell-border)] bg-[var(--security-shell-bg)] shadow-[var(--security-shell-shadow)] backdrop-blur-xl">
                     <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_16%,var(--security-shell-glow),transparent_32%)]" />
                     <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-linear-to-r from-transparent via-[var(--security-shell-highlight)] to-transparent" />
 

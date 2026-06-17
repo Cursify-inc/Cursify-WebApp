@@ -7,6 +7,7 @@ import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
+import { Surface } from "@/components/ui/Surface";
 
 const trustItems = [
     "Signed downloads",
@@ -47,15 +48,27 @@ export function HeroSection() {
                             </Badge>
                         </div>
 
-                        <h1 className="mt-7 text-5xl font-bold tracking-tight text-[var(--text-primary)] sm:text-7xl lg:text-8xl">
-                            Your synced AI IDE, secured from web to desktop.
-                        </h1>
+                        <Surface
+                            variant="card"
+                            size="lg"
+                            className="mx-auto mt-7 max-w-4xl text-center"
+                        >
+                            <h1 className="text-2xl font-stretch-condensed tracking-tight text-[var(--text-primary)] sm:text-7xl lg:text-5xl ">
+                                Your synced AI IDE, secured from web to desktop.
+                            </h1>
+                        </Surface>
 
-                        <p className="mx-auto mt-7 max-w-2xl text-lg leading-8 text-[var(--text-secondary)] sm:text-xl">
-                            Cursify combines a professional web account platform, secure
-                            subscription controls, account-bound desktop downloads, device
-                            pairing, AI agents, tools, extensions, and developer integrations.
-                        </p>
+                        <Surface
+                            variant="card"
+                            size="md"
+                            className="mx-auto mt-5 max-w-2xl text-center"
+                        >
+                            <p className="text-lg leading-8 text-[var(--text-secondary)] sm:text-xl">
+                                Cursify combines a professional web account platform, secure
+                                subscription controls, account-bound desktop downloads, device
+                                pairing, AI agents, tools, extensions, and developer integrations.
+                            </p>
+                        </Surface>
 
                         <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
                             <Button href="/signup" size="lg">
@@ -68,14 +81,23 @@ export function HeroSection() {
                             </Button>
                         </div>
 
-                        <div className="mt-8 flex flex-wrap justify-center gap-3 text-sm text-[var(--text-secondary)]">
-                            {trustItems.map((item) => (
-                                <span key={item} className="inline-flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-[var(--success)]" />
-                                    {item}
-                </span>
-                            ))}
-                        </div>
+                        <Surface
+                            variant="card"
+                            size="md"
+                            className="mx-auto mt-8 max-w-3xl text-center"
+                        >
+                            <div className="flex flex-wrap justify-center gap-3 text-sm text-[var(--text-secondary)]">
+                                {trustItems.map((item) => (
+                                    <span
+                                        key={item}
+                                        className="inline-flex items-center gap-2"
+                                    >
+                                        <ShieldCheck className="h-4 w-4 text-[var(--success)]" />
+                                        {item}
+                                    </span>
+                                ))}
+                            </div>
+                        </Surface>
                     </motion.div>
                 </div>
             </Container>

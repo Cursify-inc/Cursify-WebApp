@@ -69,12 +69,9 @@ export function AutoEdgeLightContinuous({
 
                                             strokeWidth,
                                             glowWidth,
-                                            glowBlur,
 
                                             coreOpacity,
                                             glowOpacity,
-                                            highlightOpacity,
-
                                             colorA,
                                             colorB,
                                             highlightColor,
@@ -104,7 +101,6 @@ export function AutoEdgeLightContinuous({
             inset={inset}
             strokeWidth={strokeWidth}
             glowWidth={glowWidth}
-            glowBlur={glowBlur}
             coreOpacity={coreOpacity}
             glowOpacity={glowOpacity}
             colorA={colorA}

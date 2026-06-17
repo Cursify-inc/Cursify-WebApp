@@ -173,6 +173,10 @@
         --bg-0: var(--background);
         --bg-1: var(--background-surface);
         --bg-2: var(--background-elevated);
+        /* Text Shadows */
+        --text-shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.45);
+        --text-shadow-strong: 0 3px 14px rgba(0, 0, 0, 0.6);
+        --text-shadow-glow: 0 0 18px rgba(0, 179, 254, 0.18);
 
         /* Text - Deep navy/slate for high contrast but softer than pure black */
         --text-primary: #081226;
@@ -1141,4 +1145,51 @@
 
 @media (prefers-reduced-motion: reduce) {
     .theme-fx-wrap, .theme-fx-fill, .theme-fx-ring { animation: none !important; }
+}
+/* Add to your existing globals.css */
+
+:root {
+    /* Geometry Hero Theme Colors - Light Mode */
+    --geo-bg: #f4eaff;
+    --geo-fog: #fff1fb;
+
+    --geo-stage0-accent1: #ff2bd6; /* neon magenta */
+    --geo-stage0-accent2: #00e5ff; /* electric cyan */
+
+    --geo-stage1-accent1: #8b5cf6; /* vapor purple */
+    --geo-stage1-accent2: #00ffc6; /* synth mint */
+
+    --geo-stage2-accent1: #ff8a00; /* neon amber */
+    --geo-stage2-accent2: #ff2bd6; /* neon magenta */
+
+    --geo-stage3-accent1: #b026ff; /* cyber violet */
+    --geo-stage3-accent2: #39ff14; /* acid green */
+
+    /* Gradient stops for the background overlay */
+    --geo-grad-from: #f4eaff;
+    --geo-grad-via: #e9f7ff;
+    --geo-grad-to: #fff0fb;
+}
+
+.dark {
+    /* Geometry Hero Theme Colors - Dark Mode */
+    --geo-bg: #07000f;
+    --geo-fog: #090013;
+
+    --geo-stage0-accent1: #ff2bd6;
+    --geo-stage0-accent2: #00e5ff;
+
+    --geo-stage1-accent1: #8b5cf6;
+    --geo-stage1-accent2: #00ffc6;
+
+    --geo-stage2-accent1: #ff8a00;
+    --geo-stage2-accent2: #ff2bd6;
+
+    --geo-stage3-accent1: #b026ff;
+    --geo-stage3-accent2: #39ff14;
+
+    /* Gradient stops for the background overlay */
+    --geo-grad-from: #07000f;
+    --geo-grad-via: #150024;
+    --geo-grad-to: #020617;
 }

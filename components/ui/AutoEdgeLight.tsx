@@ -154,9 +154,9 @@ export type AutoEdgeLightProProps = {
     className?: string;
     inset?: number;
 
+    engagementReleaseDelayMs?: number;
     strokeWidth?: number;
     glowWidth?: number;
-    glowBlur?: number;
 
     trailCount?: number;
 
@@ -890,15 +890,15 @@ export function AutoEdgeLight({
                                   reducedMotion = false,
                                   className = "",
                                   inset,
+                                  engagementReleaseDelayMs = 420,
                                   strokeWidth,
                                   glowWidth,
-                                  glowBlur,
                                   idleSpeed = 0.06,
                                   hoverSpeedBoost = 0.34,
                                   attractStrength = 8,
                                   speedSpring = { stiffness: 120, damping: 24, mass: 0.9 },
                                   proximitySpring = { stiffness: 150, damping: 20, mass: 0.65 },
-                                  activationSpring = { stiffness: 140, damping: 26, mass: 0.9 },
+                                  activationSpring = { stiffness: 90, damping: 22, mass: 1 },
                                   proximityRadius = 150,
                                   pulseDurationMs = 700,
                                   pulseIntensity = 1,
@@ -925,7 +925,7 @@ export function AutoEdgeLight({
     const [isUserEngaged, setIsUserEngaged] = useState(false);
 
     const safeInset = inset ?? -2;
-    const effectiveActive = active && isUserEngaged;
+    const effectiveActive = active && isVisible && isUserEngaged;
 
     const [geometry, setGeometry] = useState<Geometry>({
         width: 0,
@@ -979,11 +979,12 @@ export function AutoEdgeLight({
     }, [hoverRaw, interactionBoost, proximityRaw, pulse, targetSpeed]);
 
     const clearEngagementRelease = useCallback(() => {
-        if (engagementReleaseRef.current !== null) {
+        if (engagementReleaseRef.current != null) {
             window.clearTimeout(engagementReleaseRef.current);
             engagementReleaseRef.current = null;
         }
     }, []);
+
 
     const activateUserEngagement = useCallback(
         (options?: { pulse?: boolean }) => {
@@ -1010,12 +1011,26 @@ export function AutoEdgeLight({
     const releaseUserEngagement = useCallback(() => {
         clearEngagementRelease();
 
+        activeProgressRaw.set(0);
+        proximityRaw.set(0);
+        hoverRaw.set(0);
+        targetSpeed.set(0);
+
         engagementReleaseRef.current = window.setTimeout(() => {
             setIsUserEngaged(false);
             resetTransientMotion();
             engagementReleaseRef.current = null;
-        }, 160);
-    }, [clearEngagementRelease, resetTransientMotion]);
+        }, engagementReleaseDelayMs);
+    }, [
+        activeProgressRaw,
+        clearEngagementRelease,
+        engagementReleaseDelayMs,
+        hoverRaw,
+        proximityRaw,
+        resetTransientMotion,
+        targetSpeed,
+    ]);
+
 
     const qualityConfig = useMemo(() => {
         if (quality === "ultra") {
@@ -1070,7 +1085,6 @@ export function AutoEdgeLight({
 
     const resolvedStrokeWidth = strokeWidth ?? themeVars.strokeWidth;
     const resolvedGlowWidth = glowWidth ?? themeVars.glowWidth;
-    const resolvedGlowBlur = glowBlur ?? themeVars.glowBlur;
 
     const {
         colorA: resolvedColorA,
@@ -1098,22 +1112,21 @@ export function AutoEdgeLight({
         activeProgressRaw.set(effectiveActive ? 1 : 0);
     }, [activeProgressRaw, effectiveActive]);
 
-    // useEffect(() => {
-    //     if (active) return;
-    //
-    //     clearEngagementRelease();
-    //     setIsUserEngaged(false);
-    //     activeProgressRaw.set(0);
-    //     resetTransientMotion();
-    // }, [active, activeProgressRaw, clearEngagementRelease, resetTransientMotion]);
-    //
-    // useEffect(() => {
-    //     if (isVisible) return;
-    //
-    //     setIsUserEngaged(false);
-    //     activeProgressRaw.set(0);
-    //     resetTransientMotion();
-    // }, [activeProgressRaw, isVisible, resetTransientMotion]);
+    useEffect(() => {
+        if (active) return;
+
+        clearEngagementRelease();
+        activeProgressRaw.set(0);
+        resetTransientMotion();
+    }, [active, activeProgressRaw, clearEngagementRelease, resetTransientMotion]);
+
+    useEffect(() => {
+        if (isVisible) return;
+
+        clearEngagementRelease();
+        activeProgressRaw.set(0);
+        resetTransientMotion();
+    }, [activeProgressRaw, clearEngagementRelease, isVisible, resetTransientMotion]);
 
     useEffect(() => {
         return () => {
@@ -1361,19 +1374,6 @@ export function AutoEdgeLight({
                 0,
                 1
             );
-        }
-    );
-
-    const glowFilterStrength = useTransform(
-        [activeProgress, proximity, pulse, interactionBoost],
-        (values: number[]) => {
-            const [ap, p, pu, ib] = values;
-            const interaction = Math.max(p, pu, ib);
-
-            if (ap <= 0.01) return 0;
-            if (qualityConfig.blurDuringIdle) return 1;
-
-            return interaction > 0.03 ? clamp(interaction, 0.35, 1) : 0;
         }
     );
 

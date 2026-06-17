@@ -72,7 +72,6 @@ export function ThemeToggle({ className }: { className?: string }) {
             onKeyDown={(evt) => {
                 if (evt.key === "Enter" || evt.key === " ") {
                     evt.preventDefault()
-                    toggleTheme(evt)
                 }
             }}
             aria-label="Toggle theme"

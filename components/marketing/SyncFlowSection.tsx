@@ -14,6 +14,7 @@ import {
 import { Container } from "@/components/ui/Container";
 import { LargeCard } from "@/components/ui/CardVariants";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { Surface } from "@/components/ui/Surface";
 
 const steps = [
     {
@@ -62,7 +63,6 @@ export function SyncFlowSection() {
     return (
         <Container
             as="section"
-            ref={ref}
             id="sync"
             variant="section"
             width="wide"
@@ -91,11 +91,13 @@ export function SyncFlowSection() {
             </div>
 
             <div className="relative z-10">
-                <SectionHeading
-                    eyebrow="Desktop pairing"
-                    title="A secure AI-native install flow from browser to desktop."
-                    description="Built to feel seamless for users and trustworthy to stakeholders."
-                />
+                <Surface size="lg">
+                    <SectionHeading
+                        eyebrow="Desktop pairing"
+                        title="A secure AI-native install flow from browser to desktop."
+                        description="Built to feel seamless for users and trustworthy to stakeholders."
+                    />
+                </Surface>
 
                 <div className="relative mt-14 grid gap-8 lg:grid-cols-2 lg:gap-10">
                     {steps.map((step, index) => {

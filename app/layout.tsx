@@ -31,7 +31,7 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en" suppressHydrationWarning>
-        <body className="min-h-dvh overflow-x-hidden overflow-y-auto bg-[var(--bg-0)] text-[var(--text-primary)]">
+        <body className="min-h-dvh overflow-x-hidden overflow-y-auto bg-(--bg-0) text-text-primary">
         <ThemeProvider>
             <ThemeFxProvider>
                 {children}

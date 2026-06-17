@@ -158,8 +158,15 @@ export function Card({
     const computedGlowActive = pointerGlowActive || revealGlowActive;
     const glowActive = glowActiveOverride ?? computedGlowActive;
 
-    const shouldRenderEdgeLight =
-        glow && (edgeLightInView || glowActive || revealGlowActive);
+    const shouldRenderEdgeLight = glow && edgeLightInView;
+
+    const handlePointerDown = React.useCallback(
+        (e: React.PointerEvent<HTMLDivElement>) => {
+            rest.onPointerDown?.(e);
+            setActive(true);
+        },
+        [rest]
+    );
 
     const getRelativePointer = React.useCallback((e: React.PointerEvent<HTMLDivElement>) => {
         const rect = cardRef.current?.getBoundingClientRect();
@@ -275,6 +282,7 @@ export function Card({
             tabIndex={isFocusable ? 0 : undefined}
             onFocus={handleFocus}
             onBlur={handleBlur}
+            onPointerDown={handlePointerDown}
             onPointerEnter={handlePointerEnter}
             onPointerMove={handlePointerMove}
             onPointerLeave={handlePointerLeave}
@@ -316,17 +324,17 @@ export function Card({
                 <AutoEdgeLight
                     inset={0}
                     {...edgeLightProps}
-                    active={glowActive}
+                    active={glow}
                     reducedMotion={!!reducedMotion}
                     parentRef={cardRef}
                     className="pointer-events-none absolute inset-0 z-[20] overflow-visible rounded-[inherit]"
                 />
             ) : null}
 
-            <div className="card-shadow-host relative z-[10] overflow-visible rounded-[inherit]">
+            <div className="card-shadow-host relative z-[10] h-full overflow-visible rounded-[inherit]">
                 <div
                     className={cn(
-                        "card-surface relative h-full overflow-hidden rounded-[inherit] flex flex-col",
+                        "card-surface relative flex h-full flex-col overflow-hidden rounded-[inherit]",
                         contentClassName
                     )}
                 >
@@ -343,9 +351,10 @@ export function Card({
                         />
                     ) : null}
 
-                    <div className="relative z-[40]">{children}</div>
+                    <div className="relative z-[40] flex h-full flex-col">{children}</div>
                 </div>
             </div>
+
         </motion.div>
     );
 }

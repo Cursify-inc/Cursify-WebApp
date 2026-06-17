@@ -74,17 +74,17 @@ const CARD_VARIANT_DEFS = {
     large: {
         size: "large",
         classes: CARD_VARIANT_CLASSES.large,
-        defaultGlow: false,
+        defaultGlow: true,
     },
     tiny: {
         size: "tiny",
         classes: CARD_VARIANT_CLASSES.tiny,
-        defaultGlow: false,
+        defaultGlow: true,
     },
     compact: {
         size: "tiny",
         classes: CARD_VARIANT_CLASSES.compact,
-        defaultGlow: false,
+        defaultGlow: true,
     },
 
 

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { LargeCard } from "@/components/ui/CardVariants";
 import { Container } from "@/components/ui/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { Surface } from "@/components/ui/Surface";
 
 const plans = [
     {
@@ -63,7 +64,6 @@ export function PricingPreview() {
     return (
         <Container
             as="section"
-            ref={ref}
             id="pricing"
             variant="section"
             width="wide"
@@ -72,13 +72,15 @@ export function PricingPreview() {
             <div className="pointer-events-none absolute inset-0 bg-[var(--pricing-section-bg)]" />
 
             <div className="relative z-10">
-                <SectionHeading
-                    eyebrow="Pricing"
-                    title="Simple plans for individuals and teams."
-                    description="Start free, upgrade when you need full desktop sync, AI agents, device controls, and professional workflow integrations."
-                />
+                <Surface size="lg" className="mb-6">
+                    <SectionHeading
+                        eyebrow="Pricing"
+                        title="Simple plans for individuals and teams."
+                        description="Start free, upgrade when you need full desktop sync, AI agents, device controls, and professional workflow integrations."
+                    />
+                </Surface>
 
-                <div className="mt-14 grid auto-rows-fr items-stretch gap-5 lg:grid-cols-3">
+                <div className="grid auto-rows-fr items-stretch gap-5 lg:grid-cols-3">
                     {plans.map((plan, index) => {
                         const isHighlighted = plan.highlighted === true;
 

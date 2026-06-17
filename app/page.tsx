@@ -16,7 +16,7 @@ import TrustedStrip from "@/components/marketing/TrustedStrip";
 export default function HomePage() {
     return (
         <>
-            <GeometryHero />
+            <GeometryHero/>
 
             <main className="relative z-10 min-h-dvh overflow-hidden text-text-primary">
                 <SiteHeader />
