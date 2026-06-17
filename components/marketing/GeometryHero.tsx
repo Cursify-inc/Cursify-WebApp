@@ -31,9 +31,10 @@ import {
     Points as ThreePoints,
     PointsMaterial,
     Vector3,
+    BoxGeometry,
 } from "three";
 
-type SectionStage = 0 | 1 | 2 | 3;
+type SectionStage = number;
 type NumberRef = RefObject<number>;
 type ThemeRef = RefObject<RuntimeTheme>;
 
@@ -78,49 +79,106 @@ type RuntimeTheme = {
     pulse: number;
 };
 
-const THEMES: readonly Theme[] = [
-    {
-        accent: new Color("#00e5ff"),
-        accent2: new Color("#8b5cf6"),
-        bg: new Color("#020617"),
-        coreScale: 1,
-        frameScale: 1,
-        particleOpacity: 0.5,
-        dataSpeed: 0.2,
-        pulse: 0.8,
-    },
-    {
-        accent: new Color("#00ffc6"),
-        accent2: new Color("#b026ff"),
-        bg: new Color("#030014"),
-        coreScale: 1.04,
-        frameScale: 1.04,
-        particleOpacity: 0.56,
-        dataSpeed: 0.28,
-        pulse: 0.95,
-    },
-    {
-        accent: new Color("#ff2bd6"),
-        accent2: new Color("#00e5ff"),
-        bg: new Color("#050010"),
-        coreScale: 1.08,
-        frameScale: 1.08,
-        particleOpacity: 0.62,
-        dataSpeed: 0.34,
-        pulse: 1.08,
-    },
-    {
-        accent: new Color("#39ff14"),
-        accent2: new Color("#00e5ff"),
-        bg: new Color("#010409"),
-        coreScale: 1.12,
-        frameScale: 1.12,
-        particleOpacity: 0.68,
-        dataSpeed: 0.4,
-        pulse: 1.2,
-    },
-];
+type ThemeSeed = {
+    accent: string;
+    accent2: string;
+    bg: string;
+};
 
+type GeometryCssTheme = Record<`--${string}`, string>;
+
+const THEME_SEEDS: readonly ThemeSeed[] = [
+    { accent: "#00e5ff", accent2: "#8b5cf6", bg: "#020617" },
+    { accent: "#00ffc6", accent2: "#b026ff", bg: "#030014" },
+    { accent: "#ff2bd6", accent2: "#00e5ff", bg: "#050010" },
+    { accent: "#39ff14", accent2: "#00e5ff", bg: "#010409" },
+] as const;
+
+const THEME_CACHE = new Map<number, Theme>();
+const CSS_THEME_CACHE = new Map<number, GeometryCssTheme>();
+
+function normalizeStage(stage: number) {
+    return Math.max(0, Math.floor(Number.isFinite(stage) ? stage : 0));
+}
+
+function wrapIndex(index: number, length: number) {
+    return ((index % length) + length) % length;
+}
+
+function stageWave(stage: number, speed = 1) {
+    return (Math.sin(stage * speed) + 1) / 2;
+}
+
+function derivedColor(hex: string, stage: number, offset = 0) {
+    const seedCycle = Math.floor(stage / THEME_SEEDS.length);
+    const hueShift = ((seedCycle * 0.085 + stage * 0.018 + offset) % 1 + 1) % 1;
+    const saturationShift = Math.sin(stage * 0.7 + offset * 8) * 0.035;
+    const lightnessShift = Math.sin(stage * 0.43 + offset * 5) * 0.025;
+
+    return new Color(hex).offsetHSL(hueShift, saturationShift, lightnessShift);
+}
+
+function getTheme(stage: number): Theme {
+    const normalized = normalizeStage(stage);
+    const cached = THEME_CACHE.get(normalized);
+
+    if (cached) return cached;
+
+    const seed = THEME_SEEDS[wrapIndex(normalized, THEME_SEEDS.length)];
+    const cycle = Math.floor(normalized / THEME_SEEDS.length);
+    const intensity = Math.min(cycle, 12);
+
+    const theme: Theme = {
+        accent: derivedColor(seed.accent, normalized, 0),
+        accent2: derivedColor(seed.accent2, normalized, 0.19),
+        bg: derivedColor(seed.bg, normalized, 0.07),
+        coreScale: 1 + Math.min(normalized * 0.035, 0.42),
+        frameScale: 1 + Math.min(normalized * 0.035, 0.42),
+        particleOpacity: Math.min(0.5 + normalized * 0.045, 0.9),
+        dataSpeed: Math.min(0.2 + normalized * 0.055, 0.78),
+        pulse: Math.min(0.8 + normalized * 0.11, 1.75),
+    };
+
+    theme.bg.multiplyScalar(Math.max(0.72, 1 - intensity * 0.025));
+
+    THEME_CACHE.set(normalized, theme);
+    return theme;
+}
+
+function rgbaString(color: Color, alpha: number) {
+    return `rgba(${Math.round(color.r * 255)},${Math.round(color.g * 255)},${Math.round(
+        color.b * 255,
+    )},${alpha})`;
+}
+
+function getCssTheme(stage: number): GeometryCssTheme {
+    const normalized = normalizeStage(stage);
+    const cached = CSS_THEME_CACHE.get(normalized);
+
+    if (cached) return cached;
+
+    const theme = getTheme(normalized);
+    const nextTheme = getTheme(normalized + 1);
+
+    const bgFrom = theme.bg.clone();
+    const bgVia = theme.bg.clone().lerp(theme.accent, 0.16 + stageWave(normalized, 0.4) * 0.08);
+    const bgTo = theme.bg.clone().lerp(nextTheme.bg, 0.32);
+
+    const cssTheme: GeometryCssTheme = {
+        "--bg-from": hexString(bgFrom),
+        "--bg-via": hexString(bgVia),
+        "--bg-to": hexString(bgTo),
+        "--glow-a": rgbaString(theme.accent, 0.16 + stageWave(normalized, 0.6) * 0.06),
+        "--glow-b": rgbaString(theme.accent2, 0.13 + stageWave(normalized, 0.5) * 0.05),
+        "--glow-c": rgbaString(nextTheme.accent, 0.08 + stageWave(normalized, 0.8) * 0.04),
+        "--glow-d": rgbaString(nextTheme.accent2, 0.06 + stageWave(normalized, 0.7) * 0.035),
+        "--grid-a": rgbaString(theme.accent, 0.11 + stageWave(normalized, 0.45) * 0.05),
+        "--grid-b": rgbaString(theme.accent2, 0.1 + stageWave(normalized, 0.5) * 0.045),
+    };
+
+    CSS_THEME_CACHE.set(normalized, cssTheme);
+    return cssTheme;
+}
 
 type Route = {
     points: Vector3[];
@@ -177,68 +235,101 @@ function sampleRoute(route: Route, t: number) {
 
 function createChipPinFanRoutes(): Route[] {
     const z = 0.15;
-
-    const leftPins = [
-        new Vector3(-0.72, 0.36, z),
-        new Vector3(-0.72, 0.27, z),
-        new Vector3(-0.72, 0.18, z),
-        new Vector3(-0.72, 0.09, z),
-        new Vector3(-0.72, 0.0, z),
-        new Vector3(-0.72, -0.09, z),
-        new Vector3(-0.72, -0.18, z),
-        new Vector3(-0.72, -0.27, z),
-        new Vector3(-0.72, -0.36, z),
-    ];
-
-    const rightPins = [
-        new Vector3(0.72, 0.36, z),
-        new Vector3(0.72, 0.27, z),
-        new Vector3(0.72, 0.18, z),
-        new Vector3(0.72, 0.09, z),
-        new Vector3(0.72, 0.0, z),
-        new Vector3(0.72, -0.09, z),
-        new Vector3(0.72, -0.18, z),
-        new Vector3(0.72, -0.27, z),
-        new Vector3(0.72, -0.36, z),
-    ];
-
     const routes: Route[] = [];
 
-    leftPins.forEach((pin, index) => {
-        const y = pin.y;
+    const sidePinCount = 9;
+    const topBottomPinCount = 7;
 
-        routes.push({
-            kind: "pin",
-            color: index % 2 === 0 ? "primary" : "secondary",
-            speed: 0.22 + index * 0.006,
-            offset: index * 0.11,
-            points: [
-                new Vector3(-2.1, y * 1.8, z),
-                new Vector3(-1.55, y * 1.8, z),
-                new Vector3(-1.55, y, z),
-                new Vector3(-1.02, y, z),
-                pin,
-            ],
-        });
+    const makeRoute = (
+        pin: Vector3,
+        points: Vector3[],
+        index: number,
+        colorOffset = 0,
+    ): Route => ({
+        kind: "pin",
+        color: (index + colorOffset) % 2 === 0 ? "primary" : "secondary",
+        speed: 0.18 + index * 0.006,
+        offset: index * 0.087 + colorOffset * 0.13,
+        points: [...points, pin],
     });
 
-    rightPins.forEach((pin, index) => {
-        const y = pin.y;
+    for (let i = 0; i < sidePinCount; i++) {
+        const y = 0.36 - i * 0.09;
+        const wobble = (i % 3 - 1) * 0.05;
 
-        routes.push({
-            kind: "pin",
-            color: index % 2 === 0 ? "secondary" : "primary",
-            speed: 0.2 + index * 0.007,
-            offset: 0.35 + index * 0.1,
-            points: [
-                new Vector3(2.1, y * 1.8, z),
-                new Vector3(1.55, y * 1.8, z),
-                new Vector3(1.55, y, z),
-                new Vector3(1.02, y, z),
-                pin,
-            ],
-        });
-    });
+        routes.push(
+            makeRoute(
+                new Vector3(-0.72, y, z),
+                [
+                    new Vector3(-4.45, y * 1.9, z),
+                    new Vector3(-3.0, y * 1.9, z),
+                    new Vector3(-3.0, y * 1.2 + wobble, z),
+                    new Vector3(-1.62, y * 1.2 + wobble, z),
+                    new Vector3(-1.62, y + wobble * 0.5, z),
+                    new Vector3(-1.02, y + wobble * 0.5, z),
+                    new Vector3(-0.72, y + wobble * 0.5, z),
+                ],
+                i,
+            ),
+        );
+
+        routes.push(
+            makeRoute(
+                new Vector3(0.72, y, z),
+                [
+                    new Vector3(4.45, y * 1.9, z),
+                    new Vector3(3.0, y * 1.9, z),
+                    new Vector3(3.0, y * 1.2 - wobble, z),
+                    new Vector3(1.62, y * 1.2 - wobble, z),
+                    new Vector3(1.62, y - wobble * 0.5, z),
+                    new Vector3(1.02, y - wobble * 0.5, z),
+                    new Vector3(0.72, y - wobble * 0.5, z),
+
+                ],
+                i,
+                1,
+            ),
+        );
+    }
+
+    for (let i = 0; i < topBottomPinCount; i++) {
+        const x = -0.48 + i * 0.16;
+        const wobble = (i % 2 === 0 ? 1 : -1) * 0.06;
+
+        routes.push(
+            makeRoute(
+                new Vector3(x, 0.46, z),
+                [
+                    new Vector3(x * 1.4 + wobble, 2.65, z),
+                    new Vector3(x * 1.4 + wobble, 1.95, z),
+                    new Vector3(x + wobble * 0.5, 1.95, z),
+                    new Vector3(x + wobble * 0.5, 1.22, z),
+                    new Vector3(x, 1.22, z),
+                    new Vector3(x, 0.84, z),
+
+                ],
+                i,
+                2,
+            ),
+        );
+
+        routes.push(
+            makeRoute(
+                new Vector3(x, -0.46, z),
+                [
+                    new Vector3(x * 1.4 - wobble, -2.65, z),
+                    new Vector3(x * 1.4 - wobble, -1.95, z),
+                    new Vector3(x - wobble * 0.5, -1.95, z),
+                    new Vector3(x - wobble * 0.5, -1.22, z),
+                    new Vector3(x, -1.22, z),
+                    new Vector3(x, -0.84, z),
+
+                ],
+                i,
+                3,
+            ),
+        );
+    }
 
     return routes;
 }
@@ -340,89 +431,43 @@ function createDataBusRoutes(): Route[] {
 
 function createChipTracePositions() {
     const data: number[] = [];
-    const z = 0.055;
+    const z = 0;
 
-    const line = (
-        a: [number, number, number],
-        b: [number, number, number],
-    ) => {
-        data.push(a[0], a[1], a[2], b[0], b[1], b[2]);
+    const line = (a: [number, number], b: [number, number]) => {
+        data.push(a[0], a[1], z, b[0], b[1], z);
     };
 
-    // central bus lines
-    line([-0.42, 0.18, z], [-0.12, 0.18, z]);
-    line([-0.12, 0.18, z], [0.02, 0.04, z]);
-    line([0.02, 0.04, z], [0.34, 0.04, z]);
+    // left-to-center traces
+    line([-0.34, 0.18], [-0.16, 0.18]);
+    line([-0.16, 0.18], [-0.06, 0.08]);
+    line([-0.34, 0.06], [-0.08, 0.06]);
+    line([-0.34, -0.06], [-0.08, -0.06]);
+    line([-0.34, -0.18], [-0.16, -0.18]);
+    line([-0.16, -0.18], [-0.06, -0.08]);
 
-    line([-0.38, -0.16, z], [-0.08, -0.16, z]);
-    line([-0.08, -0.16, z], [0.08, -0.02, z]);
-    line([0.08, -0.02, z], [0.38, -0.02, z]);
+    // center bus
+    line([-0.06, 0.08], [0.08, 0.08]);
+    line([-0.08, 0.00], [0.10, 0.00]);
+    line([-0.06, -0.08], [0.08, -0.08]);
 
-    line([-0.18, 0.34, z], [-0.18, 0.12, z]);
-    line([0.22, 0.3, z], [0.22, 0.08, z]);
-    line([-0.02, -0.32, z], [-0.02, -0.1, z]);
+    // right-side traces
+    line([0.08, 0.08], [0.18, 0.18]);
+    line([0.18, 0.18], [0.34, 0.18]);
+    line([0.10, 0.00], [0.34, 0.00]);
+    line([0.08, -0.08], [0.18, -0.18]);
+    line([0.18, -0.18], [0.34, -0.18]);
 
-    // top branch traces
-    line([-0.34, 0.3, z], [-0.06, 0.3, z]);
-    line([-0.06, 0.3, z], [0.04, 0.2, z]);
-
-    line([0.08, 0.24, z], [0.3, 0.24, z]);
-
-    // bottom branch traces
-    line([-0.3, -0.28, z], [-0.02, -0.28, z]);
-    line([-0.02, -0.28, z], [0.08, -0.18, z]);
-    line([0.12, -0.22, z], [0.34, -0.22, z]);
+    // vertical connectors
+    line([-0.22, 0.26], [-0.22, 0.18]);
+    line([0.00, 0.24], [0.00, 0.08]);
+    line([0.22, 0.26], [0.22, 0.18]);
+    line([-0.22, -0.26], [-0.22, -0.18]);
+    line([0.00, -0.24], [0.00, -0.08]);
+    line([0.22, -0.26], [0.22, -0.18]);
 
     return new Float32Array(data);
 }
 
-
-const CSS_THEMES = [
-    {
-        "--bg-from": "#020617",
-        "--bg-via": "#07112a",
-        "--bg-to": "#020617",
-        "--glow-a": "rgba(0,229,255,0.2)",
-        "--glow-b": "rgba(139,92,246,0.16)",
-        "--glow-c": "rgba(0,255,198,0.1)",
-        "--glow-d": "rgba(255,43,214,0.08)",
-        "--grid-a": "rgba(0,229,255,0.16)",
-        "--grid-b": "rgba(139,92,246,0.14)",
-    },
-    {
-        "--bg-from": "#030014",
-        "--bg-via": "#071a2d",
-        "--bg-to": "#020617",
-        "--glow-a": "rgba(0,255,198,0.2)",
-        "--glow-b": "rgba(176,38,255,0.16)",
-        "--glow-c": "rgba(0,229,255,0.1)",
-        "--glow-d": "rgba(57,255,20,0.06)",
-        "--grid-a": "rgba(0,255,198,0.14)",
-        "--grid-b": "rgba(176,38,255,0.13)",
-    },
-    {
-        "--bg-from": "#050010",
-        "--bg-via": "#1b0731",
-        "--bg-to": "#020617",
-        "--glow-a": "rgba(255,43,214,0.18)",
-        "--glow-b": "rgba(0,229,255,0.16)",
-        "--glow-c": "rgba(176,38,255,0.12)",
-        "--glow-d": "rgba(0,255,198,0.08)",
-        "--grid-a": "rgba(255,43,214,0.13)",
-        "--grid-b": "rgba(0,229,255,0.13)",
-    },
-    {
-        "--bg-from": "#010409",
-        "--bg-via": "#062016",
-        "--bg-to": "#020617",
-        "--glow-a": "rgba(57,255,20,0.16)",
-        "--glow-b": "rgba(0,229,255,0.14)",
-        "--glow-c": "rgba(176,38,255,0.1)",
-        "--glow-d": "rgba(0,255,198,0.08)",
-        "--grid-a": "rgba(57,255,20,0.12)",
-        "--grid-b": "rgba(0,229,255,0.13)",
-    },
-] as const;
 
 const INSTANCE_DUMMY = new Object3D();
 const MAX_FRAME_DELTA = 1 / 24;
@@ -460,14 +505,12 @@ function createRuntimeTheme(theme: Theme): RuntimeTheme {
 }
 
 function applyBlendedTheme(target: RuntimeTheme, progress: number) {
-    const maxIndex = THEMES.length - 1;
-    const clamped = Math.max(0, Math.min(progress, maxIndex));
+    const clamped = Math.max(0, Number.isFinite(progress) ? progress : 0);
     const base = Math.floor(clamped);
-    const next = Math.min(base + 1, maxIndex);
     const t = clamped - base;
 
-    const from = THEMES[base];
-    const to = THEMES[next];
+    const from = getTheme(base);
+    const to = getTheme(base + 1);
 
     target.accent.copy(from.accent).lerp(to.accent, t);
     target.accent2.copy(from.accent2).lerp(to.accent2, t);
@@ -484,10 +527,11 @@ function applyBlendedTheme(target: RuntimeTheme, progress: number) {
     target.pulse = lerp(from.pulse, to.pulse, t);
 }
 
+
 function toSectionStage(index: number): SectionStage {
-    const normalized = Math.max(0, Math.min(index, THEMES.length - 1));
-    return normalized as SectionStage;
+    return normalizeStage(index);
 }
+
 
 function mulberry32(seed: number) {
     return () => {
@@ -612,7 +656,7 @@ function useActiveGeometrySection() {
                 const index = sections.indexOf(visible.target as HTMLElement);
                 if (index === -1) return;
 
-                const next = toSectionStage(index % THEMES.length);
+                const next = toSectionStage(index);
                 setActiveSection((current) => (current === next ? current : next));
             },
             {
@@ -696,12 +740,12 @@ function useQualityTier(prefersReducedMotion: boolean | null): QualityConfig {
             dpr: 1,
             targetFps: 30,
             idleFps: 8,
-            particleCount: 120,
+            particleCount: 0,
             coreDetail: 1,
             glowDetail: 1,
             enableSecondHudLayer: true,
             enableNetwork: true,
-            enableParticles: true,
+            enableParticles: false,
             enablePointerParallax: true,
         } as QualityConfig;
 
@@ -744,12 +788,12 @@ function useQualityTier(prefersReducedMotion: boolean | null): QualityConfig {
                 dpr: 1,
                 targetFps: 24,
                 idleFps: 4,
-                particleCount: mobile ? 48 : 72,
+                particleCount:0,
                 coreDetail: 0,
                 glowDetail: 0,
                 enableSecondHudLayer: false,
                 enableNetwork: !mobile,
-                enableParticles: true,
+                enableParticles: false,
                 enablePointerParallax: !mobile,
             } as QualityConfig;
         }
@@ -758,15 +802,15 @@ function useQualityTier(prefersReducedMotion: boolean | null): QualityConfig {
         if (width >= 1280 && cores >= 8 && memory >= 8 && dpr <= 2) {
             return {
                 tier: "high",
-                dpr: [1, 1.2],
-                targetFps: 36,
+                dpr: [1, 1],
+                targetFps: 60,
                 idleFps: 10,
-                particleCount: 180,
+                particleCount: 0,
                 coreDetail: 1,
-                glowDetail: 1,
+                glowDetail: 0,
                 enableSecondHudLayer: true,
                 enableNetwork: true,
-                enableParticles: true,
+                enableParticles: false,
                 enablePointerParallax: true,
             } as QualityConfig;
         }
@@ -851,7 +895,10 @@ function DataStreamField({
         }
 
         group.rotation.y = Math.sin(state.clock.elapsedTime * 0.08) * 0.08;
-
+        const time = state.clock.elapsedTime;
+        group.rotation.z = Math.sin(time * 0.35) * 0.035;
+        group.rotation.x = Math.sin(time * 0.22) * 0.025;
+        group.scale.setScalar(theme.coreScale + Math.sin(time) * 0.025);
         const matA = pointsARef.current?.material as PointsMaterial | undefined;
         const matB = pointsBRef.current?.material as PointsMaterial | undefined;
 
@@ -933,6 +980,10 @@ function DataBusHud({
         () => createLineSegmentsFromRoutes(routes.filter((r) => r.color === "secondary")),
         [routes],
     );
+    const pinRouteCount = useMemo(
+        () => routes.filter((route) => route.kind === "pin").length,
+        [routes],
+    );
 
     useFrame((state) => {
         const time = state.clock.elapsedTime;
@@ -944,9 +995,11 @@ function DataBusHud({
         const group = groupRef.current;
 
         if (group) {
-            group.rotation.x = -0.08;
-            group.rotation.y = Math.sin(time * 0.12) * 0.025;
-            group.position.y = Math.sin(time * 0.35) * 0.018;
+            const time = state.clock.elapsedTime;
+            group.rotation.z = Math.sin(time * 0.35) * 0.035;
+            group.rotation.x = Math.sin(time * 0.22) * 0.025;
+            group.position.y = Math.sin(time * 0.7) * 0.08;
+            group.scale.setScalar(theme.coreScale + Math.sin(time) * 0.025);
         }
 
         const primaryMat = primaryLinesRef.current?.material as
@@ -970,12 +1023,12 @@ function DataBusHud({
         const packets = packetsRef.current;
 
         if (packets) {
+
             routes.forEach((route, index) => {
                 const p = sampleRoute(route, time * route.speed + route.offset);
 
                 INSTANCE_DUMMY.position.copy(p);
-                const isPinRoute = index >= routes.length - createChipPinFanRoutes().length;
-
+                const isPinRoute = index >= routes.length - pinRouteCount;
                 INSTANCE_DUMMY.scale.set(
                     isPinRoute ? 0.045 : route.color === "primary" ? 0.09 : 0.075,
                     isPinRoute ? 0.022 : 0.035,
@@ -1070,9 +1123,10 @@ function HudFrames({
         const progress = themeProgressRef.current ?? 0;
         const time = state.clock.elapsedTime;
 
-        group.rotation.z = Math.sin(time * 0.22) * 0.028;
-        group.rotation.y = Math.sin(time * 0.14) * 0.06;
-        group.scale.setScalar(theme.frameScale + Math.sin(time * 1.1) * 0.004);
+        group.rotation.z = Math.sin(time * 0.35) * 0.035;
+        group.rotation.x = Math.sin(time * 0.22) * 0.025;
+        group.position.y = Math.sin(time * 0.7) * 0.08;
+        group.scale.setScalar(theme.coreScale + Math.sin(time) * 0.025);
 
         const matA = linesARef.current?.material as
             | LineBasicMaterial
@@ -1179,22 +1233,30 @@ function ChipCore({
 
     const tracePositions = useMemo(() => createChipTracePositions(), []);
 
-    const pinCountPerSide = quality.tier === "low" ? 6 : 9;
-    const totalPins = pinCountPerSide * 2;
+    const sidePinCount = quality.tier === "low" ? 6 : 9;
+    const topBottomPinCount = quality.tier === "low" ? 5 : 7;
+    const totalPins = sidePinCount * 2 + topBottomPinCount * 2;
 
     const pinLayout = useMemo(() => {
-        const items: { x: number; y: number; z: number }[] = [];
-        const startY = -0.36;
-        const step = pinCountPerSide > 1 ? 0.72 / (pinCountPerSide - 1) : 0;
+        const items: { x: number; y: number; z: number; rotation: number }[] = [];
 
-        for (let i = 0; i < pinCountPerSide; i++) {
-            const y = startY + i * step;
-            items.push({ x: -0.72, y, z: 0 });
-            items.push({ x: 0.72, y, z: 0 });
+        const sidePins = quality.tier === "low" ? 6 : 9;
+        const topBottomPins = quality.tier === "low" ? 5 : 7;
+
+        for (let i = 0; i < sidePins; i++) {
+            const y = -0.36 + i * (0.72 / (sidePins - 1));
+            items.push({ x: -0.82, y, z: 0.095, rotation: 0 });
+            items.push({ x: 0.82, y, z: 0.095, rotation: 0 });
+        }
+
+        for (let i = 0; i < topBottomPins; i++) {
+            const x = -0.48 + i * (0.96 / (topBottomPins - 1));
+            items.push({ x, y: 0.56, z: 0.095, rotation: Math.PI / 2 });
+            items.push({ x, y: -0.56, z: 0.095, rotation: Math.PI / 2 });
         }
 
         return items;
-    }, [pinCountPerSide]);
+    }, [quality.tier]);
 
     useFrame((state, delta) => {
         const frameDelta = safeDelta(delta);
@@ -1206,10 +1268,10 @@ function ChipCore({
 
         const group = groupRef.current;
         if (group) {
-            group.rotation.x = -0.06;
-            group.rotation.y = Math.sin(time * 0.45) * 0.08;
-            group.rotation.z = Math.sin(time * 0.22) * 0.015;
-            group.position.y = Math.sin(time * 0.7) * 0.02;
+            group.rotation.z = Math.sin(time * 0.35) * 0.035;
+            group.rotation.x = Math.sin(time * 0.22) * 0.025;
+            group.position.y = Math.sin(time * 0.7) * 0.08;
+            group.scale.setScalar(theme.coreScale + Math.sin(time) * 0.025);
         }
 
         const packageMat = packageRef.current?.material as MeshBasicMaterial | undefined;
@@ -1268,9 +1330,12 @@ function ChipCore({
             pinLayout.forEach((pin, index) => {
                 const pulse = 1 + Math.sin(time * 2.8 + index * 0.55) * 0.08;
 
-                INSTANCE_DUMMY.position.set(pin.x, pin.y, 0.02);
-                INSTANCE_DUMMY.scale.set(0.07, 0.045 * pulse, 0.045);
+                INSTANCE_DUMMY.position.set(pin.x, pin.y, pin.z);
+                INSTANCE_DUMMY.rotation.set(0, 0, pin.rotation);
+                INSTANCE_DUMMY.scale.set(0.14, 0.035 * pulse, 0.018);
                 INSTANCE_DUMMY.updateMatrix();
+
+
 
                 pinMesh.setMatrixAt(index, INSTANCE_DUMMY.matrix);
             });
@@ -1305,17 +1370,16 @@ function ChipCore({
             </mesh>
 
             {/* subtle package frame */}
-            <mesh scale={[1.56, 1, 0.02]} position={[0, 0, 0.07]}>
-                <boxGeometry args={[1, 1, 1]} />
-                <meshBasicMaterial
+            <lineSegments position={[0, 0, 0.135]} scale={[1.56, 1, 1]}>
+                <edgesGeometry args={[new BoxGeometry(1, 1, 0.02)]} />
+                <lineBasicMaterial
                     color="#8b5cf6"
-                    wireframe
                     transparent
                     opacity={0.3}
                     depthWrite={false}
                     blending={AdditiveBlending}
                 />
-            </mesh>
+            </lineSegments>
 
             {/* silicon die */}
             <mesh ref={dieRef} position={[0, 0, 0.08]} scale={[0.78, 0.48, 0.05]}>
@@ -1354,7 +1418,7 @@ function ChipCore({
             </mesh>
 
             {/* top traces */}
-            <lineSegments ref={traceRef} position={[0, 0, 0.105]}>
+            <lineSegments ref={traceRef} position={[0, 0, 0.112]}>
                 <bufferGeometry>
                     <bufferAttribute
                         attach="attributes-position"
@@ -1415,11 +1479,11 @@ function SceneContents({
     quality: QualityConfig;
 }) {
     const themeProgressRef = useThemeProgress(stage);
-    const themeRef = useRef<RuntimeTheme>(createRuntimeTheme(THEMES[0]));
+    const themeRef = useRef<RuntimeTheme>(createRuntimeTheme(getTheme(0)));
 
     useFrame(() => {
         applyBlendedTheme(themeRef.current, themeProgressRef.current);
-    }, -100);
+    }, -10);
 
     return (
         <>
@@ -1477,7 +1541,7 @@ export function GeometryHero() {
         });
     }, [smooth]);
 
-    const cssTheme = CSS_THEMES[activeSection];
+    const cssTheme = useMemo(() => getCssTheme(activeSection), [activeSection]);
 
     const animatedBg = useMotionTemplate`linear-gradient(to bottom, var(--bg-from), var(--bg-via), var(--bg-to))`;
 

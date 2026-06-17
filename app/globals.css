@@ -806,11 +806,15 @@
         z-index: 1;
         border-radius: inherit;
         box-shadow: var(--card-shadow), var(--card-ambient);
-        transform: translateZ(0.1px);
         backface-visibility: hidden;
         -webkit-backface-visibility: hidden;
     }
-/*fix*/
+
+    .card-shadow-host {
+        transform: translateZ(0.1px);
+    }
+
+    /*fix*/
     .edge-light-root {
         pointer-events: none;
         position: absolute;

@@ -1,7 +1,5 @@
 "use client";
 
-import { useRef } from "react";
-import { useInView } from "framer-motion";
 import { RotateCcw, ShieldCheck, Siren } from "lucide-react";
 
 import { Container } from "@/components/ui/Container";
@@ -23,9 +21,6 @@ const securityItems = [
 ];
 
 export function SecuritySection() {
-    const ref = useRef<HTMLElement | null>(null);
-    const inView = useInView(ref, { margin: "-15%", once: true });
-
     return (
         <Container
             as="section"

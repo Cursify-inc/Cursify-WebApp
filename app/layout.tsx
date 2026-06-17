@@ -4,6 +4,7 @@ import { ThemeFxProvider } from "@/components/providers/theme-fx-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 
 import "./globals.css";
+import React from "react";
 
 export const metadata: Metadata = {
     title: "Cursify — AI-powered IDE platform",

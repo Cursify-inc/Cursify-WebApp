@@ -1,7 +1,5 @@
 "use client";
 
-import { useRef } from "react";
-import { useInView } from "framer-motion";
 import {
     Bot,
     CloudCog,
@@ -70,9 +68,6 @@ const features = [
 ];
 
 export function ProductOverview() {
-    const ref = useRef<HTMLElement | null>(null);
-    const inView = useInView(ref, { margin: "-15%", once: true });
-
     return (
         <Container
             as="section"

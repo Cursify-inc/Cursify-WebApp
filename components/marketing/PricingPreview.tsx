@@ -1,8 +1,6 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useRef } from "react";
-import { useInView } from "framer-motion";
 import { Check } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
@@ -58,9 +56,6 @@ const featuredCardVars = {
 } as CSSProperties;
 
 export function PricingPreview() {
-    const ref = useRef<HTMLElement | null>(null);
-    const inView = useInView(ref, { margin: "-15%", once: true });
-
     return (
         <Container
             as="section"
