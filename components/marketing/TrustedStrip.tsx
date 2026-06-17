@@ -38,7 +38,6 @@ function TrustedStrip() {
                             delay={Math.min(index, 3)}
                             interactive
                             glow
-                            activateGlowOnReveal
                             className="h-full"
                             contentClassName="h-full min-h-[4.75rem] justify-center"
                         >

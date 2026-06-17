@@ -1,39 +1,33 @@
 "use client";
 
-import { Canvas, useFrame } from "@react-three/fiber";
-import { PointMaterial, Points } from "@react-three/drei";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
-    animate,
     motion,
     useMotionTemplate,
-    useMotionValue,
     useReducedMotion,
     useScroll,
     useSpring,
     useTransform,
+    type MotionStyle,
 } from "framer-motion";
 import {
     useEffect,
-    useLayoutEffect,
     useMemo,
     useRef,
     useState,
     type RefObject,
 } from "react";
 import {
-    AmbientLight,
+    AdditiveBlending,
+    BufferAttribute,
     Color,
-    DirectionalLight,
-    Fog,
     Group,
     InstancedMesh,
     LineBasicMaterial,
     LineSegments,
     Mesh,
     MeshBasicMaterial,
-    MeshStandardMaterial,
     Object3D,
-    PointLight,
     Points as ThreePoints,
     PointsMaterial,
     Vector3,
@@ -43,10 +37,25 @@ type SectionStage = 0 | 1 | 2 | 3;
 type NumberRef = RefObject<number>;
 type ThemeRef = RefObject<RuntimeTheme>;
 
+type QualityTier = "static" | "low" | "medium" | "high";
+
+type QualityConfig = {
+    tier: QualityTier;
+    dpr: number | [number, number];
+    targetFps: number;
+    idleFps: number;
+    particleCount: number;
+    coreDetail: number;
+    glowDetail: number;
+    enableSecondHudLayer: boolean;
+    enableNetwork: boolean;
+    enableParticles: boolean;
+    enablePointerParallax: boolean;
+};
+
 type Theme = {
     accent: Color;
     accent2: Color;
-    fog: Color;
     bg: Color;
     coreScale: number;
     frameScale: number;
@@ -58,11 +67,9 @@ type Theme = {
 type RuntimeTheme = {
     accent: Color;
     accent2: Color;
-    fog: Color;
     bg: Color;
     accentStyle: string;
     accent2Style: string;
-    fogStyle: string;
     bgStyle: string;
     coreScale: number;
     frameScale: number;
@@ -75,85 +82,350 @@ const THEMES: readonly Theme[] = [
     {
         accent: new Color("#00e5ff"),
         accent2: new Color("#8b5cf6"),
-        fog: new Color("#030712"),
         bg: new Color("#020617"),
         coreScale: 1,
         frameScale: 1,
-        particleOpacity: 0.58,
-        dataSpeed: 0.22,
-        pulse: 0.85,
+        particleOpacity: 0.5,
+        dataSpeed: 0.2,
+        pulse: 0.8,
     },
     {
         accent: new Color("#00ffc6"),
         accent2: new Color("#b026ff"),
-        fog: new Color("#020617"),
         bg: new Color("#030014"),
-        coreScale: 1.06,
-        frameScale: 1.06,
-        particleOpacity: 0.68,
-        dataSpeed: 0.3,
-        pulse: 1,
+        coreScale: 1.04,
+        frameScale: 1.04,
+        particleOpacity: 0.56,
+        dataSpeed: 0.28,
+        pulse: 0.95,
     },
     {
         accent: new Color("#ff2bd6"),
         accent2: new Color("#00e5ff"),
-        fog: new Color("#080012"),
         bg: new Color("#050010"),
-        coreScale: 1.12,
-        frameScale: 1.12,
-        particleOpacity: 0.76,
-        dataSpeed: 0.38,
-        pulse: 1.16,
+        coreScale: 1.08,
+        frameScale: 1.08,
+        particleOpacity: 0.62,
+        dataSpeed: 0.34,
+        pulse: 1.08,
     },
     {
         accent: new Color("#39ff14"),
         accent2: new Color("#00e5ff"),
-        fog: new Color("#020810"),
         bg: new Color("#010409"),
-        coreScale: 1.18,
-        frameScale: 1.18,
-        particleOpacity: 0.84,
-        dataSpeed: 0.46,
-        pulse: 1.32,
+        coreScale: 1.12,
+        frameScale: 1.12,
+        particleOpacity: 0.68,
+        dataSpeed: 0.4,
+        pulse: 1.2,
     },
 ];
 
-const BG_STOPS = [
-    { from: "#020617", via: "#07112a", to: "#020617" },
-    { from: "#030014", via: "#071a2d", to: "#020617" },
-    { from: "#050010", via: "#1b0731", to: "#020617" },
-    { from: "#010409", via: "#062016", to: "#020617" },
-] as const;
 
-const GLOW_STOPS = [
+type Route = {
+    points: Vector3[];
+    color: "primary" | "secondary";
+    speed: number;
+    offset: number;
+    kind?: "main" | "pin";
+};
+
+
+function createLineSegmentsFromRoutes(routes: Route[]) {
+    const data: number[] = [];
+
+    routes.forEach((route) => {
+        for (let i = 0; i < route.points.length - 1; i++) {
+            const a = route.points[i];
+            const b = route.points[i + 1];
+
+            data.push(a.x, a.y, a.z, b.x, b.y, b.z);
+        }
+    });
+
+    return new Float32Array(data);
+}
+
+function sampleRoute(route: Route, t: number) {
+    const points = route.points;
+
+    const lengths: number[] = [];
+    let total = 0;
+
+    for (let i = 0; i < points.length - 1; i++) {
+        const len = points[i].distanceTo(points[i + 1]);
+        lengths.push(len);
+        total += len;
+    }
+
+    let distance = ((t % 1) + 1) % 1;
+    distance *= total;
+
+    for (let i = 0; i < lengths.length; i++) {
+        const len = lengths[i];
+
+        if (distance <= len) {
+            const localT = len === 0 ? 0 : distance / len;
+            return points[i].clone().lerp(points[i + 1], localT);
+        }
+
+        distance -= len;
+    }
+
+    return points[points.length - 1].clone();
+}
+
+function createChipPinFanRoutes(): Route[] {
+    const z = 0.15;
+
+    const leftPins = [
+        new Vector3(-0.72, 0.36, z),
+        new Vector3(-0.72, 0.27, z),
+        new Vector3(-0.72, 0.18, z),
+        new Vector3(-0.72, 0.09, z),
+        new Vector3(-0.72, 0.0, z),
+        new Vector3(-0.72, -0.09, z),
+        new Vector3(-0.72, -0.18, z),
+        new Vector3(-0.72, -0.27, z),
+        new Vector3(-0.72, -0.36, z),
+    ];
+
+    const rightPins = [
+        new Vector3(0.72, 0.36, z),
+        new Vector3(0.72, 0.27, z),
+        new Vector3(0.72, 0.18, z),
+        new Vector3(0.72, 0.09, z),
+        new Vector3(0.72, 0.0, z),
+        new Vector3(0.72, -0.09, z),
+        new Vector3(0.72, -0.18, z),
+        new Vector3(0.72, -0.27, z),
+        new Vector3(0.72, -0.36, z),
+    ];
+
+    const routes: Route[] = [];
+
+    leftPins.forEach((pin, index) => {
+        const y = pin.y;
+
+        routes.push({
+            kind: "pin",
+            color: index % 2 === 0 ? "primary" : "secondary",
+            speed: 0.22 + index * 0.006,
+            offset: index * 0.11,
+            points: [
+                new Vector3(-2.1, y * 1.8, z),
+                new Vector3(-1.55, y * 1.8, z),
+                new Vector3(-1.55, y, z),
+                new Vector3(-1.02, y, z),
+                pin,
+            ],
+        });
+    });
+
+    rightPins.forEach((pin, index) => {
+        const y = pin.y;
+
+        routes.push({
+            kind: "pin",
+            color: index % 2 === 0 ? "secondary" : "primary",
+            speed: 0.2 + index * 0.007,
+            offset: 0.35 + index * 0.1,
+            points: [
+                new Vector3(2.1, y * 1.8, z),
+                new Vector3(1.55, y * 1.8, z),
+                new Vector3(1.55, y, z),
+                new Vector3(1.02, y, z),
+                pin,
+            ],
+        });
+    });
+
+    return routes;
+}
+
+
+function createDataBusRoutes(): Route[] {
+    const z = 0.15;
+
+    const mainRoutes: Route[] = [
+        {
+            kind: "main",
+            color: "primary",
+            speed: 0.18,
+            offset: 0,
+            points: [
+                new Vector3(-4.4, 1.55, z),
+                new Vector3(-3.1, 1.55, z),
+                new Vector3(-3.1, 0.72, z),
+                new Vector3(-1.58, 0.72, z),
+                new Vector3(-1.18, 0.32, z),
+                new Vector3(-0.72, 0.32, z),
+            ],
+        },
+        {
+            kind: "main",
+            color: "secondary",
+            speed: 0.22,
+            offset: 0.2,
+            points: [
+                new Vector3(4.45, 1.12, z),
+                new Vector3(3.08, 1.12, z),
+                new Vector3(3.08, 0.42, z),
+                new Vector3(1.62, 0.42, z),
+                new Vector3(1.12, 0.12, z),
+                new Vector3(0.72, 0.12, z),
+            ],
+        },
+        {
+            kind: "main",
+            color: "primary",
+            speed: 0.16,
+            offset: 0.45,
+            points: [
+                new Vector3(-4.1, -1.32, z),
+                new Vector3(-2.78, -1.32, z),
+                new Vector3(-2.78, -0.62, z),
+                new Vector3(-1.38, -0.62, z),
+                new Vector3(-0.92, -0.22, z),
+                new Vector3(-0.72, -0.22, z),
+            ],
+        },
+        {
+            kind: "main",
+            color: "secondary",
+            speed: 0.2,
+            offset: 0.68,
+            points: [
+                new Vector3(4.2, -1.48, z),
+                new Vector3(2.92, -1.48, z),
+                new Vector3(2.92, -0.82, z),
+                new Vector3(1.46, -0.82, z),
+                new Vector3(0.92, -0.36, z),
+                new Vector3(0.72, -0.36, z),
+            ],
+        },
+        {
+            kind: "main",
+            color: "primary",
+            speed: 0.14,
+            offset: 0.35,
+            points: [
+                new Vector3(0, 2.65, z),
+                new Vector3(0, 1.76, z),
+                new Vector3(-0.32, 1.42, z),
+                new Vector3(-0.32, 0.72, z),
+                new Vector3(-0.56, 0.56, z),
+                new Vector3(-0.72, 0.36, z),
+            ],
+        },
+        {
+            kind: "main",
+            color: "secondary",
+            speed: 0.17,
+            offset: 0.82,
+            points: [
+                new Vector3(0.86, -2.58, z),
+                new Vector3(0.86, -1.52, z),
+                new Vector3(0.38, -1.12, z),
+                new Vector3(0.38, -0.62, z),
+                new Vector3(0.58, -0.48, z),
+                new Vector3(0.72, -0.27, z),
+            ],
+        },
+    ];
+
+    return [...mainRoutes, ...createChipPinFanRoutes()];
+}
+
+
+function createChipTracePositions() {
+    const data: number[] = [];
+    const z = 0.055;
+
+    const line = (
+        a: [number, number, number],
+        b: [number, number, number],
+    ) => {
+        data.push(a[0], a[1], a[2], b[0], b[1], b[2]);
+    };
+
+    // central bus lines
+    line([-0.42, 0.18, z], [-0.12, 0.18, z]);
+    line([-0.12, 0.18, z], [0.02, 0.04, z]);
+    line([0.02, 0.04, z], [0.34, 0.04, z]);
+
+    line([-0.38, -0.16, z], [-0.08, -0.16, z]);
+    line([-0.08, -0.16, z], [0.08, -0.02, z]);
+    line([0.08, -0.02, z], [0.38, -0.02, z]);
+
+    line([-0.18, 0.34, z], [-0.18, 0.12, z]);
+    line([0.22, 0.3, z], [0.22, 0.08, z]);
+    line([-0.02, -0.32, z], [-0.02, -0.1, z]);
+
+    // top branch traces
+    line([-0.34, 0.3, z], [-0.06, 0.3, z]);
+    line([-0.06, 0.3, z], [0.04, 0.2, z]);
+
+    line([0.08, 0.24, z], [0.3, 0.24, z]);
+
+    // bottom branch traces
+    line([-0.3, -0.28, z], [-0.02, -0.28, z]);
+    line([-0.02, -0.28, z], [0.08, -0.18, z]);
+    line([0.12, -0.22, z], [0.34, -0.22, z]);
+
+    return new Float32Array(data);
+}
+
+
+const CSS_THEMES = [
     {
-        a: "rgba(0,229,255,0.2)",
-        b: "rgba(139,92,246,0.16)",
-        c: "rgba(0,255,198,0.1)",
-        d: "rgba(255,43,214,0.08)",
+        "--bg-from": "#020617",
+        "--bg-via": "#07112a",
+        "--bg-to": "#020617",
+        "--glow-a": "rgba(0,229,255,0.2)",
+        "--glow-b": "rgba(139,92,246,0.16)",
+        "--glow-c": "rgba(0,255,198,0.1)",
+        "--glow-d": "rgba(255,43,214,0.08)",
+        "--grid-a": "rgba(0,229,255,0.16)",
+        "--grid-b": "rgba(139,92,246,0.14)",
     },
     {
-        a: "rgba(0,255,198,0.2)",
-        b: "rgba(176,38,255,0.16)",
-        c: "rgba(0,229,255,0.1)",
-        d: "rgba(57,255,20,0.06)",
+        "--bg-from": "#030014",
+        "--bg-via": "#071a2d",
+        "--bg-to": "#020617",
+        "--glow-a": "rgba(0,255,198,0.2)",
+        "--glow-b": "rgba(176,38,255,0.16)",
+        "--glow-c": "rgba(0,229,255,0.1)",
+        "--glow-d": "rgba(57,255,20,0.06)",
+        "--grid-a": "rgba(0,255,198,0.14)",
+        "--grid-b": "rgba(176,38,255,0.13)",
     },
     {
-        a: "rgba(255,43,214,0.18)",
-        b: "rgba(0,229,255,0.16)",
-        c: "rgba(176,38,255,0.12)",
-        d: "rgba(0,255,198,0.08)",
+        "--bg-from": "#050010",
+        "--bg-via": "#1b0731",
+        "--bg-to": "#020617",
+        "--glow-a": "rgba(255,43,214,0.18)",
+        "--glow-b": "rgba(0,229,255,0.16)",
+        "--glow-c": "rgba(176,38,255,0.12)",
+        "--glow-d": "rgba(0,255,198,0.08)",
+        "--grid-a": "rgba(255,43,214,0.13)",
+        "--grid-b": "rgba(0,229,255,0.13)",
     },
     {
-        a: "rgba(57,255,20,0.16)",
-        b: "rgba(0,229,255,0.14)",
-        c: "rgba(176,38,255,0.1)",
-        d: "rgba(0,255,198,0.08)",
+        "--bg-from": "#010409",
+        "--bg-via": "#062016",
+        "--bg-to": "#020617",
+        "--glow-a": "rgba(57,255,20,0.16)",
+        "--glow-b": "rgba(0,229,255,0.14)",
+        "--glow-c": "rgba(176,38,255,0.1)",
+        "--glow-d": "rgba(0,255,198,0.08)",
+        "--grid-a": "rgba(57,255,20,0.12)",
+        "--grid-b": "rgba(0,229,255,0.13)",
     },
 ] as const;
 
 const INSTANCE_DUMMY = new Object3D();
-const MAX_FRAME_DELTA = 1 / 30;
+const MAX_FRAME_DELTA = 1 / 24;
 
 function safeDelta(delta: number) {
     return Math.min(delta, MAX_FRAME_DELTA);
@@ -175,11 +447,9 @@ function createRuntimeTheme(theme: Theme): RuntimeTheme {
     return {
         accent: theme.accent.clone(),
         accent2: theme.accent2.clone(),
-        fog: theme.fog.clone(),
         bg: theme.bg.clone(),
         accentStyle: hexString(theme.accent),
         accent2Style: hexString(theme.accent2),
-        fogStyle: hexString(theme.fog),
         bgStyle: hexString(theme.bg),
         coreScale: theme.coreScale,
         frameScale: theme.frameScale,
@@ -201,12 +471,10 @@ function applyBlendedTheme(target: RuntimeTheme, progress: number) {
 
     target.accent.copy(from.accent).lerp(to.accent, t);
     target.accent2.copy(from.accent2).lerp(to.accent2, t);
-    target.fog.copy(from.fog).lerp(to.fog, t);
     target.bg.copy(from.bg).lerp(to.bg, t);
 
     target.accentStyle = hexString(target.accent);
     target.accent2Style = hexString(target.accent2);
-    target.fogStyle = hexString(target.fog);
     target.bgStyle = hexString(target.bg);
 
     target.coreScale = lerp(from.coreScale, to.coreScale, t);
@@ -230,8 +498,7 @@ function mulberry32(seed: number) {
     };
 }
 
-function createDataParticlePositions() {
-    const count = 180;
+function createDataParticlePositions(count: number) {
     const arr = new Float32Array(count * 3);
     const random = mulberry32(0x8f14c2d9);
 
@@ -247,115 +514,79 @@ function createDataParticlePositions() {
     return arr;
 }
 
-function createNetworkLayout() {
-    const nodes: { pos: Vector3; scale: number }[] = [
-        { pos: new Vector3(-2.65, 1.28, -0.28), scale: 0.07 },
-        { pos: new Vector3(-1.82, 0.72, 0.52), scale: 0.052 },
-        { pos: new Vector3(-2.25, -0.28, -0.66), scale: 0.056 },
-        { pos: new Vector3(-1.18, -1.18, 0.24), scale: 0.064 },
-        { pos: new Vector3(-0.38, 1.48, -0.82), scale: 0.05 },
-        { pos: new Vector3(0.82, 1.18, 0.42), scale: 0.068 },
-        { pos: new Vector3(1.72, 0.48, -0.42), scale: 0.052 },
-        { pos: new Vector3(2.58, 1.08, 0.18), scale: 0.07 },
-        { pos: new Vector3(2.18, -0.42, 0.62), scale: 0.058 },
-        { pos: new Vector3(1.18, -1.24, -0.32), scale: 0.064 },
-        { pos: new Vector3(0.06, -1.62, 0.46), scale: 0.052 },
-        { pos: new Vector3(-0.92, 0.12, -0.72), scale: 0.048 },
-        { pos: new Vector3(0.94, -0.08, 0.76), scale: 0.048 },
-        { pos: new Vector3(0.12, 0.84, 0.64), scale: 0.05 },
-    ];
-
-    const connections = [
-        [0, 1],
-        [0, 4],
-        [1, 2],
-        [1, 11],
-        [2, 3],
-        [3, 10],
-        [4, 5],
-        [4, 13],
-        [5, 6],
-        [5, 13],
-        [6, 7],
-        [6, 8],
-        [8, 9],
-        [9, 10],
-        [9, 12],
-        [11, 13],
-        [12, 13],
-        [11, 12],
-    ];
-
-    const lineData: number[] = [];
-
-    connections.forEach(([a, b]) => {
-        const from = nodes[a].pos;
-        const to = nodes[b].pos;
-
-        lineData.push(from.x, from.y, from.z, to.x, to.y, to.z);
-    });
-
-    nodes.forEach((node) => {
-        lineData.push(0, 0, 0, node.pos.x, node.pos.y, node.pos.z);
-    });
-
-    return {
-        nodes,
-        linePositions: new Float32Array(lineData),
-    };
-}
-
-function createHudFramePositions() {
+function createStructuredHudPositions() {
     const data: number[] = [];
+    const z = 0.05;
 
-    const addSegment = (a: [number, number, number], b: [number, number, number]) => {
+    const line = (
+        a: [number, number, number],
+        b: [number, number, number],
+    ) => {
         data.push(a[0], a[1], a[2], b[0], b[1], b[2]);
     };
 
-    const addRectCorners = (width: number, height: number, z: number, corner: number) => {
-        const x = width / 2;
-        const y = height / 2;
+    const bracket = (
+        x: number,
+        y: number,
+        w: number,
+        h: number,
+        size: number,
+    ) => {
+        const l = x - w / 2;
+        const r = x + w / 2;
+        const t = y + h / 2;
+        const b = y - h / 2;
 
-        addSegment([-x, y, z], [-x + corner, y, z]);
-        addSegment([-x, y, z], [-x, y - corner, z]);
+        line([l, t, z], [l + size, t, z]);
+        line([l, t, z], [l, t - size, z]);
 
-        addSegment([x, y, z], [x - corner, y, z]);
-        addSegment([x, y, z], [x, y - corner, z]);
+        line([r, t, z], [r - size, t, z]);
+        line([r, t, z], [r, t - size, z]);
 
-        addSegment([-x, -y, z], [-x + corner, -y, z]);
-        addSegment([-x, -y, z], [-x, -y + corner, z]);
+        line([l, b, z], [l + size, b, z]);
+        line([l, b, z], [l, b + size, z]);
 
-        addSegment([x, -y, z], [x - corner, -y, z]);
-        addSegment([x, -y, z], [x, -y + corner, z]);
+        line([r, b, z], [r - size, b, z]);
+        line([r, b, z], [r, b + size, z]);
     };
 
-    const addHex = (radius: number, z: number) => {
-        const points: [number, number, number][] = [];
+    const rect = (x: number, y: number, w: number, h: number) => {
+        const l = x - w / 2;
+        const r = x + w / 2;
+        const t = y + h / 2;
+        const b = y - h / 2;
 
-        for (let i = 0; i < 6; i++) {
-            const angle = Math.PI / 6 + (i / 6) * Math.PI * 2;
-            points.push([Math.cos(angle) * radius, Math.sin(angle) * radius, z]);
-        }
-
-        for (let i = 0; i < points.length; i++) {
-            const current = points[i];
-            const next = points[(i + 1) % points.length];
-
-            if (i !== 1 && i !== 4) {
-                addSegment(current, next);
-            }
-        }
+        line([l, t, z], [r, t, z]);
+        line([r, t, z], [r, b, z]);
+        line([r, b, z], [l, b, z]);
+        line([l, b, z], [l, t, z]);
     };
 
-    addRectCorners(4.8, 3.2, -0.22, 0.46);
-    addRectCorners(3.45, 2.35, 0.2, 0.34);
-    addHex(1.92, 0.08);
-    addHex(1.26, 0.34);
+    // Outer tactical HUD
+    bracket(0, 0, 5.9, 3.75, 0.62);
+    bracket(0, 0, 4.45, 2.72, 0.42);
 
-    addSegment([-2.8, 0.02, -0.1], [-1.95, 0.02, -0.1]);
-    addSegment([1.95, 0.02, -0.1], [2.8, 0.02, -0.1]);
-    addSegment([0, 1.92, -0.1], [0, 1.34, -0.1]);
-    addSegment([0, -1.92, -0.1], [0, -1.34, -0.1]);
+    // Side panels
+    bracket(-3.65, 1.15, 1.18, 0.72, 0.22);
+    bracket(3.65, 1.02, 1.18, 0.72, 0.22);
+    bracket(-3.55, -1.15, 1.28, 0.72, 0.22);
+    bracket(3.55, -1.2, 1.28, 0.72, 0.22);
+
+    // Center processor frame
+    rect(0, 0, 1.72, 1.08);
+    bracket(0, 0, 2.28, 1.52, 0.28);
+
+    // Small status ticks
+    for (let i = -3; i <= 3; i++) {
+        line([i * 0.42, 1.96, z], [i * 0.42 + 0.16, 1.96, z]);
+        line([i * 0.42, -1.96, z], [i * 0.42 + 0.16, -1.96, z]);
+    }
+
+    // Crosshair
+    line([-0.34, 0, z], [-0.12, 0, z]);
+    line([0.12, 0, z], [0.34, 0, z]);
+    line([0, -0.34, z], [0, -0.12, z]);
+    line([0, 0.12, z], [0, 0.34, z]);
 
     return new Float32Array(data);
 }
@@ -398,31 +629,159 @@ function useActiveGeometrySection() {
     return activeSection;
 }
 
-function useCanvasActive() {
-    const [active, setActive] = useState(true);
+function useDocumentVisible() {
+    const [visible, setVisible] = useState(true);
 
     useEffect(() => {
-        const updateVisibility = () => {
-            setActive(!document.hidden);
+        const update = () => {
+            setVisible(!document.hidden);
         };
 
-        updateVisibility();
-        document.addEventListener("visibilitychange", updateVisibility);
+        update();
+        document.addEventListener("visibilitychange", update);
 
         return () => {
-            document.removeEventListener("visibilitychange", updateVisibility);
+            document.removeEventListener("visibilitychange", update);
         };
     }, []);
 
+    return visible;
+}
+
+function useUserActivity(idleDelay = 4500) {
+    const [active, setActive] = useState(true);
+
+    useEffect(() => {
+        let timeout: number | undefined;
+
+        const markActive = () => {
+            setActive(true);
+
+            if (timeout) {
+                window.clearTimeout(timeout);
+            }
+
+            timeout = window.setTimeout(() => {
+                setActive(false);
+            }, idleDelay);
+        };
+
+        markActive();
+
+        window.addEventListener("pointermove", markActive, { passive: true });
+        window.addEventListener("pointerdown", markActive, { passive: true });
+        window.addEventListener("scroll", markActive, { passive: true });
+        window.addEventListener("keydown", markActive);
+
+        return () => {
+            if (timeout) {
+                window.clearTimeout(timeout);
+            }
+
+            window.removeEventListener("pointermove", markActive);
+            window.removeEventListener("pointerdown", markActive);
+            window.removeEventListener("scroll", markActive);
+            window.removeEventListener("keydown", markActive);
+        };
+    }, [idleDelay]);
+
     return active;
 }
+
+function useQualityTier(prefersReducedMotion: boolean | null): QualityConfig {
+    return useMemo(() => {
+        // Default base config
+        const base = {
+            tier: "medium",
+            dpr: 1,
+            targetFps: 30,
+            idleFps: 8,
+            particleCount: 120,
+            coreDetail: 1,
+            glowDetail: 1,
+            enableSecondHudLayer: true,
+            enableNetwork: true,
+            enableParticles: true,
+            enablePointerParallax: true,
+        } as QualityConfig;
+
+        if (prefersReducedMotion) {
+            return {
+                tier: "static",
+                dpr: 1,
+                targetFps: 0,
+                idleFps: 0,
+                particleCount: 0,
+                coreDetail: 0,
+                glowDetail: 0,
+                enableSecondHudLayer: false,
+                enableNetwork: false,
+                enableParticles: false,
+                enablePointerParallax: false,
+            } as QualityConfig;
+        }
+
+        // SSR Safety
+        if (typeof window === "undefined") return base;
+
+        const nav = navigator as Navigator & {
+            deviceMemory?: number;
+            connection?: { saveData?: boolean };
+        };
+
+        const saveData = Boolean(nav.connection?.saveData);
+        const memory = nav.deviceMemory ?? 4;
+        const cores = navigator.hardwareConcurrency ?? 4;
+        const width = window.innerWidth;
+        const dpr = window.devicePixelRatio || 1;
+        const mobile = width < 768;
+        const lowEnd = saveData || memory <= 2 || cores <= 4 || mobile;
+
+        // Low-End Logic
+        if (lowEnd) {
+            return {
+                tier: "low",
+                dpr: 1,
+                targetFps: 24,
+                idleFps: 4,
+                particleCount: mobile ? 48 : 72,
+                coreDetail: 0,
+                glowDetail: 0,
+                enableSecondHudLayer: false,
+                enableNetwork: !mobile,
+                enableParticles: true,
+                enablePointerParallax: !mobile,
+            } as QualityConfig;
+        }
+
+        // High-End Logic
+        if (width >= 1280 && cores >= 8 && memory >= 8 && dpr <= 2) {
+            return {
+                tier: "high",
+                dpr: [1, 1.2],
+                targetFps: 36,
+                idleFps: 10,
+                particleCount: 180,
+                coreDetail: 1,
+                glowDetail: 1,
+                enableSecondHudLayer: true,
+                enableNetwork: true,
+                enableParticles: true,
+                enablePointerParallax: true,
+            } as QualityConfig;
+        }
+
+        return base;
+    }, [prefersReducedMotion]);
+}
+
 
 function useThemeProgress(stage: SectionStage) {
     const progressRef = useRef<number>(stage);
 
     useFrame((_, delta) => {
         const frameDelta = safeDelta(delta);
-        const smoothing = dampFactor(4.5, frameDelta);
+        const smoothing = dampFactor(5.2, frameDelta);
 
         progressRef.current = lerp(progressRef.current, stage, smoothing);
     }, -101);
@@ -430,92 +789,52 @@ function useThemeProgress(stage: SectionStage) {
     return progressRef;
 }
 
-function DataStreamField({ themeRef }: { themeRef: ThemeRef }) {
-    const pointsRef = useRef<ThreePoints>(null);
-    const positions = useMemo(() => createDataParticlePositions(), []);
+function RenderTicker({
+                          running,
+                          fps,
+                      }: {
+    running: boolean;
+    fps: number;
+}) {
+    const invalidate = useThree((state) => state.invalidate);
 
-    useFrame((_, delta) => {
-        const frameDelta = safeDelta(delta);
-        const points = pointsRef.current;
-        const theme = themeRef.current;
+    useEffect(() => {
+        if (!running || fps <= 0) return;
 
-        if (!points || !theme) return;
+        const interval = window.setInterval(() => {
+            invalidate();
+        }, 1000 / fps);
 
-        const attribute = points.geometry.getAttribute("position");
+        invalidate();
 
-        for (let i = 0; i < attribute.count; i++) {
-            const currentY = attribute.getY(i);
-            const nextY = currentY - frameDelta * (0.28 + theme.dataSpeed * 1.8);
+        return () => {
+            window.clearInterval(interval);
+        };
+    }, [fps, invalidate, running]);
 
-            attribute.setY(i, nextY < -3.2 ? 3.2 : nextY);
-        }
-
-        attribute.needsUpdate = true;
-
-        points.rotation.y = Math.sin(performance.now() * 0.00008) * 0.08;
-
-        const material = points.material as PointsMaterial;
-        material.color.copy(theme.accent2);
-        material.opacity = theme.particleOpacity;
-        material.size = theme.pulse > 1.15 ? 0.036 : 0.03;
-    });
-
-    return (
-        <Points ref={pointsRef} positions={positions} stride={3} frustumCulled>
-            <PointMaterial
-                transparent
-                color="#ffffff"
-                size={0.032}
-                sizeAttenuation
-                depthWrite={false}
-                opacity={0.64}
-            />
-        </Points>
-    );
+    return null;
 }
 
-function AgentNetwork({
-                          themeRef,
-                          themeProgressRef,
-                      }: {
+function DataStreamField({
+                             themeRef,
+                             quality,
+                         }: {
     themeRef: ThemeRef;
-    themeProgressRef: NumberRef;
+    quality: QualityConfig;
 }) {
     const groupRef = useRef<Group>(null);
-    const primaryRef = useRef<InstancedMesh>(null);
-    const secondaryRef = useRef<InstancedMesh>(null);
-    const linesRef = useRef<LineSegments>(null);
+    const pointsARef = useRef<ThreePoints>(null);
+    const pointsBRef = useRef<ThreePoints>(null);
 
-    const { primaryNodes, secondaryNodes, linePositions } = useMemo(() => {
-        const layout = createNetworkLayout();
+    const positions = useMemo(
+        () => createDataParticlePositions(quality.particleCount),
+        [quality.particleCount],
+    );
 
-        return {
-            primaryNodes: layout.nodes.filter((_, index) => index % 2 === 0),
-            secondaryNodes: layout.nodes.filter((_, index) => index % 2 !== 0),
-            linePositions: layout.linePositions,
-        };
-    }, []);
-
-    useLayoutEffect(() => {
-        const writeMatrices = (
-            mesh: InstancedMesh | null,
-            nodes: { pos: Vector3; scale: number }[],
-        ) => {
-            if (!mesh) return;
-
-            nodes.forEach((node, index) => {
-                INSTANCE_DUMMY.position.copy(node.pos);
-                INSTANCE_DUMMY.scale.setScalar(node.scale);
-                INSTANCE_DUMMY.updateMatrix();
-                mesh.setMatrixAt(index, INSTANCE_DUMMY.matrix);
-            });
-
-            mesh.instanceMatrix.needsUpdate = true;
-        };
-
-        writeMatrices(primaryRef.current, primaryNodes);
-        writeMatrices(secondaryRef.current, secondaryNodes);
-    }, [primaryNodes, secondaryNodes]);
+    const positionAttribute = useMemo(
+        () => new BufferAttribute(positions, 3),
+        [positions],
+    );
 
     useFrame((state, delta) => {
         const frameDelta = safeDelta(delta);
@@ -524,78 +843,222 @@ function AgentNetwork({
 
         if (!group || !theme) return;
 
+        const speed = 0.22 + theme.dataSpeed * 0.8;
+        group.position.y -= frameDelta * speed;
+
+        if (group.position.y < -3.2) {
+            group.position.y += 3.2;
+        }
+
+        group.rotation.y = Math.sin(state.clock.elapsedTime * 0.08) * 0.08;
+
+        const matA = pointsARef.current?.material as PointsMaterial | undefined;
+        const matB = pointsBRef.current?.material as PointsMaterial | undefined;
+
+        if (matA) {
+            matA.color.copy(theme.accent2);
+            matA.opacity = theme.particleOpacity;
+            matA.size = quality.tier === "low" ? 0.026 : 0.032;
+        }
+
+        if (matB) {
+            matB.color.copy(theme.accent);
+            matB.opacity = theme.particleOpacity * 0.55;
+            matB.size = quality.tier === "low" ? 0.022 : 0.027;
+        }
+    });
+
+    if (!quality.enableParticles || quality.particleCount <= 0) {
+        return null;
+    }
+
+    return (
+        <group ref={groupRef}>
+            <points ref={pointsARef} frustumCulled position={[0, 0, -0.4]}>
+                <bufferGeometry>
+                    <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+                </bufferGeometry>
+                <pointsMaterial
+                    color="#8b5cf6"
+                    size={0.03}
+                    transparent
+                    opacity={0.5}
+                    sizeAttenuation
+                    depthWrite={false}
+                    blending={AdditiveBlending}
+                />
+            </points>
+
+            <points ref={pointsBRef} frustumCulled position={[0, 3.2, 0.2]}>
+                <bufferGeometry>
+                    <bufferAttribute
+                        attach="attributes-position"
+                        args={[positionAttribute.array as Float32Array, 3]}
+                    />
+                </bufferGeometry>
+                <pointsMaterial
+                    color="#00e5ff"
+                    size={0.026}
+                    transparent
+                    opacity={0.28}
+                    sizeAttenuation
+                    depthWrite={false}
+                    blending={AdditiveBlending}
+                />
+            </points>
+        </group>
+    );
+}
+
+function DataBusHud({
+                        themeRef,
+                        themeProgressRef,
+                    }: {
+    themeRef: ThemeRef;
+    themeProgressRef: NumberRef;
+}) {
+    const groupRef = useRef<Group>(null);
+    const primaryLinesRef = useRef<LineSegments>(null);
+    const secondaryLinesRef = useRef<LineSegments>(null);
+    const packetsRef = useRef<InstancedMesh>(null);
+
+    const routes = useMemo(() => createDataBusRoutes(), []);
+
+    const primaryPositions = useMemo(
+        () => createLineSegmentsFromRoutes(routes.filter((r) => r.color === "primary")),
+        [routes],
+    );
+
+    const secondaryPositions = useMemo(
+        () => createLineSegmentsFromRoutes(routes.filter((r) => r.color === "secondary")),
+        [routes],
+    );
+
+    useFrame((state) => {
+        const time = state.clock.elapsedTime;
+        const theme = themeRef.current;
         const progress = themeProgressRef.current ?? 0;
-        const pulse = 0.5 + Math.sin(state.clock.elapsedTime * 2.2) * 0.5;
 
-        group.rotation.y += frameDelta * (0.025 + theme.dataSpeed * 0.05);
-        group.rotation.x = Math.sin(state.clock.elapsedTime * 0.32) * 0.035;
-        group.position.y = Math.sin(state.clock.elapsedTime * 0.64) * 0.035;
+        if (!theme) return;
 
-        const primaryMat = primaryRef.current?.material as MeshBasicMaterial | undefined;
-        const secondaryMat = secondaryRef.current?.material as MeshBasicMaterial | undefined;
-        const lineMat = linesRef.current?.material as LineBasicMaterial | undefined;
+        const group = groupRef.current;
+
+        if (group) {
+            group.rotation.x = -0.08;
+            group.rotation.y = Math.sin(time * 0.12) * 0.025;
+            group.position.y = Math.sin(time * 0.35) * 0.018;
+        }
+
+        const primaryMat = primaryLinesRef.current?.material as
+            | LineBasicMaterial
+            | undefined;
+
+        const secondaryMat = secondaryLinesRef.current?.material as
+            | LineBasicMaterial
+            | undefined;
 
         if (primaryMat) {
             primaryMat.color.copy(theme.accent);
+            primaryMat.opacity = 0.34 + progress * 0.04;
         }
 
         if (secondaryMat) {
             secondaryMat.color.copy(theme.accent2);
+            secondaryMat.opacity = 0.26 + progress * 0.035;
         }
 
-        if (lineMat) {
-            lineMat.color.copy(theme.accent);
-            lineMat.opacity = 0.14 + progress * 0.045 + pulse * 0.045;
+        const packets = packetsRef.current;
+
+        if (packets) {
+            routes.forEach((route, index) => {
+                const p = sampleRoute(route, time * route.speed + route.offset);
+
+                INSTANCE_DUMMY.position.copy(p);
+                const isPinRoute = index >= routes.length - createChipPinFanRoutes().length;
+
+                INSTANCE_DUMMY.scale.set(
+                    isPinRoute ? 0.045 : route.color === "primary" ? 0.09 : 0.075,
+                    isPinRoute ? 0.022 : 0.035,
+                    0.03,
+                );
+
+
+                INSTANCE_DUMMY.rotation.set(0, 0, 0);
+                INSTANCE_DUMMY.updateMatrix();
+
+                packets.setMatrixAt(index, INSTANCE_DUMMY.matrix);
+            });
+
+            packets.instanceMatrix.needsUpdate = true;
+
+            const mat = packets.material as MeshBasicMaterial;
+            mat.color.copy(theme.accent);
+            mat.opacity = 0.78;
         }
     });
 
     return (
         <group ref={groupRef}>
-            <lineSegments ref={linesRef}>
+            <lineSegments ref={primaryLinesRef}>
                 <bufferGeometry>
                     <bufferAttribute
                         attach="attributes-position"
-                        args={[linePositions, 3]}
+                        args={[primaryPositions, 3]}
                     />
                 </bufferGeometry>
                 <lineBasicMaterial
                     color="#00e5ff"
                     transparent
-                    opacity={0.18}
+                    opacity={0.36}
                     depthWrite={false}
+                    blending={AdditiveBlending}
                 />
             </lineSegments>
 
-            <instancedMesh
-                ref={primaryRef}
-                args={[undefined, undefined, primaryNodes.length]}
-            >
-                <boxGeometry args={[1, 1, 1]} />
-                <meshBasicMaterial color="#00e5ff" />
-            </instancedMesh>
+            <lineSegments ref={secondaryLinesRef}>
+                <bufferGeometry>
+                    <bufferAttribute
+                        attach="attributes-position"
+                        args={[secondaryPositions, 3]}
+                    />
+                </bufferGeometry>
+                <lineBasicMaterial
+                    color="#ff2bd6"
+                    transparent
+                    opacity={0.28}
+                    depthWrite={false}
+                    blending={AdditiveBlending}
+                />
+            </lineSegments>
 
-            <instancedMesh
-                ref={secondaryRef}
-                args={[undefined, undefined, secondaryNodes.length]}
-            >
-                <octahedronGeometry args={[1, 0]} />
-                <meshBasicMaterial color="#8b5cf6" />
+            <instancedMesh ref={packetsRef} args={[undefined, undefined, routes.length]}>
+                <boxGeometry args={[1, 1, 1]} />
+                <meshBasicMaterial
+                    color="#00e5ff"
+                    transparent
+                    opacity={0.78}
+                    depthWrite={false}
+                    blending={AdditiveBlending}
+                />
             </instancedMesh>
         </group>
     );
 }
 
+
 function HudFrames({
                        themeRef,
                        themeProgressRef,
+                       quality,
                    }: {
     themeRef: ThemeRef;
     themeProgressRef: NumberRef;
+    quality: QualityConfig;
 }) {
     const groupRef = useRef<Group>(null);
     const linesARef = useRef<LineSegments>(null);
     const linesBRef = useRef<LineSegments>(null);
-    const positions = useMemo(() => createHudFramePositions(), []);
+    const positions = useMemo(() => createStructuredHudPositions(), []);
 
     useFrame((state, delta) => {
         const frameDelta = safeDelta(delta);
@@ -607,25 +1070,29 @@ function HudFrames({
         const progress = themeProgressRef.current ?? 0;
         const time = state.clock.elapsedTime;
 
-        group.rotation.z = Math.sin(time * 0.28) * 0.035;
-        group.rotation.y = Math.sin(time * 0.18) * 0.08;
-        group.scale.setScalar(theme.frameScale + Math.sin(time * 1.4) * 0.006);
+        group.rotation.z = Math.sin(time * 0.22) * 0.028;
+        group.rotation.y = Math.sin(time * 0.14) * 0.06;
+        group.scale.setScalar(theme.frameScale + Math.sin(time * 1.1) * 0.004);
 
-        const matA = linesARef.current?.material as LineBasicMaterial | undefined;
-        const matB = linesBRef.current?.material as LineBasicMaterial | undefined;
+        const matA = linesARef.current?.material as
+            | LineBasicMaterial
+            | undefined;
+        const matB = linesBRef.current?.material as
+            | LineBasicMaterial
+            | undefined;
 
         if (matA) {
             matA.color.copy(theme.accent);
-            matA.opacity = 0.34 + progress * 0.035;
+            matA.opacity = 0.26 + progress * 0.03;
         }
 
         if (matB) {
             matB.color.copy(theme.accent2);
-            matB.opacity = 0.14 + Math.sin(time * 2.1) * 0.035;
+            matB.opacity = 0.1 + Math.sin(time * 1.8) * 0.025;
         }
 
         if (linesBRef.current) {
-            linesBRef.current.rotation.z -= frameDelta * (0.08 + theme.dataSpeed * 0.16);
+            linesBRef.current.rotation.z -= frameDelta * (0.05 + theme.dataSpeed * 0.1);
         }
     });
 
@@ -638,331 +1105,369 @@ function HudFrames({
                 <lineBasicMaterial
                     color="#00e5ff"
                     transparent
-                    opacity={0.34}
+                    opacity={0.28}
                     depthWrite={false}
+                    blending={AdditiveBlending}
                 />
             </lineSegments>
 
-            <lineSegments ref={linesBRef} rotation-z={Math.PI / 4} scale={0.72}>
-                <bufferGeometry>
-                    <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-                </bufferGeometry>
-                <lineBasicMaterial
-                    color="#8b5cf6"
-                    transparent
-                    opacity={0.16}
-                    depthWrite={false}
-                />
-            </lineSegments>
+            {quality.enableSecondHudLayer && (
+                <lineSegments ref={linesBRef} rotation-z={Math.PI / 4} scale={0.72}>
+                    <bufferGeometry>
+                        <bufferAttribute
+                            attach="attributes-position"
+                            args={[positions, 3]}
+                        />
+                    </bufferGeometry>
+                    <lineBasicMaterial
+                        color="#8b5cf6"
+                        transparent
+                        opacity={0.12}
+                        depthWrite={false}
+                        blending={AdditiveBlending}
+                    />
+                </lineSegments>
+            )}
         </group>
     );
 }
 
-function AgentCore({
-                       progressRef,
-                       themeRef,
-                       themeProgressRef,
-                   }: {
-    progressRef: NumberRef;
+function CornerPads() {
+    const positions: [number, number, number][] = [
+        [-0.52, 0.3, 0.1],
+        [0.52, 0.3, 0.1],
+        [-0.52, -0.3, 0.1],
+        [0.52, -0.3, 0.1],
+    ];
+
+    return (
+        <>
+            {positions.map((p, i) => (
+                <mesh key={i} position={p} scale={[0.06, 0.06, 0.02]}>
+                    <boxGeometry args={[1, 1, 1]} />
+                    <meshBasicMaterial
+                        color="#ffffff"
+                        transparent
+                        opacity={0.8}
+                        depthWrite={false}
+                        blending={AdditiveBlending}
+                    />
+                </mesh>
+            ))}
+        </>
+    );
+}
+
+
+function ChipCore({
+                      themeRef,
+                      themeProgressRef,
+                      quality,
+                  }: {
     themeRef: ThemeRef;
     themeProgressRef: NumberRef;
+    quality: QualityConfig;
 }) {
     const groupRef = useRef<Group>(null);
-    const coreRef = useRef<Mesh>(null);
-    const wireRef = useRef<Mesh>(null);
-    const innerRef = useRef<Mesh>(null);
-    const glowRef = useRef<Mesh>(null);
-    const chipARef = useRef<Mesh>(null);
-    const chipBRef = useRef<Mesh>(null);
-    const chipCRef = useRef<Mesh>(null);
+    const packageRef = useRef<Mesh>(null);
+    const packageGlowRef = useRef<Mesh>(null);
+    const dieRef = useRef<Mesh>(null);
+    const dieGlowRef = useRef<Mesh>(null);
+    const scanRef = useRef<Mesh>(null);
+    const traceRef = useRef<LineSegments>(null);
+    const pinMeshRef = useRef<InstancedMesh>(null);
+
+    const tracePositions = useMemo(() => createChipTracePositions(), []);
+
+    const pinCountPerSide = quality.tier === "low" ? 6 : 9;
+    const totalPins = pinCountPerSide * 2;
+
+    const pinLayout = useMemo(() => {
+        const items: { x: number; y: number; z: number }[] = [];
+        const startY = -0.36;
+        const step = pinCountPerSide > 1 ? 0.72 / (pinCountPerSide - 1) : 0;
+
+        for (let i = 0; i < pinCountPerSide; i++) {
+            const y = startY + i * step;
+            items.push({ x: -0.72, y, z: 0 });
+            items.push({ x: 0.72, y, z: 0 });
+        }
+
+        return items;
+    }, [pinCountPerSide]);
 
     useFrame((state, delta) => {
         const frameDelta = safeDelta(delta);
         const time = state.clock.elapsedTime;
-        const progress = progressRef.current ?? 0;
-        const themeProgress = themeProgressRef.current ?? 0;
         const theme = themeRef.current;
+        const progress = themeProgressRef.current ?? 0;
 
         if (!theme) return;
 
-        const pointerX = state.pointer.x * 0.22;
-        const pointerY = state.pointer.y * 0.14;
-
         const group = groupRef.current;
-
         if (group) {
-            const smoothing = dampFactor(3.4, frameDelta);
-            const targetX = -pointerY + 0.12 + progress * 0.05;
-            const targetY = pointerX + themeProgress * 0.018;
-
-            group.rotation.x = lerp(group.rotation.x, targetX, smoothing);
-            group.rotation.y = lerp(group.rotation.y, targetY, smoothing);
-            group.position.y = Math.sin(time * 0.74) * 0.045;
-
-            const scale = theme.coreScale + Math.sin(time * 1.5) * 0.012 * theme.pulse;
-            group.scale.setScalar(scale);
+            group.rotation.x = -0.06;
+            group.rotation.y = Math.sin(time * 0.45) * 0.08;
+            group.rotation.z = Math.sin(time * 0.22) * 0.015;
+            group.position.y = Math.sin(time * 0.7) * 0.02;
         }
 
-        if (coreRef.current) {
-            coreRef.current.rotation.x += frameDelta * 0.16;
-            coreRef.current.rotation.y += frameDelta * 0.22;
+        const packageMat = packageRef.current?.material as MeshBasicMaterial | undefined;
+        const packageGlowMat = packageGlowRef.current?.material as MeshBasicMaterial | undefined;
+        const dieMat = dieRef.current?.material as MeshBasicMaterial | undefined;
+        const dieGlowMat = dieGlowRef.current?.material as MeshBasicMaterial | undefined;
+        const scanMat = scanRef.current?.material as MeshBasicMaterial | undefined;
+        const traceMat = traceRef.current?.material as LineBasicMaterial | undefined;
+        const pinMat = pinMeshRef.current?.material as MeshBasicMaterial | undefined;
 
-            const mat = coreRef.current.material as MeshStandardMaterial;
-            mat.emissive.copy(theme.accent);
-            mat.emissiveIntensity = 0.72 + themeProgress * 0.08;
+        if (packageMat) {
+            packageMat.color.copy(theme.accent);
+            packageMat.opacity = 0.9;
         }
 
-        if (wireRef.current) {
-            wireRef.current.rotation.x -= frameDelta * 0.12;
-            wireRef.current.rotation.z += frameDelta * 0.18;
-
-            const mat = wireRef.current.material as MeshBasicMaterial;
-            mat.color.copy(theme.accent2);
-            mat.opacity = 0.44 + Math.sin(time * 2.4) * 0.08;
+        if (packageGlowMat) {
+            packageGlowMat.color.copy(theme.accent);
+            packageGlowMat.opacity = 0.1 + progress * 0.04;
         }
 
-        if (innerRef.current) {
-            innerRef.current.rotation.y -= frameDelta * 0.32;
-            innerRef.current.rotation.z += frameDelta * 0.2;
-
-            const mat = innerRef.current.material as MeshStandardMaterial;
-            mat.emissive.copy(theme.accent2);
-            mat.emissiveIntensity = 0.86 + themeProgress * 0.12;
+        if (dieMat) {
+            dieMat.color.copy(theme.accent);
+            dieMat.opacity = 0.22 + progress * 0.03;
         }
 
-        if (glowRef.current) {
-            glowRef.current.scale.setScalar(1 + Math.sin(time * 1.9) * 0.035 * theme.pulse);
-
-            const mat = glowRef.current.material as MeshBasicMaterial;
-            mat.color.copy(theme.accent);
-            mat.opacity = 0.055 + Math.sin(time * 1.8) * 0.012;
+        if (dieGlowMat) {
+            dieGlowMat.color.copy(theme.accent2);
+            dieGlowMat.opacity = 0.18 + Math.sin(time * 1.8) * 0.03;
         }
 
-        const chips = [chipARef.current, chipBRef.current, chipCRef.current];
+        if (scanMat) {
+            scanMat.color.copy(theme.accent);
+            scanMat.opacity = 0.22;
+        }
 
-        chips.forEach((chip, index) => {
-            if (!chip) return;
+        if (traceMat) {
+            traceMat.color.copy(theme.accent);
+            traceMat.opacity = 0.5 + progress * 0.05;
+        }
 
-            chip.rotation.z = Math.sin(time * 0.8 + index) * 0.04;
+        if (pinMat) {
+            pinMat.color.copy(theme.accent2);
+            pinMat.opacity = 0.72;
+        }
 
-            const mat = chip.material as MeshBasicMaterial;
-            mat.color.copy(index === 1 ? theme.accent2 : theme.accent);
-            mat.opacity = 0.2 + Math.sin(time * 1.7 + index) * 0.04;
-        });
+        if (scanRef.current) {
+            scanRef.current.position.x = lerp(
+                scanRef.current.position.x,
+                Math.sin(time * 1.2) * 0.34,
+                frameDelta * 3.2,
+            );
+        }
+
+        const pinMesh = pinMeshRef.current;
+        if (pinMesh) {
+            pinLayout.forEach((pin, index) => {
+                const pulse = 1 + Math.sin(time * 2.8 + index * 0.55) * 0.08;
+
+                INSTANCE_DUMMY.position.set(pin.x, pin.y, 0.02);
+                INSTANCE_DUMMY.scale.set(0.07, 0.045 * pulse, 0.045);
+                INSTANCE_DUMMY.updateMatrix();
+
+                pinMesh.setMatrixAt(index, INSTANCE_DUMMY.matrix);
+            });
+
+            pinMesh.instanceMatrix.needsUpdate = true;
+        }
     });
 
     return (
         <group ref={groupRef}>
-            <mesh ref={glowRef} scale={1.92}>
-                <icosahedronGeometry args={[1, 1]} />
+            {/* soft outer glow */}
+            <mesh ref={packageGlowRef} position={[0, 0, -0.01]} scale={[1.9, 1.2, 0.06]}>
+                <boxGeometry args={[1, 1, 1]} />
                 <meshBasicMaterial
                     color="#00e5ff"
                     transparent
-                    opacity={0.06}
+                    opacity={0.1}
+                    depthWrite={false}
+                    blending={AdditiveBlending}
+                />
+            </mesh>
+
+            {/* chip package */}
+            <mesh ref={packageRef} scale={[1.48, 0.92, 0.12]}>
+                <boxGeometry args={[1, 1, 1]} />
+                <meshBasicMaterial
+                    color="#0b1220"
+                    transparent
+                    opacity={0.9}
                     depthWrite={false}
                 />
             </mesh>
 
-            <mesh ref={coreRef} scale={0.72}>
-                <icosahedronGeometry args={[1.2, 2]} />
-                <meshStandardMaterial
-                    color="#07111f"
-                    roughness={0.28}
-                    metalness={0.72}
-                    emissive="#00e5ff"
-                    emissiveIntensity={0.72}
-                    transparent
-                    opacity={0.86}
-                />
-            </mesh>
-
-            <mesh ref={wireRef} scale={0.92}>
-                <icosahedronGeometry args={[1.2, 2]} />
+            {/* subtle package frame */}
+            <mesh scale={[1.56, 1, 0.02]} position={[0, 0, 0.07]}>
+                <boxGeometry args={[1, 1, 1]} />
                 <meshBasicMaterial
                     color="#8b5cf6"
                     wireframe
                     transparent
-                    opacity={0.48}
+                    opacity={0.3}
                     depthWrite={false}
+                    blending={AdditiveBlending}
                 />
             </mesh>
 
-            <mesh ref={innerRef} scale={0.28}>
-                <octahedronGeometry args={[1, 1]} />
-                <meshStandardMaterial
-                    color="#e0f2fe"
-                    roughness={0.18}
-                    metalness={0.5}
-                    emissive="#8b5cf6"
-                    emissiveIntensity={0.86}
+            {/* silicon die */}
+            <mesh ref={dieRef} position={[0, 0, 0.08]} scale={[0.78, 0.48, 0.05]}>
+                <boxGeometry args={[1, 1, 1]} />
+                <meshBasicMaterial
+                    color="#00e5ff"
+                    transparent
+                    opacity={0.24}
+                    depthWrite={false}
+                    blending={AdditiveBlending}
                 />
             </mesh>
 
-            <mesh ref={chipARef} position={[-1.24, 0.52, -0.12]} rotation-z={0.2}>
-                <boxGeometry args={[0.72, 0.018, 0.18]} />
+            {/* die glow */}
+            <mesh ref={dieGlowRef} position={[0, 0, 0.09]} scale={[0.92, 0.58, 0.02]}>
+                <boxGeometry args={[1, 1, 1]} />
+                <meshBasicMaterial
+                    color="#ff2bd6"
+                    transparent
+                    opacity={0.16}
+                    depthWrite={false}
+                    blending={AdditiveBlending}
+                />
+            </mesh>
+
+            {/* moving scan bar */}
+            <mesh ref={scanRef} position={[0, 0, 0.11]} scale={[0.14, 0.54, 0.01]}>
+                <boxGeometry args={[1, 1, 1]} />
                 <meshBasicMaterial
                     color="#00e5ff"
                     transparent
                     opacity={0.22}
                     depthWrite={false}
+                    blending={AdditiveBlending}
                 />
             </mesh>
 
-            <mesh ref={chipBRef} position={[1.16, -0.38, 0.18]} rotation-z={-0.32}>
-                <boxGeometry args={[0.66, 0.018, 0.16]} />
-                <meshBasicMaterial
-                    color="#8b5cf6"
-                    transparent
-                    opacity={0.22}
-                    depthWrite={false}
-                />
-            </mesh>
-
-            <mesh ref={chipCRef} position={[0.18, -1.08, -0.2]} rotation-z={0.08}>
-                <boxGeometry args={[0.9, 0.018, 0.14]} />
-                <meshBasicMaterial
+            {/* top traces */}
+            <lineSegments ref={traceRef} position={[0, 0, 0.105]}>
+                <bufferGeometry>
+                    <bufferAttribute
+                        attach="attributes-position"
+                        args={[tracePositions, 3]}
+                    />
+                </bufferGeometry>
+                <lineBasicMaterial
                     color="#00e5ff"
                     transparent
-                    opacity={0.18}
+                    opacity={0.52}
+                    depthWrite={false}
+                    blending={AdditiveBlending}
+                />
+            </lineSegments>
+
+            {/* side pins */}
+            <instancedMesh ref={pinMeshRef} args={[undefined, undefined, totalPins]}>
+                <boxGeometry args={[1, 1, 1]} />
+                <meshBasicMaterial
+                    color="#ff2bd6"
+                    transparent
+                    opacity={0.72}
+                    depthWrite={false}
+                    blending={AdditiveBlending}
+                />
+            </instancedMesh>
+            <mesh position={[-0.26, 0.18, 0.101]} scale={[0.18, 0.03, 0.01]}>
+                <boxGeometry args={[1, 1, 1]} />
+                <meshBasicMaterial
+                    color="#ffffff"
+                    transparent
+                    opacity={0.35}
+                    depthWrite={false}
+                />
+            </mesh>
+            <mesh position={[-0.18, 0.12, 0.101]} scale={[0.1, 0.02, 0.01]}>
+                <boxGeometry args={[1, 1, 1]} />
+                <meshBasicMaterial
+                    color="#ffffff"
+                    transparent
+                    opacity={0.25}
                     depthWrite={false}
                 />
             </mesh>
 
-            <HudFrames themeRef={themeRef} themeProgressRef={themeProgressRef} />
-            <AgentNetwork themeRef={themeRef} themeProgressRef={themeProgressRef} />
+            <CornerPads />
         </group>
     );
 }
 
-function CameraRig() {
-    return null;
-}
 
 function SceneContents({
                            stage,
-                           progressRef,
+                           quality,
                        }: {
     stage: SectionStage;
     progressRef: NumberRef;
+    quality: QualityConfig;
 }) {
     const themeProgressRef = useThemeProgress(stage);
     const themeRef = useRef<RuntimeTheme>(createRuntimeTheme(THEMES[0]));
 
-    const backgroundRef = useRef<Color>(null);
-    const fogRef = useRef<Fog>(null);
-
-    const pointARef = useRef<PointLight>(null);
-    const pointBRef = useRef<PointLight>(null);
-    const ambientRef = useRef<AmbientLight>(null);
-    const dirRef = useRef<DirectionalLight>(null);
-    const floorRef = useRef<Mesh>(null);
-
     useFrame(() => {
         applyBlendedTheme(themeRef.current, themeProgressRef.current);
-
-        const theme = themeRef.current;
-        const progress = themeProgressRef.current;
-
-        backgroundRef.current?.copy(theme.bg);
-
-        if (fogRef.current) {
-            fogRef.current.color.copy(theme.fog);
-        }
-
-        if (ambientRef.current) {
-            ambientRef.current.intensity = 0.42 + progress * 0.035;
-        }
-
-        if (dirRef.current) {
-            dirRef.current.intensity = 1 + progress * 0.08;
-        }
-
-        if (pointARef.current) {
-            pointARef.current.intensity = 1.7 + progress * 0.22;
-            pointARef.current.color.copy(theme.accent);
-        }
-
-        if (pointBRef.current) {
-            pointBRef.current.color.copy(theme.accent2);
-            pointBRef.current.intensity = 0.72 + progress * 0.08;
-        }
-
-        if (floorRef.current) {
-            const mat = floorRef.current.material as MeshBasicMaterial;
-
-            mat.color.copy(theme.accent);
-            mat.opacity = 0.05 + progress * 0.012;
-        }
     }, -100);
 
     return (
         <>
-            <color ref={backgroundRef} attach="background" args={[THEMES[0].bg]} />
-            <fog ref={fogRef} attach="fog" args={[THEMES[0].fog, 7.2, 15]} />
-
-            <ambientLight ref={ambientRef} intensity={0.42} />
-
-            <directionalLight
-                ref={dirRef}
-                position={[4, 4, 3]}
-                intensity={1}
-                color="#e5f0ff"
-            />
-
-            <pointLight
-                ref={pointARef}
-                position={[0, 0, 0]}
-                intensity={1.7}
-                distance={8}
-            />
-
-            <pointLight
-                ref={pointBRef}
-                position={[-3, 2, -2]}
-                intensity={0.72}
-                distance={10}
-            />
-
-            <CameraRig />
-            <DataStreamField themeRef={themeRef} />
+            {quality.enableParticles && (
+                <DataStreamField themeRef={themeRef} quality={quality} />
+            )}
 
             <group position={[0, 0.08, 0]}>
-                <AgentCore
-                    progressRef={progressRef}
+                <DataBusHud
                     themeRef={themeRef}
                     themeProgressRef={themeProgressRef}
                 />
-            </group>
 
-            <mesh ref={floorRef} rotation-x={-Math.PI / 2} position={[0, -2.8, 0]}>
-                <circleGeometry args={[7.2, 48]} />
-                <meshBasicMaterial
-                    color="#00e5ff"
-                    transparent
-                    opacity={0.05}
-                    depthWrite={false}
+                <ChipCore
+                    themeRef={themeRef}
+                    themeProgressRef={themeProgressRef}
+                    quality={quality}
                 />
-            </mesh>
+                <HudFrames
+                    themeRef={themeRef}
+                    themeProgressRef={themeProgressRef}
+                    quality={quality}
+                />
+
+            </group>
         </>
     );
 }
 
 export function GeometryHero() {
     const activeSection = useActiveGeometrySection();
-    const canvasActive = useCanvasActive();
     const prefersReducedMotion = useReducedMotion();
+    const documentVisible = useDocumentVisible();
+    const userActive = useUserActivity();
+    const quality = useQualityTier(prefersReducedMotion);
+
     const { scrollYProgress } = useScroll();
 
     const smooth = useSpring(scrollYProgress, {
         stiffness: 70,
-        damping: 20,
+        damping: 22,
         mass: 0.4,
     });
 
     const overlayOpacity = useTransform(smooth, [0, 1], [0.1, 0.26]);
-    const gridOpacity = useTransform(smooth, [0, 1], [0.08, 0.16]);
-    const glowScale = useTransform(smooth, [0, 1], [1, 1.14]);
-    const scanOpacity = useTransform(smooth, [0, 1], [0.12, 0.2]);
+    const gridOpacity = useTransform(smooth, [0, 1], [0.07, 0.14]);
+    const glowScale = useTransform(smooth, [0, 1], [1, 1.1]);
+    const scanOpacity = useTransform(smooth, [0, 1], [0.1, 0.16]);
 
     const progressRef = useRef<number>(0);
 
@@ -972,67 +1477,50 @@ export function GeometryHero() {
         });
     }, [smooth]);
 
-    const fromColor = useMotionValue<string>(BG_STOPS[0].from);
-    const viaColor = useMotionValue<string>(BG_STOPS[0].via);
-    const toColor = useMotionValue<string>(BG_STOPS[0].to);
+    const cssTheme = CSS_THEMES[activeSection];
 
-    const glowA = useMotionValue<string>(GLOW_STOPS[0].a);
-    const glowB = useMotionValue<string>(GLOW_STOPS[0].b);
-    const glowC = useMotionValue<string>(GLOW_STOPS[0].c);
-    const glowD = useMotionValue<string>(GLOW_STOPS[0].d);
+    const animatedBg = useMotionTemplate`linear-gradient(to bottom, var(--bg-from), var(--bg-via), var(--bg-to))`;
 
-    useEffect(() => {
-        const controls = [
-            animate(fromColor, BG_STOPS[activeSection].from, {
-                duration: 0.85,
-                ease: "easeOut",
-            }),
-            animate(viaColor, BG_STOPS[activeSection].via, {
-                duration: 0.85,
-                ease: "easeOut",
-            }),
-            animate(toColor, BG_STOPS[activeSection].to, {
-                duration: 0.85,
-                ease: "easeOut",
-            }),
-            animate(glowA, GLOW_STOPS[activeSection].a, {
-                duration: 0.85,
-                ease: "easeOut",
-            }),
-            animate(glowB, GLOW_STOPS[activeSection].b, {
-                duration: 0.85,
-                ease: "easeOut",
-            }),
-            animate(glowC, GLOW_STOPS[activeSection].c, {
-                duration: 0.85,
-                ease: "easeOut",
-            }),
-            animate(glowD, GLOW_STOPS[activeSection].d, {
-                duration: 0.85,
-                ease: "easeOut",
-            }),
-        ];
+    const animatedGlow = useMotionTemplate`
+    radial-gradient(circle at 50% 42%, var(--glow-a), transparent 18%),
+    radial-gradient(circle at 18% 16%, var(--glow-b), transparent 22%),
+    radial-gradient(circle at 82% 18%, var(--glow-c), transparent 20%),
+    radial-gradient(circle at 50% 82%, var(--glow-d), transparent 26%),
+    radial-gradient(circle at center, rgba(0,229,255,0.05), transparent 42%)
+  `;
 
-        return () => {
-            controls.forEach((control) => control.stop());
-        };
-    }, [activeSection, fromColor, viaColor, toColor, glowA, glowB, glowC, glowD]);
+    const canRenderWebGL =
+        quality.tier !== "static" && !prefersReducedMotion && documentVisible;
 
-    const animatedBg = useMotionTemplate`linear-gradient(to bottom, ${fromColor}, ${viaColor}, ${toColor})`;
+    const renderRunning = canRenderWebGL && userActive;
+    const renderFps = userActive ? quality.targetFps : quality.idleFps;
 
-    const animatedGlow = useMotionTemplate`radial-gradient(circle at 50% 42%, ${glowA}, transparent 18%), radial-gradient(circle at 18% 16%, ${glowB}, transparent 22%), radial-gradient(circle at 82% 18%, ${glowC}, transparent 20%), radial-gradient(circle at 50% 82%, ${glowD}, transparent 26%)`;
+    const rootStyle = {
+        ...cssTheme,
+        background: animatedBg,
+        transition:
+            "--bg-from 850ms ease, --bg-via 850ms ease, --bg-to 850ms ease, --glow-a 850ms ease, --glow-b 850ms ease, --glow-c 850ms ease, --glow-d 850ms ease",
+    } satisfies MotionStyle;
 
     return (
         <motion.div
             aria-hidden="true"
             className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
-            style={{ background: animatedBg }}
+            style={rootStyle}
         >
             <motion.div
                 className="absolute inset-[-10%] will-change-transform"
                 style={{
                     scale: glowScale,
                     background: animatedGlow,
+                }}
+            />
+
+            <div
+                className="absolute inset-0 opacity-[0.1]"
+                style={{
+                    background:
+                        "radial-gradient(circle at center, rgba(0,229,255,0.2), transparent 18%, transparent 100%)",
                 }}
             />
 
@@ -1044,7 +1532,7 @@ export function GeometryHero() {
                     className="h-full w-full"
                     style={{
                         backgroundImage:
-                            "linear-gradient(rgba(0,229,255,0.16) 1px, transparent 1px), linear-gradient(90deg, rgba(139,92,246,0.14) 1px, transparent 1px)",
+                            "linear-gradient(var(--grid-a) 1px, transparent 1px), linear-gradient(90deg, var(--grid-b) 1px, transparent 1px)",
                         backgroundSize: "46px 46px",
                     }}
                 />
@@ -1055,12 +1543,12 @@ export function GeometryHero() {
                 style={{
                     opacity: scanOpacity,
                     backgroundImage:
-                        "repeating-linear-gradient(to bottom, transparent 0px, transparent 8px, rgba(0,229,255,0.08) 9px, transparent 10px)",
+                        "repeating-linear-gradient(to bottom, transparent 0px, transparent 8px, rgba(0,229,255,0.07) 9px, transparent 10px)",
                 }}
             />
 
             <div
-                className="absolute inset-0 opacity-[0.08]"
+                className="absolute inset-0 opacity-[0.07]"
                 style={{
                     backgroundImage:
                         "linear-gradient(115deg, transparent 0%, transparent 42%, rgba(0,229,255,0.28) 43%, transparent 44%, transparent 100%)",
@@ -1068,19 +1556,34 @@ export function GeometryHero() {
                 }}
             />
 
-            {!prefersReducedMotion && (
+            <div
+                className="absolute left-1/2 top-[58%] h-[38rem] w-[38rem] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.14] blur-3xl"
+                style={{
+                    background:
+                        "radial-gradient(circle, var(--glow-a), transparent 64%)",
+                }}
+            />
+
+            {canRenderWebGL && (
                 <Canvas
-                    frameloop={canvasActive ? "always" : "never"}
-                    dpr={[1, 1.2]}
+                    frameloop="demand"
+                    dpr={quality.dpr}
                     camera={{ position: [0, 0, 6.4], fov: 42 }}
                     gl={{
                         antialias: false,
                         alpha: true,
-                        powerPreference: "high-performance",
+                        powerPreference:
+                            quality.tier === "low" ? "low-power" : "high-performance",
                         stencil: false,
+                        depth: false,
                     }}
                 >
-                    <SceneContents stage={activeSection} progressRef={progressRef} />
+                    <RenderTicker running={renderRunning} fps={renderFps} />
+                    <SceneContents
+                        stage={activeSection}
+                        progressRef={progressRef}
+                        quality={quality}
+                    />
                 </Canvas>
             )}
 

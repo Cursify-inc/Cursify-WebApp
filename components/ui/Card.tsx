@@ -22,8 +22,6 @@ const AutoEdgeLight = dynamic(
 );
 
 type ViewportMargin = UseInViewOptions["margin"];
-const DEFAULT_VIEWPORT_MARGIN =
-    CARD_MOTION.reveal.margin satisfies NonNullable<UseInViewOptions["margin"]>;
 
 type CardElement = HTMLDivElement;
 
@@ -41,7 +39,6 @@ export type CardProps = React.HTMLAttributes<CardElement> &
     delay?: number;
 
     edgeLightProps?: EdgeLightOptions;
-    activateGlowOnReveal?: boolean;
     revealViewportMargin?: ViewportMargin;
     revealOnce?: boolean;
 
@@ -62,10 +59,6 @@ export function Card({
                          animateIn = false,
                          delay = 0,
                          edgeLightProps,
-                         activateGlowOnReveal = false,
-                         revealViewportMargin = DEFAULT_VIEWPORT_MARGIN,
-                         revealOnce = true,
-                         glowActiveOverride,
                          pointerThrottleMs = POINTER_THROTTLE_MS,
                          focusable,
                          onFocus,
@@ -143,20 +136,10 @@ export function Card({
         radial-gradient(220px circle at ${mouseX}px ${mouseY}px, var(--surface-specular), transparent 60%)
     `;
 
-    const inView = useInView(cardRef, {
-        once: revealOnce,
-        margin: revealViewportMargin,
-    });
-
     const edgeLightInView = useInView(cardRef, {
         once: false,
         margin: "240px 0px 240px 0px",
     });
-
-    const pointerGlowActive = glow && active;
-    const revealGlowActive = glow && activateGlowOnReveal && inView;
-    const computedGlowActive = pointerGlowActive || revealGlowActive;
-    const glowActive = glowActiveOverride ?? computedGlowActive;
 
     const shouldRenderEdgeLight = glow && edgeLightInView;
 
