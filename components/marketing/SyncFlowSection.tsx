@@ -108,7 +108,6 @@ export function SyncFlowSection() {
                                 key={step.title}
                                 interactive
                                 glow
-                                glowActiveOverride={inView}
                                 className="h-full"
                                 edgeLightProps={{
                                     quality: "balanced",

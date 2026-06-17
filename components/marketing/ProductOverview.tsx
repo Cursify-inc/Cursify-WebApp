@@ -101,7 +101,6 @@ export function ProductOverview() {
                                 <LargeCard
                                     interactive
                                     glow
-                                    glowActiveOverride={inView}
                                     animateIn
                                     delay={Math.min(index, 5)}
                                     className="h-full"

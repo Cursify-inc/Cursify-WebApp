@@ -42,7 +42,6 @@ export type CardProps = React.HTMLAttributes<CardElement> &
     revealViewportMargin?: ViewportMargin;
     revealOnce?: boolean;
 
-    glowActiveOverride?: boolean;
     pointerThrottleMs?: number;
     focusable?: boolean;
 };

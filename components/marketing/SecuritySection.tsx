@@ -70,7 +70,6 @@ export function SecuritySection() {
                                 <TinyCard
                                     glow
                                     interactive
-                                    glowActiveOverride={inView}
                                     contentClassName="min-h-[4.25rem]"
                                     leading={
                                         <RotateCcw className="theme-color-fade h-5 w-5 text-[var(--security-feature-icon)]" />
@@ -85,7 +84,6 @@ export function SecuritySection() {
                                 <TinyCard
                                     glow
                                     interactive
-                                    glowActiveOverride={inView}
                                     contentClassName="min-h-[4.25rem]"
                                     leading={
                                         <Siren className="theme-color-fade h-5 w-5 text-[var(--security-feature-icon)]" />
@@ -105,7 +103,6 @@ export function SecuritySection() {
                                     key={item}
                                     interactive
                                     glow
-                                    glowActiveOverride={inView}
                                     animateIn
                                     delay={Math.min(index, 4)}
                                     className="h-full"

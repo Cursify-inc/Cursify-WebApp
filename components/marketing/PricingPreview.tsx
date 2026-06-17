@@ -89,7 +89,6 @@ export function PricingPreview() {
                                 key={plan.name}
                                 interactive
                                 glow
-                                glowActiveOverride={inView}
                                 animateIn
                                 delay={index}
                                 style={isHighlighted ? featuredCardVars : undefined}

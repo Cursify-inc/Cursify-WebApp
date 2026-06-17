@@ -65,7 +65,6 @@ export function IdePreviewSection() {
                                         <TinyCard
                                             key={item}
                                             glow
-                                            glowActiveOverride={inView}
                                             animateIn={!reducedMotion}
                                             delay={index}
                                             className="w-full"
@@ -130,7 +129,6 @@ export function IdePreviewSection() {
                                 <div className="mt-5 space-y-3">
                                     <TinyCard
                                         glow
-                                        glowActiveOverride={inView}
                                         animateIn={!reducedMotion}
                                         delay={1}
                                         className="w-full"
@@ -146,7 +144,6 @@ export function IdePreviewSection() {
                                         <TinyCard
                                             key={item}
                                             glow
-                                            glowActiveOverride={inView}
                                             animateIn={!reducedMotion}
                                             delay={index + 2}
                                             className="w-full"

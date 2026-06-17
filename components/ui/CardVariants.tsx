@@ -115,7 +115,6 @@ function VariantCard({
                          children,
                          interactive,
                          glow,
-                         glowActiveOverride,
                          animateIn,
                          delay,
                          edgeLightProps,
@@ -136,7 +135,6 @@ function VariantCard({
             )}
             interactive={interactive}
             glow={resolvedGlow}
-            glowActiveOverride={glowActiveOverride}
             edgeLightProps={resolvedGlow ? resolvedEdgeLightProps : undefined}
         >
             <div className={cn(def.classes.inner, contentClassName)}>{children}</div>
