@@ -1,7 +1,8 @@
-import { ArrowRight, Box, Cloud, Database, Globe2, Shield } from "lucide-react"
-import { Card } from "@/components/ui/Card"
-import { Container } from "@/components/ui/Container"
-import { SectionHeading } from "@/components/ui/SectionHeading"
+import { Box, Cloud, Database, Globe2, Shield } from "lucide-react";
+
+import { LargeCard } from "@/components/ui/CardVariants";
+import { Container } from "@/components/ui/Container";
+import { SectionHeading } from "@/components/ui/SectionHeading";
 
 const architecture = [
     {
@@ -34,48 +35,57 @@ const architecture = [
         description:
             "Desktop binaries, release assets, checksums, signatures, and mirror-ready distribution.",
     },
-]
+];
 
 export function ArchitectureSection() {
     return (
-        <section className="py-24">
-            <Container>
-                <SectionHeading
-                    eyebrow="Architecture"
-                    title="Modular now. Scalable later."
-                    description="Cursify can start as a focused Go API plus Rust security service, then split into specialized services as traffic and product complexity grow."
-                />
+        <Container
+            as="section"
+            id="ArchitectureSection"
+            variant="fit"
+            width="wide"
+            className="relative overflow-hidden"
+        >
+            <SectionHeading
+                eyebrow="Architecture"
+                title="Modular now. Scalable later."
+                description="Cursify can start as a focused Go API plus Rust security service, then split into specialized services as traffic and product complexity grow."
+            />
 
-                <Card className="mt-14 p-6">
-                    <div className="grid gap-4 lg:grid-cols-5">
-                        {architecture.map((item, index) => {
-                            const Icon = item.icon
+            <div className="mt-14 rounded-3xl border border-[var(--border)] bg-[color:color-mix(in_srgb,var(--bg-1)_30%,transparent)] p-2 sm:p-4">
+                <div className="grid auto-rows-[1fr] items-stretch gap-4 md:grid-cols-2 lg:grid-cols-5">
+                    {architecture.map((item, index) => {
+                        const Icon = item.icon;
 
-                            return (
-                                <div key={item.title} className="relative">
-                                    <div className="h-full rounded-3xl border border-border/60 bg-background-surface/80 p-5 backdrop-blur-sm transition-colors">
-                                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand text-white shadow-[0_0_24px_rgba(99,102,241,0.25)]">
-                                            <Icon className="h-5 w-5" />
-                                        </div>
-
-                                        <h3 className="mt-4 font-bold text-text-primary">
-                                            {item.title}
-                                        </h3>
-
-                                        <p className="mt-3 text-sm leading-6 text-text-secondary">
-                                            {item.description}
-                                        </p>
-                                    </div>
-
-                                    {index < architecture.length - 1 && (
-                                        <ArrowRight className="absolute -right-5 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-brand/60 lg:block" />
-                                    )}
+                        return (
+                            <LargeCard
+                                key={item.title}
+                                animateIn
+                                delay={Math.min(index, 5)}
+                                className="h-full transition-transform duration-300 hover:-translate-y-1"
+                                contentClassName="flex h-full min-h-[17rem] flex-col"
+                                edgeLightProps={{
+                                    quality: "balanced",
+                                    dashCount: 3,
+                                    syncColorToDash: true,
+                                }}
+                            >
+                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--brand-primary)] text-[var(--text-inverted)]">
+                                    <Icon className="h-5 w-5" />
                                 </div>
-                            )
-                        })}
-                    </div>
-                </Card>
-            </Container>
-        </section>
-    )
+
+                                <h3 className="mt-4 font-bold text-[var(--text-primary)]">
+                                    {item.title}
+                                </h3>
+
+                                <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
+                                    {item.description}
+                                </p>
+                            </LargeCard>
+                        );
+                    })}
+                </div>
+            </div>
+        </Container>
+    );
 }

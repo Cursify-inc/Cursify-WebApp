@@ -1,3 +1,12 @@
+# Important note !!
+###  this warning should be ignored in developing for now,
+### [browser] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
+### it is related to components/marketing/GeometryHero.tsx usage of "clock"
+### for animating movements for now we can ignore it safely
+# Important note 2 !!
+### if you're facing with any issues about performance, go to 
+### app/page.tsx
+### and comment out GeometryHero in line 19
 # Cursify Landing Page
 
 Premium 3D-style animation-rich landing page for Cursify, an AI-powered IDE platform.
@@ -44,13 +53,9 @@ Cursify is a professional AI-powered IDE platform built around:
 
 ---
 
-# 32. Optional Route Placeholders
 
-Your header/footer link to `/login`, `/signup`, `/download`, `/privacy`, and `/terms`.
+under development: header/footer link to `/login`, `/signup`, `/download`, `/privacy`, and `/terms`.
 
-For a clean production build, you can add placeholder pages:
-
-```txt
 app/login/page.tsx
 app/signup/page.tsx
 app/download/page.tsx

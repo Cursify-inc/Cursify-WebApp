@@ -1,25 +1,18 @@
-"use client"
+"use client";
 
-import React, {
-    RefObject,
-    useEffect,
-    useId,
-    useMemo,
-    useRef,
-    useState,
-} from "react";
+import React, {RefObject, useCallback, useEffect, useId, useMemo, useRef, useState} from "react";
 import {
     motion,
+    MotionValue,
     useAnimationFrame,
     useMotionValue,
     useSpring,
     useTransform,
 } from "framer-motion";
+import { useUnifiedPointerGlow } from "./useUnifiedPointerGlow";
+import { useTheme } from "next-themes";
 
-type CornerRadius = {
-    rx: number;
-    ry: number;
-};
+type CornerRadius = { rx: number; ry: number };
 
 type CornerRadii = {
     tl: CornerRadius;
@@ -28,60 +21,158 @@ type CornerRadii = {
     bl: CornerRadius;
 };
 
-type Geometry = {
+export type Geometry = {
     width: number;
     height: number;
     offsetX: number;
     offsetY: number;
     radii: CornerRadii;
     path: string;
+    perimeter: number;
 };
 
-type AutoEdgeLightProProps = {
+const roundedRectMetricsCache = new WeakMap<
+    CornerRadii,
+    {
+        width: number;
+        height: number;
+        metrics: PathMetrics;
+    }
+>();
+
+function getRoundedRectMetricsCached(width: number, height: number, r: CornerRadii): PathMetrics {
+    const cached = roundedRectMetricsCache.get(r);
+
+    if (cached && cached.width === width && cached.height === height) {
+        return cached.metrics;
+    }
+
+    const metrics = buildRoundedRectMetrics(width, height, r);
+
+    roundedRectMetricsCache.set(r, {
+        width,
+        height,
+        metrics,
+    });
+
+    return metrics;
+}
+function useResolvedCssColors({
+                                  parentRef,
+                                  colorA,
+                                  colorB,
+                                  highlightColor,
+                                  themeVars,
+                              }: {
+    parentRef: React.RefObject<HTMLElement | null>;
+    colorA?: string;
+    colorB?: string;
+    highlightColor?: string;
+    themeVars: ThemeVars;
+}) {
+    const [resolvedColors, setResolvedColors] = useState(() => ({
+        colorA: colorA ?? themeVars.colorA,
+        colorB: colorB ?? themeVars.colorB,
+        highlightColor: highlightColor ?? themeVars.highlight,
+    }));
+
+    useEffect(() => {
+        if (typeof document === "undefined") return;
+
+        const colorBaseEl = parentRef.current ?? document.documentElement;
+
+        setResolvedColors({
+            colorA: resolveCssColorToken(colorBaseEl, colorA ?? themeVars.colorA),
+            colorB: resolveCssColorToken(colorBaseEl, colorB ?? themeVars.colorB),
+            highlightColor: resolveCssColorToken(
+                colorBaseEl,
+                highlightColor ?? themeVars.highlight
+            ),
+        });
+    }, [
+        parentRef,
+        colorA,
+        colorB,
+        highlightColor,
+        themeVars.colorA,
+        themeVars.colorB,
+        themeVars.highlight,
+    ]);
+
+    return resolvedColors;
+}
+
+
+export type AutoEdgeLightQuality = "ultra" | "balanced" | "performance";
+
+function normalizeCssColor(baseEl: HTMLElement, value: string) {
+    if (typeof document === "undefined") return value;
+
+    const probe = document.createElement("span");
+    probe.style.color = value;
+    probe.style.display = "none";
+
+    baseEl.appendChild(probe);
+
+    const resolved = getComputedStyle(probe).color || value;
+
+    probe.remove();
+
+    return resolved;
+}
+
+function resolveCssColorToken(el: HTMLElement, value: string) {
+    const trimmed = value.trim();
+    if (!trimmed) return trimmed;
+
+    const varMatch = trimmed.match(/^var\(\s*(--[^,\s)]+)\s*(?:,\s*(.+))?\)$/);
+
+    if (varMatch) {
+        const cssValue = getComputedStyle(el).getPropertyValue(varMatch[1]).trim();
+
+        if (cssValue) {
+            return resolveCssColorToken(el, cssValue);
+        }
+
+        const fallback = varMatch[2]?.trim();
+
+        if (fallback) {
+            return resolveCssColorToken(el, fallback);
+        }
+
+        return trimmed;
+    }
+
+    return normalizeCssColor(el, trimmed);
+}
+
+
+export type AutoEdgeLightProProps = {
     active: boolean;
     parentRef: RefObject<HTMLElement | null>;
     reducedMotion?: boolean;
     className?: string;
     inset?: number;
 
+    engagementReleaseDelayMs?: number;
     strokeWidth?: number;
     glowWidth?: number;
-    glowBlur?: number;
 
-    segmentRatio?: number;
     trailCount?: number;
-    trailGap?: number;
 
     idleSpeed?: number;
     hoverSpeedBoost?: number;
     attractStrength?: number;
 
-    speedSpring?: {
-        stiffness?: number;
-        damping?: number;
-        mass?: number;
-    };
-
-    proximitySpring?: {
-        stiffness?: number;
-        damping?: number;
-        mass?: number;
-    };
-
-    activationSpring?: {
-        stiffness?: number;
-        damping?: number;
-        mass?: number;
-    };
+    speedSpring?: { stiffness?: number; damping?: number; mass?: number };
+    proximitySpring?: { stiffness?: number; damping?: number; mass?: number };
+    activationSpring?: { stiffness?: number; damping?: number; mass?: number };
 
     proximityRadius?: number;
     pulseDurationMs?: number;
     pulseIntensity?: number;
-
     coreOpacity?: number;
     glowOpacity?: number;
-    highlightOpacity?: number;
-
     colorA?: string;
     colorB?: string;
     highlightColor?: string;
@@ -89,41 +180,200 @@ type AutoEdgeLightProProps = {
     enableIdleScan?: boolean;
     enableCursorProximity?: boolean;
     enablePulse?: boolean;
+
+    interactionBoostAmount?: number;
+    interactionBoostDecay?: number;
+
+    colorSpeed?: number;
+    dashRatio?: number;
+
+    dashCount?: number;
+    syncColorToDash?: boolean;
+
+    quality?: AutoEdgeLightQuality;
 };
 
-const clamp = (n: number, min: number, max: number) =>
-    Math.max(min, Math.min(n, max));
+export type ThemeVars = {
+    colorA: string;
+    colorB: string;
+    highlight: string;
+    gradStart: string;
+    gradEnd: string;
+    strokeWidth: number;
+    glowWidth: number;
+    glowBlur: number;
+    coreOpacity: number;
+    glowOpacity: number;
+    highlightOpacity: number;
+};
 
+export const DEFAULT_THEME: ThemeVars = {
+    colorA: "#006dff",
+    colorB: "#7c3aed",
+    highlight: "#10b981",
+    gradStart: "#00263c",
+    gradEnd: "#12001b",
+    strokeWidth: 1.75,
+    glowWidth: 7.5,
+    glowBlur: 5.5,
+    coreOpacity: 0.8,
+    glowOpacity: 0.3,
+    highlightOpacity: 0.15,
+};
+
+
+
+const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(n, max));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const wrap = (v: number, m: number) => (m <= 0 ? v : ((v % m) + m) % m);
+const distSq = (x1: number, y1: number, x2: number, y2: number) => {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    return dx * dx + dy * dy;
+};
 
-const dist = (x1: number, y1: number, x2: number, y2: number) =>
-    Math.hypot(x2 - x1, y2 - y1);
+export function parseNum(v: string, fallback: number) {
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : fallback;
+}
+
+export function getCssVar(el: HTMLElement, name: string, fallback: string) {
+    const v = getComputedStyle(el).getPropertyValue(name).trim();
+    return v || fallback;
+}
 
 function parseLengthToken(token: string, base: number) {
     const v = token.trim();
-
     if (!v) return 0;
     if (v.endsWith("%")) return (parseFloat(v) / 100) * base;
-
     const n = parseFloat(v);
     return Number.isFinite(n) ? n : 0;
 }
+type ParsedColor = {
+    r: number;
+    g: number;
+    b: number;
+    a: number;
+};
 
-function parseCornerRadii(
-    style: CSSStyleDeclaration,
-    width: number,
-    height: number
-): CornerRadii {
-    const raw = style.borderRadius.trim();
+function parseCssChannel(value: string, scale = 255) {
+    const trimmed = value.trim();
 
-    if (!raw) {
-        return {
-            tl: { rx: 0, ry: 0 },
-            tr: { rx: 0, ry: 0 },
-            br: { rx: 0, ry: 0 },
-            bl: { rx: 0, ry: 0 },
-        };
+    if (trimmed.endsWith("%")) {
+        const percentage = parseFloat(trimmed);
+        return Number.isFinite(percentage) ? clamp((percentage / 100) * scale, 0, scale) : null;
     }
+
+    const numeric = parseFloat(trimmed);
+    return Number.isFinite(numeric) ? clamp(numeric, 0, scale) : null;
+}
+
+function parseCssAlpha(value: string | undefined) {
+    if (!value) return 1;
+
+    const trimmed = value.trim();
+
+    if (trimmed.endsWith("%")) {
+        const percentage = parseFloat(trimmed);
+        return Number.isFinite(percentage) ? clamp(percentage / 100, 0, 1) : 1;
+    }
+
+    const numeric = parseFloat(trimmed);
+    return Number.isFinite(numeric) ? clamp(numeric, 0, 1) : 1;
+}
+
+function parseCssColor(color: string): ParsedColor | null {
+    const trimmed = color.trim();
+
+    if (!trimmed || trimmed === "transparent") {
+        return trimmed === "transparent" ? { r: 0, g: 0, b: 0, a: 0 } : null;
+    }
+
+    if (trimmed.startsWith("#")) {
+        const hex = trimmed.slice(1);
+
+        if (!/^[\da-f]+$/i.test(hex)) return null;
+
+        if (hex.length === 3 || hex.length === 4) {
+            return {
+                r: parseInt(hex[0] + hex[0], 16),
+                g: parseInt(hex[1] + hex[1], 16),
+                b: parseInt(hex[2] + hex[2], 16),
+                a: hex.length === 4 ? parseInt(hex[3] + hex[3], 16) / 255 : 1,
+            };
+        }
+
+        if (hex.length === 6 || hex.length === 8) {
+            return {
+                r: parseInt(hex.slice(0, 2), 16),
+                g: parseInt(hex.slice(2, 4), 16),
+                b: parseInt(hex.slice(4, 6), 16),
+                a: hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1,
+            };
+        }
+
+        return null;
+    }
+
+    const rgbMatch = trimmed.match(/^rgba?\((.+)\)$/i);
+    if (!rgbMatch) return null;
+
+    const [channelPart, alphaPart] = rgbMatch[1].split("/").map((part) => part.trim());
+
+    const channels = channelPart
+        .replace(/,/g, " ")
+        .split(/\s+/)
+        .filter(Boolean);
+
+    if (channels.length < 3) return null;
+
+    const r = parseCssChannel(channels[0]);
+    const g = parseCssChannel(channels[1]);
+    const b = parseCssChannel(channels[2]);
+
+    if (r === null || g === null || b === null) return null;
+
+    const commaAlpha = channels[3];
+
+    return {
+        r,
+        g,
+        b,
+        a: parseCssAlpha(alphaPart ?? commaAlpha),
+    };
+}
+
+function mixParsedCssColor(
+    parsedA: ParsedColor | null,
+    parsedB: ParsedColor | null,
+    fallbackA: string,
+    fallbackB: string,
+    t: number
+) {
+    if (!parsedA || !parsedB) return t < 0.5 ? fallbackA : fallbackB;
+
+    const clampedT = clamp(t, 0, 1);
+
+    const r = Math.round(lerp(parsedA.r, parsedB.r, clampedT));
+    const g = Math.round(lerp(parsedA.g, parsedB.g, clampedT));
+    const b = Math.round(lerp(parsedA.b, parsedB.b, clampedT));
+    const a = Number(lerp(parsedA.a, parsedB.a, clampedT).toFixed(4));
+
+    return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+function emptyRadii(): CornerRadii {
+    return {
+        tl: { rx: 0, ry: 0 },
+        tr: { rx: 0, ry: 0 },
+        br: { rx: 0, ry: 0 },
+        bl: { rx: 0, ry: 0 },
+    };
+}
+
+function parseCornerRadii(style: CSSStyleDeclaration, width: number, height: number): CornerRadii {
+    const raw = style.borderRadius.trim();
+    if (!raw) return emptyRadii();
 
     const [hPart, vPart] = raw.split("/").map((s) => s.trim());
     const hTokens = hPart.split(/\s+/);
@@ -131,17 +381,10 @@ function parseCornerRadii(
 
     const expand4 = (tokens: string[], base: number) => {
         const vals = tokens.map((t) => parseLengthToken(t, base));
-
         if (vals.length === 1) return [vals[0], vals[0], vals[0], vals[0]];
         if (vals.length === 2) return [vals[0], vals[1], vals[0], vals[1]];
         if (vals.length === 3) return [vals[0], vals[1], vals[2], vals[1]];
-
-        return [
-            vals[0] ?? 0,
-            vals[1] ?? 0,
-            vals[2] ?? 0,
-            vals[3] ?? 0,
-        ];
+        return [vals[0] ?? 0, vals[1] ?? 0, vals[2] ?? 0, vals[3] ?? 0];
     };
 
     let [tlx, trx, brx, blx] = expand4(hTokens, width);
@@ -157,33 +400,14 @@ function parseCornerRadii(
     bry = clamp(bry, 0, height);
     bly = clamp(bly, 0, height);
 
-    const hScale = Math.min(
-        1,
-        width / Math.max(tlx + trx, 1),
-        width / Math.max(blx + brx, 1)
-    );
-
-    const vScale = Math.min(
-        1,
-        height / Math.max(tly + bly, 1),
-        height / Math.max(try_ + bry, 1)
-    );
-
-    tlx *= hScale;
-    trx *= hScale;
-    brx *= hScale;
-    blx *= hScale;
-
-    tly *= vScale;
-    try_ *= vScale;
-    bry *= vScale;
-    bly *= vScale;
+    const hScale = Math.min(1, width / Math.max(tlx + trx, 1), width / Math.max(blx + brx, 1));
+    const vScale = Math.min(1, height / Math.max(tly + bly, 1), height / Math.max(try_ + bry, 1));
 
     return {
-        tl: { rx: tlx, ry: tly },
-        tr: { rx: trx, ry: try_ },
-        br: { rx: brx, ry: bry },
-        bl: { rx: blx, ry: bly },
+        tl: { rx: tlx * hScale, ry: tly * vScale },
+        tr: { rx: trx * hScale, ry: try_ * vScale },
+        br: { rx: brx * hScale, ry: bry * vScale },
+        bl: { rx: blx * hScale, ry: bly * vScale },
     };
 }
 
@@ -204,9 +428,138 @@ function buildRoundedRectPath(width: number, height: number, r: CornerRadii) {
         .trim();
 }
 
+function ellipseQuarterArcLength(rx: number, ry: number) {
+    if (rx <= 0 || ry <= 0) return 0;
+
+    const a = Math.max(rx, ry);
+    const b = Math.min(rx, ry);
+    const h = ((a - b) * (a - b)) / ((a + b) * (a + b));
+    const ellipseCirc = Math.PI * (a + b) * (1 + (3 * h) / (10 + Math.sqrt(4 - 3 * h)));
+
+    return ellipseCirc / 4;
+}
+
+type SegmentLine = {
+    kind: "line";
+    length: number;
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+};
+
+type SegmentArc = {
+    kind: "arc";
+    length: number;
+    cx: number;
+    cy: number;
+    rx: number;
+    ry: number;
+    startAngle: number;
+    endAngle: number;
+};
+
+type Segment = SegmentLine | SegmentArc;
+
+type PathMetrics = {
+    perimeter: number;
+    segments: Segment[];
+};
+
+function buildRoundedRectMetrics(width: number, height: number, r: CornerRadii): PathMetrics {
+    const topLen = Math.max(0, width - r.tl.rx - r.tr.rx);
+    const rightLen = Math.max(0, height - r.tr.ry - r.br.ry);
+    const bottomLen = Math.max(0, width - r.bl.rx - r.br.rx);
+    const leftLen = Math.max(0, height - r.tl.ry - r.bl.ry);
+
+    const trArc = ellipseQuarterArcLength(r.tr.rx, r.tr.ry);
+    const brArc = ellipseQuarterArcLength(r.br.rx, r.br.ry);
+    const blArc = ellipseQuarterArcLength(r.bl.rx, r.bl.ry);
+    const tlArc = ellipseQuarterArcLength(r.tl.rx, r.tl.ry);
+
+    const segments: Segment[] = [
+        {
+            kind: "line",
+            length: topLen,
+            x1: r.tl.rx,
+            y1: 0,
+            x2: width - r.tr.rx,
+            y2: 0,
+        },
+        {
+            kind: "arc",
+            length: trArc,
+            cx: width - r.tr.rx,
+            cy: r.tr.ry,
+            rx: r.tr.rx,
+            ry: r.tr.ry,
+            startAngle: -Math.PI / 2,
+            endAngle: 0,
+        },
+        {
+            kind: "line",
+            length: rightLen,
+            x1: width,
+            y1: r.tr.ry,
+            x2: width,
+            y2: height - r.br.ry,
+        },
+        {
+            kind: "arc",
+            length: brArc,
+            cx: width - r.br.rx,
+            cy: height - r.br.ry,
+            rx: r.br.rx,
+            ry: r.br.ry,
+            startAngle: 0,
+            endAngle: Math.PI / 2,
+        },
+        {
+            kind: "line",
+            length: bottomLen,
+            x1: width - r.br.rx,
+            y1: height,
+            x2: r.bl.rx,
+            y2: height,
+        },
+        {
+            kind: "arc",
+            length: blArc,
+            cx: r.bl.rx,
+            cy: height - r.bl.ry,
+            rx: r.bl.rx,
+            ry: r.bl.ry,
+            startAngle: Math.PI / 2,
+            endAngle: Math.PI,
+        },
+        {
+            kind: "line",
+            length: leftLen,
+            x1: 0,
+            y1: height - r.bl.ry,
+            x2: 0,
+            y2: r.tl.ry,
+        },
+        {
+            kind: "arc",
+            length: tlArc,
+            cx: r.tl.rx,
+            cy: r.tl.ry,
+            rx: r.tl.rx,
+            ry: r.tl.ry,
+            startAngle: Math.PI,
+            endAngle: Math.PI * 1.5,
+        },
+    ];
+
+    return {
+        perimeter: segments.reduce((sum, segment) => sum + segment.length, 0),
+        segments,
+    };
+}
+
 function readGeometry(el: HTMLElement, inset: number): Geometry {
     const style = window.getComputedStyle(el);
-
     const fullWidth = el.offsetWidth;
     const fullHeight = el.offsetHeight;
 
@@ -214,7 +567,6 @@ function readGeometry(el: HTMLElement, inset: number): Geometry {
     const height = Math.max(0, fullHeight - inset * 2);
 
     const fullRadii = parseCornerRadii(style, fullWidth, fullHeight);
-
     const shrinkCorner = (corner: CornerRadius): CornerRadius => ({
         rx: Math.max(0, corner.rx - inset),
         ry: Math.max(0, corner.ry - inset),
@@ -227,7 +579,7 @@ function readGeometry(el: HTMLElement, inset: number): Geometry {
         bl: shrinkCorner(fullRadii.bl),
     };
 
-    const path = buildRoundedRectPath(width, height, radii);
+    const metrics = getRoundedRectMetricsCached(width, height, radii);
 
     return {
         width,
@@ -235,7 +587,37 @@ function readGeometry(el: HTMLElement, inset: number): Geometry {
         offsetX: inset,
         offsetY: inset,
         radii,
-        path,
+        path: buildRoundedRectPath(width, height, radii),
+        perimeter: metrics.perimeter,
+    };
+}
+
+function closestPointOnLine(x: number, y: number, segment: SegmentLine) {
+    const dx = segment.x2 - segment.x1;
+    const dy = segment.y2 - segment.y1;
+    const denom = dx * dx + dy * dy;
+    const t = denom <= 0 ? 0 : clamp(((x - segment.x1) * dx + (y - segment.y1) * dy) / denom, 0, 1);
+
+    return {
+        x: segment.x1 + dx * t,
+        y: segment.y1 + dy * t,
+        t,
+    };
+}
+
+function closestPointOnArc(x: number, y: number, segment: SegmentArc) {
+    let angle = Math.atan2(y - segment.cy, x - segment.cx);
+
+    if (segment.startAngle >= Math.PI && angle < Math.PI) {
+        angle += Math.PI * 2;
+    }
+
+    angle = clamp(angle, segment.startAngle, segment.endAngle);
+
+    return {
+        x: segment.cx + Math.cos(angle) * segment.rx,
+        y: segment.cy + Math.sin(angle) * segment.ry,
+        t: (angle - segment.startAngle) / Math.max(segment.endAngle - segment.startAngle, 0.0001),
     };
 }
 
@@ -246,212 +628,261 @@ function getClosestPerimeterPoint(
     height: number,
     r: CornerRadii,
     proximityRadius: number
-) {
-    const candidates: Array<{ d: number; progress: number }> = [];
+): { progress: number; proximity: number } {
 
-    const topLen = Math.max(0, width - r.tl.rx - r.tr.rx);
-    const rightLen = Math.max(0, height - r.tr.ry - r.br.ry);
-    const bottomLen = Math.max(0, width - r.bl.rx - r.br.rx);
-    const leftLen = Math.max(0, height - r.tl.ry - r.bl.ry);
-    const qArc = (rx: number, ry: number) => {
-        if (rx === 0 || ry === 0) return 0;
-
-        const a = Math.max(rx, ry);
-        const b = Math.min(rx, ry);
-        const h = ((a - b) * (a - b)) / ((a + b) * (a + b));
-
-        const ellipseCirc =
-            Math.PI *
-            (a + b) *
-            (1 + (3 * h) / (10 + Math.sqrt(4 - 3 * h)));
-
-        return ellipseCirc / 4;
-    };
-
-    const trArc = qArc(r.tr.rx, r.tr.ry);
-    const brArc = qArc(r.br.rx, r.br.ry);
-    const blArc = qArc(r.bl.rx, r.bl.ry);
-    const tlArc = qArc(r.tl.rx, r.tl.ry);
-
-    const perimeter =
-        topLen + trArc + rightLen + brArc + bottomLen + blArc + leftLen + tlArc;
+    const metrics = getRoundedRectMetricsCached(width, height, r);
+    const perimeter = metrics.perimeter;
 
     if (perimeter <= 0) {
-        return {
-            progress: 0,
-            proximity: 0,
-        };
+        return { progress: 0, proximity: 0 };
     }
 
-    const add = (d: number, progress: number) => {
-        candidates.push({
-            d,
-            progress: ((progress % perimeter) + perimeter) % perimeter,
-        });
-    };
+    let bestDistanceSq = Number.POSITIVE_INFINITY;
+    let bestProgress = 0;
+    let accumulated = 0;
 
-    // Top edge
-    {
-        const x1 = r.tl.rx;
-        const x2 = width - r.tr.rx;
-        const px = clamp(x, x1, x2);
-        const py = 0;
+    for (const segment of metrics.segments) {
+        if (segment.length <= 0) continue;
 
-        add(dist(x, y, px, py), px - r.tl.rx);
+        const point = segment.kind === "line" ? closestPointOnLine(x, y, segment) : closestPointOnArc(x, y, segment);
+        const dSq = distSq(x, y, point.x, point.y);
+
+        if (dSq < bestDistanceSq) {
+            bestDistanceSq = dSq;
+            bestProgress = accumulated + point.t * segment.length;
+        }
+
+        accumulated += segment.length;
     }
 
-    // Top-right corner
-    if (r.tr.rx > 0 && r.tr.ry > 0) {
-        const cx = width - r.tr.rx;
-        const cy = r.tr.ry;
-
-        const angle = clamp(Math.atan2(y - cy, x - cx), -Math.PI / 2, 0);
-
-        const px = cx + Math.cos(angle) * r.tr.rx;
-        const py = cy + Math.sin(angle) * r.tr.ry;
-
-        const arcProgress = ((angle + Math.PI / 2) / (Math.PI / 2)) * trArc;
-
-        add(dist(x, y, px, py), topLen + arcProgress);
-    }
-
-    // Right edge
-    {
-        const y1 = r.tr.ry;
-        const y2 = height - r.br.ry;
-        const px = width;
-        const py = clamp(y, y1, y2);
-
-        add(dist(x, y, px, py), topLen + trArc + (py - r.tr.ry));
-    }
-
-    // Bottom-right corner
-    if (r.br.rx > 0 && r.br.ry > 0) {
-        const cx = width - r.br.rx;
-        const cy = height - r.br.ry;
-
-        const angle = clamp(Math.atan2(y - cy, x - cx), 0, Math.PI / 2);
-
-        const px = cx + Math.cos(angle) * r.br.rx;
-        const py = cy + Math.sin(angle) * r.br.ry;
-
-        const arcProgress = (angle / (Math.PI / 2)) * brArc;
-
-        add(dist(x, y, px, py), topLen + trArc + rightLen + arcProgress);
-    }
-
-    // Bottom edge
-    {
-        const x1 = r.bl.rx;
-        const x2 = width - r.br.rx;
-        const px = clamp(x, x1, x2);
-        const py = height;
-
-        add(
-            dist(x, y, px, py),
-            topLen + trArc + rightLen + brArc + (width - r.br.rx - px)
-        );
-    }
-
-    // Bottom-left corner
-    if (r.bl.rx > 0 && r.bl.ry > 0) {
-        const cx = r.bl.rx;
-        const cy = height - r.bl.ry;
-
-        const angle = clamp(Math.atan2(y - cy, x - cx), Math.PI / 2, Math.PI);
-
-        const px = cx + Math.cos(angle) * r.bl.rx;
-        const py = cy + Math.sin(angle) * r.bl.ry;
-
-        const arcProgress = ((angle - Math.PI / 2) / (Math.PI / 2)) * blArc;
-
-        add(
-            dist(x, y, px, py),
-            topLen + trArc + rightLen + brArc + bottomLen + arcProgress
-        );
-    }
-
-    // Left edge
-    {
-        const y1 = r.tl.ry;
-        const y2 = height - r.bl.ry;
-        const px = 0;
-        const py = clamp(y, y1, y2);
-
-        add(
-            dist(x, y, px, py),
-            topLen +
-            trArc +
-            rightLen +
-            brArc +
-            bottomLen +
-            blArc +
-            (height - r.bl.ry - py)
-        );
-    }
-
-    // Top-left corner
-    if (r.tl.rx > 0 && r.tl.ry > 0) {
-        const cx = r.tl.rx;
-        const cy = r.tl.ry;
-
-        let angle = Math.atan2(y - cy, x - cx);
-
-        if (angle < Math.PI) angle += Math.PI * 2;
-
-        angle = clamp(angle, Math.PI, Math.PI * 1.5);
-
-        const px = cx + Math.cos(angle) * r.tl.rx;
-        const py = cy + Math.sin(angle) * r.tl.ry;
-
-        const arcProgress = ((angle - Math.PI) / (Math.PI / 2)) * tlArc;
-
-        add(
-            dist(x, y, px, py),
-            topLen +
-            trArc +
-            rightLen +
-            brArc +
-            bottomLen +
-            blArc +
-            leftLen +
-            arcProgress
-        );
-    }
-
-    const best = candidates.reduce((a, b) => (a.d < b.d ? a : b));
-    const proximity = 1 - clamp(best.d / proximityRadius, 0, 1);
+    const distance = Math.sqrt(bestDistanceSq);
+    const proximity = 1 - clamp(distance / Math.max(proximityRadius, 1), 0, 1);
 
     return {
-        progress: best.progress / perimeter,
+        progress: wrap(bestProgress, perimeter) / perimeter,
         proximity,
     };
 }
 
-function buildDashArray(
-    pathLength: number,
-    segmentRatio: number,
-    trailCount: number,
-    trailGap: number
-) {
-    if (!pathLength) return "0 9999";
 
-    const visible = pathLength * clamp(segmentRatio, 0.04, 0.5);
+export function resolveThemeVars(base?: HTMLElement): ThemeVars {
+    const el = base ?? document.documentElement;
 
-    if (trailCount <= 1) return `${visible} ${pathLength}`;
-
-    const gap = visible * clamp(trailGap, 0.3, 4);
-    const pattern: number[] = [];
-
-    for (let i = 0; i < trailCount; i++) {
-        pattern.push(visible, gap);
-    }
-
-    const used = pattern.reduce((sum, v) => sum + v, 0);
-    pattern.push(Math.max(pathLength - used, gap));
-
-    return pattern.join(" ");
+    return {
+        colorA: getCssVar(el, "--ael-color-a", DEFAULT_THEME.colorA),
+        colorB: getCssVar(el, "--ael-color-b", DEFAULT_THEME.colorB),
+        highlight: getCssVar(el, "--ael-highlight", DEFAULT_THEME.highlight),
+        gradStart: getCssVar(el, "--ael-gradient-start", DEFAULT_THEME.gradStart),
+        gradEnd: getCssVar(el, "--ael-gradient-end", DEFAULT_THEME.gradEnd),
+        strokeWidth: parseNum(getCssVar(el, "--ael-stroke-width", String(DEFAULT_THEME.strokeWidth)), DEFAULT_THEME.strokeWidth),
+        glowWidth: parseNum(getCssVar(el, "--ael-glow-width", String(DEFAULT_THEME.glowWidth)), DEFAULT_THEME.glowWidth),
+        glowBlur: parseNum(getCssVar(el, "--ael-glow-blur", String(DEFAULT_THEME.glowBlur)), DEFAULT_THEME.glowBlur),
+        coreOpacity: parseNum(getCssVar(el, "--ael-core-opacity", String(DEFAULT_THEME.coreOpacity)), DEFAULT_THEME.coreOpacity),
+        glowOpacity: parseNum(getCssVar(el, "--ael-glow-opacity", String(DEFAULT_THEME.glowOpacity)), DEFAULT_THEME.glowOpacity),
+        highlightOpacity: parseNum(
+            getCssVar(el, "--ael-highlight-opacity", String(DEFAULT_THEME.highlightOpacity)),
+            DEFAULT_THEME.highlightOpacity
+        ),
+    };
 }
+
+export function sameTheme(a: ThemeVars, b: ThemeVars) {
+    return (
+        a.colorA === b.colorA &&
+        a.colorB === b.colorB &&
+        a.highlight === b.highlight &&
+        a.gradStart === b.gradStart &&
+        a.gradEnd === b.gradEnd &&
+        a.strokeWidth === b.strokeWidth &&
+        a.glowWidth === b.glowWidth &&
+        a.glowBlur === b.glowBlur &&
+        a.coreOpacity === b.coreOpacity &&
+        a.glowOpacity === b.glowOpacity &&
+        a.highlightOpacity === b.highlightOpacity
+    );
+}
+
+
+
+type TailLayer = {
+    length: number;
+    opacity: number;
+    width: number;
+    blur: boolean;
+    distanceFromHead?: number;
+};
+
+
+interface CometDashProps {
+    geometry: Geometry;
+    effectivePathLength: number;
+    offset: number;
+    dashLen: number;
+    perimeterOffset: MotionValue<number>;
+    glowStrokeOpacity: MotionValue<number>;
+    tailLayers: TailLayer[];
+    headStrokeWidth: number;
+    quality: AutoEdgeLightQuality;
+    colorTravel: MotionValue<number>;
+    colorSeed: number;
+    colorA: string;
+    colorB: string;
+    highlightColor: string;
+    parsedColorA: ParsedColor | null;
+    parsedColorB: ParsedColor | null;
+    colorSpeed: number;
+}
+
+
+
+
+
+interface CometTailLayerProps {
+    geometry: Geometry;
+    effectivePathLength: number;
+    offset: number;
+    dashLen: number;
+    perimeterOffset: MotionValue<number>;
+    layer: TailLayer;
+    strokeColor: MotionValue<string>;
+}
+
+const CometTailLayer = React.memo(function CometTailLayer({
+                                                              geometry,
+                                                              effectivePathLength,
+                                                              offset,
+                                                              dashLen,
+                                                              perimeterOffset,
+                                                              layer,
+                                                              strokeColor,
+                                                          }: CometTailLayerProps) {
+    const tailDashoffset = useTransform(perimeterOffset, (base: number) => {
+        const head = base + offset;
+        const distanceFromHead = layer.distanceFromHead ?? 0;
+
+        return -wrap(head + dashLen + distanceFromHead, effectivePathLength);
+    });
+
+    return (
+        <motion.path
+            d={geometry.path}
+            fill="none"
+            strokeWidth={layer.width}
+            strokeLinecap="round"
+            strokeDasharray={`${layer.length} ${Math.max(1, effectivePathLength - layer.length)}`}
+            style={{
+                stroke: strokeColor,
+                strokeDashoffset: tailDashoffset,
+                mixBlendMode: "screen",
+            }}
+            opacity={layer.opacity}
+        />
+    );
+});
+
+
+const CometDash = React.memo(function CometDash({
+                                                    geometry,
+                                                    effectivePathLength,
+                                                    offset,
+                                                    dashLen,
+                                                    perimeterOffset,
+                                                    glowStrokeOpacity,
+                                                    tailLayers,
+                                                    headStrokeWidth,
+                                                    quality,
+                                                    colorTravel,
+                                                    colorSeed,
+                                                    colorA,
+                                                    colorB,
+                                                    highlightColor,
+                                                    parsedColorA,
+                                                    parsedColorB,
+                                                    colorSpeed,
+                                                }: CometDashProps) {
+
+    const headDashoffset = useTransform(perimeterOffset, (base: number) => {
+        return -wrap(base + offset, effectivePathLength);
+    });
+
+    const cometColorMix = useTransform(colorTravel, (travel: number) => {
+        const pathLoops = travel / effectivePathLength;
+        const phase = pathLoops * colorSpeed + colorSeed;
+        const wrappedPhase = phase - Math.floor(phase);
+
+        return 0.5 - 0.5 * Math.cos(wrappedPhase * Math.PI * 2);
+    });
+
+    const cometColor = useTransform(cometColorMix, (mix: number) => {
+        return mixParsedCssColor(parsedColorA, parsedColorB, colorA, colorB, mix);
+    });
+
+    const glowLen = Math.max(7, dashLen * 0.72);
+    const coreLen = Math.max(5, dashLen * 0.24);
+    const glowHeadWidth = Math.max(headStrokeWidth * 2.1, headStrokeWidth + 2);
+    const showInteractionHalo = quality !== "performance";
+    const haloLen = Math.max(6, dashLen * 4);
+    const haloWidth = Math.max(headStrokeWidth * 1.45, headStrokeWidth + 1.2);
+
+    return (
+        <motion.g style={{ opacity: glowStrokeOpacity }}>
+            {tailLayers.map((layer, index) => (
+                <CometTailLayer
+                    key={index}
+                    geometry={geometry}
+                    effectivePathLength={effectivePathLength}
+                    offset={offset}
+                    dashLen={dashLen}
+                    perimeterOffset={perimeterOffset}
+                    layer={layer}
+                    strokeColor={cometColor}
+                />
+            ))}
+
+            <motion.path
+                d={geometry.path}
+                fill="none"
+                strokeWidth={glowHeadWidth}
+                strokeLinecap="round"
+                strokeDasharray={`${glowLen} ${Math.max(1, effectivePathLength - glowLen)}`}
+                style={{
+                    stroke: cometColor,
+                    strokeDashoffset: headDashoffset,
+                }}
+                opacity={4}
+            />
+
+            {showInteractionHalo ? (
+                <motion.path
+                    d={geometry.path}
+                    fill="none"
+                    strokeWidth={haloWidth}
+                    strokeLinecap="round"
+                    strokeDasharray={`${haloLen} ${Math.max(1, effectivePathLength - haloLen)}`}
+                    style={{
+                        stroke: cometColor,
+                        strokeDashoffset: headDashoffset,
+                    }}
+                    opacity={1}
+                />
+            ) : null}
+
+            <motion.path
+                d={geometry.path}
+                fill="none"
+                stroke={highlightColor}
+                strokeWidth={headStrokeWidth}
+                strokeLinecap="round"
+                strokeDasharray={`${coreLen} ${Math.max(1, effectivePathLength - coreLen)}`}
+                style={{ strokeDashoffset: headDashoffset }}
+                opacity={2}
+            />
+        </motion.g>
+    );
+});
+
+
+
 
 export function AutoEdgeLight({
                                   active,
@@ -459,265 +890,448 @@ export function AutoEdgeLight({
                                   reducedMotion = false,
                                   className = "",
                                   inset,
-
-                                  strokeWidth = 2,
-                                  glowWidth = 9,
-                                  glowBlur = 8,
-
-                                  segmentRatio = 0.14,
-                                  trailCount = 2,
-                                  trailGap = 1.15,
-
+                                  engagementReleaseDelayMs = 420,
+                                  strokeWidth,
+                                  glowWidth,
                                   idleSpeed = 0.06,
                                   hoverSpeedBoost = 0.34,
                                   attractStrength = 8,
-
                                   speedSpring = { stiffness: 120, damping: 24, mass: 0.9 },
                                   proximitySpring = { stiffness: 150, damping: 20, mass: 0.65 },
-                                  activationSpring = { stiffness: 140, damping: 26, mass: 0.9 },
-
+                                  activationSpring = { stiffness: 90, damping: 22, mass: 1 },
                                   proximityRadius = 150,
                                   pulseDurationMs = 700,
                                   pulseIntensity = 1,
-
-                                  coreOpacity = 0.92,
-                                  glowOpacity = 0.42,
-                                  highlightOpacity = 0.16,
-
-                                  colorA = "rgb(0 196 255)",
-                                  colorB = "rgb(140 0 255)",
-                                  highlightColor = "rgb(34 255 0)",
-
-                                  enableIdleScan = true,
+                                  glowOpacity,
+                                  colorA,
+                                  colorB,
+                                  highlightColor,
+                                  enableIdleScan = false,
                                   enableCursorProximity = true,
                                   enablePulse = true,
+                                  interactionBoostAmount = 0.75,
+                                  interactionBoostDecay = 2.2,
+                                  colorSpeed = 1,
+                                  dashRatio = 0.22,
+                                  trailCount,
+                                  dashCount = 1,
+                                  syncColorToDash,
+                                  quality = "balanced",
                               }: AutoEdgeLightProProps) {
-    /**
-     * Important:
-     * The path stroke is centered on the SVG path.
-     * If inset is 0, half the stroke/glow gets clipped by overflow-hidden.
-     * This safe inset prevents anti-aliasing hairlines at the card edge.
-     */
-    const safeInset =
-        inset ?? Math.ceil(Math.max(strokeWidth, glowWidth) / 2 + glowBlur * 0.5);
+    const { resolvedTheme } = useTheme();
+
+    const [themeVars, setThemeVars] = useState<ThemeVars>(DEFAULT_THEME);
+    const [isVisible, setIsVisible] = useState(false);
+    const [isUserEngaged, setIsUserEngaged] = useState(false);
+
+    const safeInset = inset ?? -2;
+    const effectiveActive = active && isVisible && isUserEngaged;
 
     const [geometry, setGeometry] = useState<Geometry>({
         width: 0,
         height: 0,
         offsetX: 0,
         offsetY: 0,
-        radii: {
-            tl: { rx: 0, ry: 0 },
-            tr: { rx: 0, ry: 0 },
-            br: { rx: 0, ry: 0 },
-            bl: { rx: 0, ry: 0 },
-        },
+        radii: emptyRadii(),
         path: "",
+        perimeter: 0,
     });
 
-    const [pathLength, setPathLength] = useState(0);
-
-    const pathMeasureRef = useRef<SVGPathElement>(null);
-    const lastActiveRef = useRef(active);
+    const lastEffectiveActiveRef = useRef(effectiveActive);
     const pulseStartRef = useRef<number | null>(null);
-    const releaseTimeoutRef = useRef<number | null>(null)
+    const releaseTimeoutRef = useRef<number | null>(null);
+    const engagementReleaseRef = useRef<number | null>(null);
+    const prevPathLengthRef = useRef<number>(0);
 
     const rawGradientId = useId();
-    const rawGlowFilterId = useId();
-
     const gradientId = `auto-edge-gradient-${rawGradientId.replace(/:/g, "")}`;
-    const glowFilterId = `auto-edge-glow-${rawGlowFilterId.replace(/:/g, "")}`;
 
-    const dashOffset = useMotionValue(0);
+    const perimeterOffset = useMotionValue(0);
     const targetOffset = useMotionValue(0);
-
     const targetSpeed = useMotionValue(0);
     const smoothSpeed = useSpring(targetSpeed, speedSpring);
 
     const proximityRaw = useMotionValue(0);
     const proximity = useSpring(proximityRaw, proximitySpring);
 
-    const activeProgressRaw = useMotionValue(active ? 1 : 0);
+    const activeProgressRaw = useMotionValue(effectiveActive ? 1 : 0);
     const activeProgress = useSpring(activeProgressRaw, activationSpring);
 
     const hoverRaw = useMotionValue(0);
-    const hover = useSpring(hoverRaw, {
-        stiffness: 180,
-        damping: 22,
-        mass: 0.7,
-    });
+    const hover = useSpring(hoverRaw, { stiffness: 180, damping: 22, mass: 0.7 });
 
     const pulse = useMotionValue(0);
+    const interactionBoost = useMotionValue(0);
+    const colorTravel = useMotionValue(0);
+
+    const resetTransientMotion = useCallback(() => {
+        proximityRaw.set(0);
+        hoverRaw.set(0);
+        targetSpeed.set(0);
+        interactionBoost.set(0);
+        pulse.set(0);
+        pulseStartRef.current = null;
+
+        if (releaseTimeoutRef.current !== null) {
+            window.clearTimeout(releaseTimeoutRef.current);
+            releaseTimeoutRef.current = null;
+        }
+    }, [hoverRaw, interactionBoost, proximityRaw, pulse, targetSpeed]);
+
+    const clearEngagementRelease = useCallback(() => {
+        if (engagementReleaseRef.current != null) {
+            window.clearTimeout(engagementReleaseRef.current);
+            engagementReleaseRef.current = null;
+        }
+    }, []);
+
+
+    const activateUserEngagement = useCallback(
+        (options?: { pulse?: boolean }) => {
+            if (!active) return;
+
+            clearEngagementRelease();
+            setIsUserEngaged(true);
+
+            interactionBoost.set(Math.max(interactionBoost.get(), interactionBoostAmount));
+
+            if (options?.pulse && enablePulse) {
+                pulseStartRef.current = performance.now();
+            }
+        },
+        [
+            active,
+            clearEngagementRelease,
+            enablePulse,
+            interactionBoost,
+            interactionBoostAmount,
+        ]
+    );
+
+    const releaseUserEngagement = useCallback(() => {
+        clearEngagementRelease();
+
+        activeProgressRaw.set(0);
+        proximityRaw.set(0);
+        hoverRaw.set(0);
+        targetSpeed.set(0);
+
+        engagementReleaseRef.current = window.setTimeout(() => {
+            setIsUserEngaged(false);
+            resetTransientMotion();
+            engagementReleaseRef.current = null;
+        }, engagementReleaseDelayMs);
+    }, [
+        activeProgressRaw,
+        clearEngagementRelease,
+        engagementReleaseDelayMs,
+        hoverRaw,
+        proximityRaw,
+        resetTransientMotion,
+        targetSpeed,
+    ]);
+
+
+    const qualityConfig = useMemo(() => {
+        if (quality === "ultra") {
+            return {
+                trailCount: trailCount ?? 3,
+                syncColorToDash: syncColorToDash ?? true,
+                blurDuringIdle: false,
+                maxDashCount: 3,
+            };
+        }
+
+        if (quality === "performance") {
+            return {
+                trailCount: trailCount ?? 1,
+                syncColorToDash: syncColorToDash ?? false,
+                blurDuringIdle: false,
+                maxDashCount: 1,
+            };
+        }
+
+        return {
+            trailCount: trailCount ?? 2,
+            syncColorToDash: syncColorToDash ?? false,
+            blurDuringIdle: false,
+            maxDashCount: 200,
+        };
+    }, [quality, syncColorToDash, trailCount]);
 
     useEffect(() => {
-        activeProgressRaw.set(active ? 1 : 0);
-    }, [active, activeProgressRaw]);
+        const base = parentRef.current ?? document.documentElement;
+        if (!base) return;
+
+        const read = () => {
+            const target = parentRef.current ?? document.documentElement;
+            const next = resolveThemeVars(target);
+            setThemeVars((prev) => (sameTheme(prev, next) ? prev : next));
+        };
+
+        const raf = requestAnimationFrame(read);
+        const mo = new MutationObserver(read);
+
+        mo.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ["class", "data-theme", "style"],
+        });
+
+        return () => {
+            cancelAnimationFrame(raf);
+            mo.disconnect();
+        };
+    }, [parentRef, resolvedTheme]);
+
+    const resolvedStrokeWidth = strokeWidth ?? themeVars.strokeWidth;
+    const resolvedGlowWidth = glowWidth ?? themeVars.glowWidth;
+
+    const {
+        colorA: resolvedColorA,
+        colorB: resolvedColorB,
+        highlightColor: resolvedHighlightColor,
+    } = useResolvedCssColors({
+        parentRef,
+        colorA,
+        colorB,
+        highlightColor,
+        themeVars,
+    });
+
+    const parsedColors = useMemo(
+        () => ({
+            a: parseCssColor(resolvedColorA),
+            b: parseCssColor(resolvedColorB),
+        }),
+        [resolvedColorA, resolvedColorB]
+    );
+
+    const resolvedGlowOpacity = glowOpacity ?? themeVars.glowOpacity;
+
+    useEffect(() => {
+        activeProgressRaw.set(effectiveActive ? 1 : 0);
+    }, [activeProgressRaw, effectiveActive]);
+
+    useEffect(() => {
+        if (active) return;
+
+        clearEngagementRelease();
+        activeProgressRaw.set(0);
+        resetTransientMotion();
+    }, [active, activeProgressRaw, clearEngagementRelease, resetTransientMotion]);
+
+    useEffect(() => {
+        if (isVisible) return;
+
+        clearEngagementRelease();
+        activeProgressRaw.set(0);
+        resetTransientMotion();
+    }, [activeProgressRaw, clearEngagementRelease, isVisible, resetTransientMotion]);
+
+    useEffect(() => {
+        return () => {
+            clearEngagementRelease();
+            resetTransientMotion();
+        };
+    }, [clearEngagementRelease, resetTransientMotion]);
 
     useEffect(() => {
         const el = parentRef.current;
         if (!el) return;
 
-        let raf = 0;
-
         const update = () => {
             const next = readGeometry(el, safeInset);
-            setGeometry(next);
 
-            raf = requestAnimationFrame(() => {
-                if (pathMeasureRef.current) {
-                    setPathLength(pathMeasureRef.current.getTotalLength());
-                }
+            setGeometry((prev) => {
+                const same =
+                    prev.width === next.width &&
+                    prev.height === next.height &&
+                    prev.offsetX === next.offsetX &&
+                    prev.offsetY === next.offsetY &&
+                    prev.path === next.path &&
+                    Math.abs(prev.perimeter - next.perimeter) < 0.01;
+
+                return same ? prev : next;
             });
         };
 
         const ro = new ResizeObserver(update);
-
         ro.observe(el);
         update();
 
         return () => {
             ro.disconnect();
-            cancelAnimationFrame(raf);
         };
     }, [parentRef, safeInset]);
 
     useEffect(() => {
-        const el = parentRef.current
-        if (!el || reducedMotion || !enableCursorProximity) return
+        const el = parentRef.current;
 
-        const updateFromClientPoint = (clientX: number, clientY: number) => {
-            if (!geometry.width || !geometry.height) return
-
-            const rect = el.getBoundingClientRect()
-
-            const localX = clientX - rect.left - geometry.offsetX
-            const localY = clientY - rect.top - geometry.offsetY
-
-            const result = getClosestPerimeterPoint(
-                localX,
-                localY,
-                geometry.width,
-                geometry.height,
-                geometry.radii,
-                proximityRadius
-            )
-
-            proximityRaw.set(result.proximity)
-
-            if (pathLength > 0) {
-                targetOffset.set(-result.progress * pathLength)
-            }
-        }
-        const clearReleaseTimeout = () => {
-            if (releaseTimeoutRef.current !== null) {
-                window.clearTimeout(releaseTimeoutRef.current)
-                releaseTimeoutRef.current = null
-            }
+        if (!el || typeof IntersectionObserver === "undefined") {
+            setIsVisible(true);
+            return;
         }
 
-        const engage = () => {
-            clearReleaseTimeout()
-            hoverRaw.set(1)
-        }
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                const nextVisible = Boolean(entry?.isIntersecting);
+                setIsVisible((prev) => (prev === nextVisible ? prev : nextVisible));
+            },
+            { root: null, threshold: 0 }
+        );
 
-        const scheduleDisengage = () => {
-            clearReleaseTimeout()
-            releaseTimeoutRef.current = window.setTimeout(() => {
-                hoverRaw.set(0)
-                proximityRaw.set(0)
-            }, 220)
-        }
-
-
-        const onPointerEnter = (e: PointerEvent) => {
-            engage()
-            updateFromClientPoint(e.clientX, e.clientY)
-        }
-
-        const onPointerMove = (e: PointerEvent) => {
-            engage()
-            updateFromClientPoint(e.clientX, e.clientY)
-        }
-
-        const onPointerDown = (e: PointerEvent) => {
-            engage()
-            updateFromClientPoint(e.clientX, e.clientY)
-
-            if (enablePulse && active) {
-                pulseStartRef.current = performance.now()
-            }
-        }
-
-        const onPointerUp = () => {
-            scheduleDisengage()
-        }
-
-        const onPointerLeave = () => {
-            scheduleDisengage()
-        }
-
-        const onPointerCancel = () => {
-            scheduleDisengage()
-        }
-
-
-        el.addEventListener("pointerenter", onPointerEnter, { passive: true })
-        el.addEventListener("pointermove", onPointerMove, { passive: true })
-        el.addEventListener("pointerdown", onPointerDown, { passive: true })
-        el.addEventListener("pointerleave", onPointerLeave, { passive: true })
-        el.addEventListener("pointerup", onPointerUp, { passive: true })
-        el.addEventListener("pointercancel", onPointerCancel, { passive: true })
+        observer.observe(el);
 
         return () => {
-            clearReleaseTimeout()
-            el.removeEventListener("pointerenter", onPointerEnter)
-            el.removeEventListener("pointermove", onPointerMove)
-            el.removeEventListener("pointerdown", onPointerDown)
-            el.removeEventListener("pointerleave", onPointerLeave)
-            el.removeEventListener("pointerup", onPointerUp)
-            el.removeEventListener("pointercancel", onPointerCancel)
-        }
-    }, [
-        active,
-        enableCursorProximity,
-        enablePulse,
-        geometry,
+            observer.disconnect();
+        };
+    }, [parentRef]);
+
+    useUnifiedPointerGlow({
         parentRef,
-        pathLength,
-        proximityRadius,
-        proximityRaw,
         reducedMotion,
-        targetOffset,
+        enableCursorProximity:
+            enableCursorProximity && isVisible && effectiveActive && !reducedMotion,
+        enablePulse: enablePulse && effectiveActive,
+        active: effectiveActive,
+        geometry,
+        pathLength: geometry.perimeter,
+        proximityRadius,
+        releaseDelayMs: 140,
+        proximityRaw,
         hoverRaw,
-    ])
+        targetOffset,
+        targetSpeed,
+        pulse,
+        pulseStartRef,
+        releaseTimeoutRef,
+        getClosestPerimeterPoint,
+    });
 
     useEffect(() => {
-        if (active && !lastActiveRef.current && enablePulse) {
+        const el = parentRef.current;
+        if (!el) return;
+
+        let lastMoveBoostTs = 0;
+        const moveThrottleMs = 60;
+
+        const onPointerEnter = () => {
+            activateUserEngagement();
+        };
+
+        const onPointerDown = () => {
+            activateUserEngagement({ pulse: true });
+        };
+
+        const onPointerMove = () => {
+            if (!isUserEngaged) return;
+
+            const now = performance.now();
+
+            if (now - lastMoveBoostTs >= moveThrottleMs) {
+                lastMoveBoostTs = now;
+                activateUserEngagement();
+            }
+        };
+
+        const onPointerLeave = () => {
+            releaseUserEngagement();
+        };
+
+        const onPointerCancel = () => {
+            releaseUserEngagement();
+        };
+
+        const onFocusIn = () => {
+            activateUserEngagement();
+        };
+
+        const onFocusOut = () => {
+            releaseUserEngagement();
+        };
+
+        el.addEventListener("pointerenter", onPointerEnter, { passive: true });
+        el.addEventListener("pointerdown", onPointerDown, { passive: true });
+        el.addEventListener("pointermove", onPointerMove, { passive: true });
+        el.addEventListener("pointerleave", onPointerLeave, { passive: true });
+        el.addEventListener("pointercancel", onPointerCancel, { passive: true });
+        el.addEventListener("focusin", onFocusIn);
+        el.addEventListener("focusout", onFocusOut);
+
+        return () => {
+            el.removeEventListener("pointerenter", onPointerEnter);
+            el.removeEventListener("pointerdown", onPointerDown);
+            el.removeEventListener("pointermove", onPointerMove);
+            el.removeEventListener("pointerleave", onPointerLeave);
+            el.removeEventListener("pointercancel", onPointerCancel);
+            el.removeEventListener("focusin", onFocusIn);
+            el.removeEventListener("focusout", onFocusOut);
+        };
+    }, [
+        activateUserEngagement,
+        isUserEngaged,
+        parentRef,
+        releaseUserEngagement,
+    ]);
+
+    useEffect(() => {
+        if (effectiveActive && !lastEffectiveActiveRef.current && enablePulse) {
             pulseStartRef.current = performance.now();
         }
 
-        lastActiveRef.current = active;
-    }, [active, enablePulse]);
+        lastEffectiveActiveRef.current = effectiveActive;
+    }, [effectiveActive, enablePulse]);
+
+    useEffect(() => {
+        const oldLen = prevPathLengthRef.current;
+        const newLen = geometry.perimeter;
+
+        if (oldLen > 0 && newLen > 0 && oldLen !== newLen) {
+            const phase = wrap(perimeterOffset.get(), oldLen) / oldLen;
+            const targetPhase = wrap(targetOffset.get(), oldLen) / oldLen;
+
+            perimeterOffset.set(phase * newLen);
+            targetOffset.set(targetPhase * newLen);
+        }
+
+        prevPathLengthRef.current = newLen;
+    }, [geometry.perimeter, perimeterOffset, targetOffset]);
 
     useAnimationFrame((time, delta) => {
-        if (!pathLength || !geometry.path) return;
+        if (!isVisible || !effectiveActive || !geometry.path || geometry.perimeter <= 0) {
+            return;
+        }
+
+        const ap = activeProgress.get();
+        const pr = proximity.get();
+        const pu = pulse.get();
+        const hv = hover.get();
+        const ibCurrent = interactionBoost.get();
+
+        if (
+            reducedMotion ||
+            (ap < 0.001 &&
+                pr < 0.001 &&
+                pu < 0.001 &&
+                hv < 0.001 &&
+                ibCurrent < 0.001)
+        ) {
+            return;
+        }
 
         const dt = delta / 1000;
 
-        const hoverAmount = hover.get();
-        const proximityAmount = proximity.get();
+        if (ibCurrent > 0) {
+            interactionBoost.set(Math.max(0, ibCurrent - dt * interactionBoostDecay));
+        }
 
-        const engagement = clamp(
-            Math.max(proximityAmount, hoverAmount * 0.5),
-            0,
-            1
-        );
-
-        const visibility = activeProgress.get();
+        const interaction = interactionBoost.get();
+        const engagement = clamp(Math.max(pr, hv * 0.5) + interaction * 0.7, 0, 1);
+        const visibility = ap;
         const wantsAnimation = !reducedMotion && visibility > 0.001;
 
         const desiredSpeed = wantsAnimation
-            ? pathLength *
+            ? geometry.perimeter *
             ((enableIdleScan ? idleSpeed : 0) + hoverSpeedBoost * engagement) *
             visibility
             : 0;
@@ -725,20 +1339,21 @@ export function AutoEdgeLight({
         targetSpeed.set(desiredSpeed);
 
         if (wantsAnimation) {
-            const scannerOffset = dashOffset.get() - smoothSpeed.get() * dt;
+            const scannerOffset = perimeterOffset.get() - smoothSpeed.get() * dt;
             const followMix = clamp(attractStrength * engagement * dt, 0, 0.24);
-            const next = lerp(scannerOffset, targetOffset.get(), followMix);
 
-            dashOffset.set(next);
+            perimeterOffset.set(
+                wrap(
+                    lerp(scannerOffset, targetOffset.get(), followMix),
+                    geometry.perimeter
+                )
+            );
+
+            colorTravel.set(colorTravel.get() + Math.abs(smoothSpeed.get()) * dt);
         }
 
         if (pulseStartRef.current !== null) {
-            const t = clamp(
-                (time - pulseStartRef.current) / pulseDurationMs,
-                0,
-                1
-            );
-
+            const t = clamp((time - pulseStartRef.current) / pulseDurationMs, 0, 1);
             const fade = 1 - Math.pow(1 - t, 3);
 
             pulse.set((1 - fade) * pulseIntensity);
@@ -750,146 +1365,128 @@ export function AutoEdgeLight({
         }
     });
 
-    const dashArray = useMemo(
-        () => buildDashArray(pathLength, segmentRatio, trailCount, trailGap),
-        [pathLength, segmentRatio, trailCount, trailGap]
-    );
-
     const glowStrokeOpacity = useTransform(
-        [proximity, pulse, activeProgress],
-        (latest) => {
-            const [p, pu, ap] = latest as [number, number, number];
-
-            return clamp((glowOpacity + p * 0.18 + pu * 0.24) * ap, 0, 1);
+        [proximity, pulse, activeProgress, interactionBoost],
+        (values: number[]) => {
+            const [p, pu, ap, ib] = values;
+            return clamp(
+                (resolvedGlowOpacity + p * 0.18 + pu * 0.24 + ib * 0.22) * ap,
+                0,
+                1
+            );
         }
     );
 
-    const coreStrokeOpacity = useTransform(
-        [proximity, pulse, activeProgress],
-        (latest) => {
-            const [p, pu, ap] = latest as [number, number, number];
+    const effectivePathLength = Math.max(geometry.perimeter, 1);
+    const isReady = geometry.perimeter > 0;
 
-            return clamp((coreOpacity + p * 0.1 + pu * 0.16) * ap, 0, 1);
-        }
+    const { dashLen, segment, clampedDashCount } = useMemo(() => {
+        const requestedDashCount = Math.max(1, Math.floor(dashCount));
+        const safeDashCount = Math.min(requestedDashCount, qualityConfig.maxDashCount);
+        const safeDashRatio = clamp(dashRatio, 0.01, 0.99);
+        const safeSegment = effectivePathLength / safeDashCount;
+
+        return {
+            dashLen: safeSegment * safeDashRatio,
+            segment: safeSegment,
+            clampedDashCount: safeDashCount,
+        };
+    }, [dashCount, dashRatio, effectivePathLength, qualityConfig.maxDashCount]);
+
+    const headStrokeWidth = Math.max(1, resolvedStrokeWidth * 1.35);
+
+    const tailLayers = useMemo<TailLayer[]>(
+        () => [
+            {
+                distanceFromHead: dashLen * 1.75,
+                length: dashLen * 0.7,
+                width: Math.max(1, headStrokeWidth * 0.55),
+                opacity: 0.08,
+                blur: false,
+            },
+        ],
+        [dashLen, headStrokeWidth]
     );
-
-    const highlightStrokeOpacity = useTransform(
-        [pulse, proximity, activeProgress],
-        (latest) => {
-            const [pu, p, ap] = latest as [number, number, number];
-
-            return clamp((highlightOpacity + pu * 0.22 + p * 0.06) * ap, 0, 0.85);
-        }
-    );
-
-    const staticReducedOpacity = active ? 1 : 0;
-    const isReady = pathLength > 0;
 
     if (!geometry.path) return null;
 
+    const bleed = Math.max(16, resolvedGlowWidth * 2, headStrokeWidth * 3.5);
+
     return (
         <svg
-            className={`pointer-events-none absolute inset-0 z-20 h-full w-full overflow-hidden rounded-[inherit] ${className}`}
+            className={className}
+            viewBox={`${geometry.offsetX - bleed} ${geometry.offsetY - bleed} ${
+                geometry.width + bleed * 2
+            } ${geometry.height + bleed * 2}`}
+            preserveAspectRatio="none"
+            style={{
+                position: "absolute",
+                inset: safeInset - bleed,
+                width: "auto",
+                height: "auto",
+                pointerEvents: "none",
+                overflow: "visible",
+            }}
             aria-hidden="true"
-            focusable="false"
         >
             <defs>
-                <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="rgba(34,211,238,0)" />
-                    <stop offset="18%" stopColor={colorA} />
-                    <stop offset="54%" stopColor={colorA} />
-                    <stop offset="84%" stopColor={colorB} />
-                    <stop offset="100%" stopColor="rgba(168,85,247,0)" />
-                </linearGradient>
-
-                <filter
-                    id={glowFilterId}
-                    x="-20%"
-                    y="-20%"
-                    width="140%"
-                    height="140%"
-                    colorInterpolationFilters="sRGB"
+                <linearGradient
+                    id={gradientId}
+                    gradientUnits="userSpaceOnUse"
+                    x1="0"
+                    y1="0"
+                    x2={geometry.width}
+                    y2={geometry.height}
                 >
-                    <feGaussianBlur stdDeviation={glowBlur} result="blur" />
-                    <feMerge>
-                        <feMergeNode in="blur" />
-                        <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                </filter>
+                    <stop offset="0%" stopColor={resolvedColorA} />
+                    <stop offset="100%" stopColor={resolvedColorB} />
+                </linearGradient>
             </defs>
 
-            <g transform={`translate(${geometry.offsetX}, ${geometry.offsetY})`}>
-                {/* Hidden measurement path. Prevents visible dash artifacts before pathLength is known. */}
-                <path
-                    ref={pathMeasureRef}
+            {reducedMotion ? (
+                <motion.path
                     d={geometry.path}
                     fill="none"
-                    stroke="none"
-                    opacity={0}
+                    stroke={`url(#${gradientId})`}
+                    strokeWidth={Math.max(1, resolvedGlowWidth)}
+                    strokeLinecap="round"
+                    opacity={effectiveActive ? resolvedGlowOpacity : 0}
+                    style={{}}
                 />
+            ) : isReady ? (
+                Array.from({ length: clampedDashCount }, (_, cometIndex) => {
+                    const offset = cometIndex * segment;
 
-                {reducedMotion ? (
-                    <>
-                        <path
-                            d={geometry.path}
-                            fill="none"
-                            stroke={`url(#${gradientId})`}
-                            strokeWidth={glowWidth * 0.55}
-                            opacity={staticReducedOpacity ? glowOpacity * 0.55 : 0}
+                    return (
+                        <CometDash
+                            key={cometIndex}
+                            geometry={geometry}
+                            effectivePathLength={effectivePathLength}
+                            offset={offset}
+                            dashLen={dashLen}
+                            perimeterOffset={perimeterOffset}
+                            glowStrokeOpacity={glowStrokeOpacity}
+                            headStrokeWidth={headStrokeWidth}
+                            quality={quality}
+                            colorTravel={colorTravel}
+                            colorSeed={
+                                clampedDashCount <= 1
+                                    ? 0
+                                    : cometIndex / clampedDashCount
+                            }
+                            colorA={resolvedColorA}
+                            colorB={resolvedColorB}
+                            highlightColor={resolvedHighlightColor}
+                            parsedColorA={parsedColors.a}
+                            parsedColorB={parsedColors.b}
+                            colorSpeed={colorSpeed}
+                            tailLayers={tailLayers}
                         />
-
-                        <path
-                            d={geometry.path}
-                            fill="none"
-                            stroke={`url(#${gradientId})`}
-                            strokeWidth={strokeWidth}
-                            opacity={staticReducedOpacity ? coreOpacity * 0.82 : 0}
-                        />
-                    </>
-                ) : isReady ? (
-                    <>
-                        <motion.path
-                            d={geometry.path}
-                            fill="none"
-                            stroke={`url(#${gradientId})`}
-                            strokeWidth={glowWidth}
-                            strokeLinecap="round"
-                            strokeDasharray={dashArray}
-                            style={{
-                                strokeDashoffset: dashOffset,
-                                opacity: glowStrokeOpacity,
-                                filter: `url(#${glowFilterId})`,
-                            }}
-                        />
-
-                        <motion.path
-                            d={geometry.path}
-                            fill="none"
-                            stroke={`url(#${gradientId})`}
-                            strokeWidth={strokeWidth}
-                            strokeLinecap="round"
-                            strokeDasharray={dashArray}
-                            style={{
-                                strokeDashoffset: dashOffset,
-                                opacity: coreStrokeOpacity,
-                            }}
-                        />
-
-                        <motion.path
-                            d={geometry.path}
-                            fill="none"
-                            stroke={highlightColor}
-                            strokeWidth={Math.max(1, strokeWidth * 0.34)}
-                            strokeLinecap="round"
-                            strokeDasharray={dashArray}
-                            style={{
-                                strokeDashoffset: dashOffset,
-                                opacity: highlightStrokeOpacity,
-                            }}
-                        />
-                    </>
-                ) : null}
-            </g>
+                    );
+                })
+            ) : null}
         </svg>
     );
 }
+
+export default AutoEdgeLight;

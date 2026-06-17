@@ -1,0 +1,718 @@
+"use client";
+
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Float, Line, PointMaterial, Points } from "@react-three/drei";
+import {
+    animate,
+    motion,
+    useMotionTemplate,
+    useMotionValue,
+    useReducedMotion,
+    useScroll,
+    useSpring,
+    useTransform,
+} from "framer-motion";
+import {
+    type RefObject,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
+import {
+    Color,
+    Fog,
+    Object3D,
+    type Group,
+    type InstancedMesh,
+    type Line as ThreeLine,
+    type LineBasicMaterial,
+    type LineSegments,
+    type Mesh,
+    type MeshBasicMaterial,
+    type MeshStandardMaterial,
+    type PointLight,
+    type Points as ThreePoints,
+    type PointsMaterial,
+    type AmbientLight,
+    type DirectionalLight,
+    Vector3,
+} from "three";
+
+/* -------------------------------------------------------------------------- */
+/*  Types                                                                      */
+/* -------------------------------------------------------------------------- */
+
+type SectionStage = 0 | 1 | 2 | 3;
+
+/** Ref carrying a single mutable number (progress / themeProgress). */
+type NumberRef = RefObject<number>;
+
+type Theme = {
+    accent: Color;
+    accent2: Color;
+    accentStyle: string;
+    accent2Style: string;
+    fog: string;
+    bg: string;
+    coreScale: number;
+    ringScale: number;
+    particleOpacity: number;
+    orbitSpeed: number;
+    pulse: number;
+};
+
+/* -------------------------------------------------------------------------- */
+/*  Constants                                                                  */
+/* -------------------------------------------------------------------------- */
+
+const THEMES: readonly Theme[] = [
+    {
+        accent: new Color("#ff2bd6"),
+        accent2: new Color("#00e5ff"),
+        accentStyle: "#ff2bd6",
+        accent2Style: "#00e5ff",
+        fog: "#090013",
+        bg: "#07000f",
+        coreScale: 1,
+        ringScale: 1,
+        particleOpacity: 0.58,
+        orbitSpeed: 0.2,
+        pulse: 0.85,
+    },
+    {
+        accent: new Color("#8b5cf6"),
+        accent2: new Color("#00ffc6"),
+        accentStyle: "#8b5cf6",
+        accent2Style: "#00ffc6",
+        fog: "#0b0017",
+        bg: "#080011",
+        coreScale: 1.08,
+        ringScale: 1.08,
+        particleOpacity: 0.72,
+        orbitSpeed: 0.32,
+        pulse: 1,
+    },
+    {
+        accent: new Color("#ff8a00"),
+        accent2: new Color("#ff2bd6"),
+        accentStyle: "#ff8a00",
+        accent2Style: "#ff2bd6",
+        fog: "#110014",
+        bg: "#09000f",
+        coreScale: 1.16,
+        ringScale: 1.14,
+        particleOpacity: 0.8,
+        orbitSpeed: 0.44,
+        pulse: 1.22,
+    },
+    {
+        accent: new Color("#b026ff"),
+        accent2: new Color("#39ff14"),
+        accentStyle: "#b026ff",
+        accent2Style: "#39ff14",
+        fog: "#090010",
+        bg: "#05000b",
+        coreScale: 1.22,
+        ringScale: 1.2,
+        particleOpacity: 0.9,
+        orbitSpeed: 0.56,
+        pulse: 1.4,
+    },
+];
+
+const BG_STOPS = [
+    { from: "#07000f", via: "#150024", to: "#020617" },
+    { from: "#080011", via: "#12002a", to: "#03131b" },
+    { from: "#09000f", via: "#22001c", to: "#0a1020" },
+    { from: "#05000b", via: "#1a0030", to: "#020617" },
+] as const;
+
+const GLOW_STOPS = [
+    {
+        a: "rgba(255,43,214,0.22)",
+        b: "rgba(0,229,255,0.16)",
+        c: "rgba(176,38,255,0.14)",
+        d: "rgba(57,255,20,0.08)",
+    },
+    {
+        a: "rgba(139,92,246,0.22)",
+        b: "rgba(0,255,198,0.16)",
+        c: "rgba(255,43,214,0.12)",
+        d: "rgba(0,229,255,0.08)",
+    },
+    {
+        a: "rgba(255,138,0,0.18)",
+        b: "rgba(255,43,214,0.16)",
+        c: "rgba(0,229,255,0.12)",
+        d: "rgba(255,210,63,0.08)",
+    },
+    {
+        a: "rgba(176,38,255,0.22)",
+        b: "rgba(57,255,20,0.12)",
+        c: "rgba(0,229,255,0.1)",
+        d: "rgba(255,43,214,0.08)",
+    },
+] as const;
+
+const CAMERA_TARGETS = [
+    [0, 0.1, 6.4],
+    [0.45, 0.18, 5.9],
+    [-0.35, 0.1, 5.45],
+    [0, -0.08, 5.0],
+] as const;
+
+/* -------------------------------------------------------------------------- */
+/*  Math / damping helpers                                                     */
+/* -------------------------------------------------------------------------- */
+
+function lerp(a: number, b: number, t: number) {
+    return a + (b - a) * t;
+}
+
+/**
+ * Frame-rate independent exponential damping.
+ * `rate` is the "stiffness": higher = snappier. `delta` is seconds.
+ * Equivalent to a critically-stable approach toward `target`.
+ */
+function damp(current: number, target: number, rate: number, delta: number) {
+    return lerp(current, target, 1 - Math.exp(-rate * delta));
+}
+
+/** Same damping but writes into a Color (no allocation). */
+function dampColor(current: Color, target: Color, rate: number, delta: number) {
+    current.lerp(target, 1 - Math.exp(-rate * delta));
+}
+
+function hexString(color: Color) {
+    return `#${color.getHexString()}`;
+}
+
+function toSectionStage(index: number): SectionStage {
+    const normalized = Math.max(0, Math.min(index, THEMES.length - 1));
+    return normalized as SectionStage;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Centralized theme — computed once per frame, zero allocation              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A single shared mutable theme object. `applyBlendedTheme` mutates this in
+ * place each frame so no component allocates Colors/strings during render.
+ */
+const sharedTheme: Theme = {
+    accent: new Color(),
+    accent2: new Color(),
+    accentStyle: "#000000",
+    accent2Style: "#000000",
+    fog: "#000000",
+    bg: "#000000",
+    coreScale: 1,
+    ringScale: 1,
+    particleOpacity: 0,
+    orbitSpeed: 0,
+    pulse: 0,
+};
+
+// Scratch colors reused only inside applyBlendedTheme.
+const scratchFog = new Color();
+const scratchBg = new Color();
+
+/**
+ * Blends THEMES[base] -> THEMES[next] by `progress` into `sharedTheme`.
+ * Call ONCE per frame (from SceneContents) before children read it.
+ */
+function applyBlendedTheme(progress: number): Theme {
+    const maxIndex = THEMES.length - 1;
+    const clamped = Math.max(0, Math.min(progress, maxIndex));
+    const base = Math.floor(clamped);
+    const next = Math.min(base + 1, maxIndex);
+    const t = clamped - base;
+
+    const from = THEMES[base];
+    const to = THEMES[next];
+
+    sharedTheme.accent.copy(from.accent).lerp(to.accent, t);
+    sharedTheme.accent2.copy(from.accent2).lerp(to.accent2, t);
+
+    scratchFog.set(from.fog).lerp(scratchBg.set(to.fog), t);
+    sharedTheme.fog = hexString(scratchFog);
+
+    scratchBg.set(from.bg).lerp(scratchFog.set(to.bg), t);
+    sharedTheme.bg = hexString(scratchBg);
+
+    sharedTheme.accentStyle = hexString(sharedTheme.accent);
+    sharedTheme.accent2Style = hexString(sharedTheme.accent2);
+
+    sharedTheme.coreScale = lerp(from.coreScale, to.coreScale, t);
+    sharedTheme.ringScale = lerp(from.ringScale, to.ringScale, t);
+    sharedTheme.particleOpacity = lerp(from.particleOpacity, to.particleOpacity, t);
+    sharedTheme.orbitSpeed = lerp(from.orbitSpeed, to.orbitSpeed, t);
+    sharedTheme.pulse = lerp(from.pulse, to.pulse, t);
+
+    return sharedTheme;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Pure deterministic PRNG (replaces Math.random in render)                  */
+/* -------------------------------------------------------------------------- */
+
+function mulberry32(seed: number) {
+    let a = seed >>> 0;
+    return () => {
+        a |= 0;
+        a = (a + 0x6d2b79f5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Section observer                                                           */
+/* -------------------------------------------------------------------------- */
+
+function useActiveGeometrySection() {
+    const [activeSection, setActiveSection] = useState<SectionStage>(0);
+
+    useEffect(() => {
+        const sections = Array.from(
+            document.querySelectorAll<HTMLElement>("[data-geometry-section]"),
+        );
+
+        if (!sections.length) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const visible = entries
+                    .filter((entry) => entry.isIntersecting)
+                    .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+                if (!visible) return;
+
+                const index = sections.indexOf(visible.target as HTMLElement);
+                if (index === -1) return;
+
+                const next = toSectionStage(index % THEMES.length);
+                setActiveSection((current) => (current === next ? current : next));
+            },
+            {
+                threshold: [0.25, 0.5, 0.75],
+                rootMargin: "-10% 0px -10% 0px",
+            },
+        );
+
+        sections.forEach((section) => observer.observe(section));
+        return () => observer.disconnect();
+    }, []);
+
+    return activeSection;
+}
+
+/**
+ * Smooths a numeric "theme progress" toward the active stage, frame-rate
+ * independent. Returns a ref the scene reads each frame.
+ */
+function useThemeProgress(stage: SectionStage): NumberRef {
+    const progressRef = useRef<number>(stage);
+
+    useFrame((_, delta) => {
+        progressRef.current = damp(progressRef.current, stage, 4.5, delta);
+    });
+
+    return progressRef
+;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  3D Scene Components                                                        */
+/* -------------------------------------------------------------------------- */
+
+const scratchObj = new Object3D();
+
+function DataArcs() {
+    const groupRef = useRef<Group>(null);
+
+    useFrame((state, delta) => {
+        if (!groupRef.current) return;
+        groupRef.current.rotation.y += delta * sharedTheme.orbitSpeed * 0.45;
+        groupRef.current.rotation.z += delta * 0.04;
+    });
+
+    return (
+        <group ref={groupRef}>
+            {[1.8, 2.4, 3.1].map((r, i) => (
+                <Line
+                    key={i}
+                    points={Array.from({ length: 48 }, (_, j) => {
+                        const a = (j / 48) * Math.PI * 2;
+                        return [Math.cos(a) * r, Math.sin(a) * r, 0] as [number, number, number];
+                    })}
+                    color={sharedTheme.accentStyle}
+                    lineWidth={1.2}
+                    transparent
+                    opacity={0.15 + i * 0.08}
+                    dashed={i % 2 === 0}
+                    dashSize={0.4}
+                    gapSize={0.2}
+                />
+            ))}
+        </group>
+    );
+}
+
+function ParticleField() {
+    const pointsRef = useRef<ThreePoints>(null);
+    const matRef = useRef<PointsMaterial>(null);
+
+    const positions = useMemo(() => {
+        const count = 40;
+        const arr = new Float32Array(count * 3);
+        const random = mulberry32(12345); // deterministic seed
+
+        for (let i = 0; i < count; i++) {
+            const radius = 4.2 + random() * 7.4;
+            const theta = random() * Math.PI * 2;
+            const phi = Math.acos(2 * random() - 1);
+
+            arr[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+            arr[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta) * 0.55;
+            arr[i * 3 + 2] = radius * Math.cos(phi);
+        }
+        return arr;
+    }, []);
+
+    useFrame((state, delta) => {
+        if (!pointsRef.current || !matRef.current) return;
+        pointsRef.current.rotation.y -= delta * 0.05 * sharedTheme.orbitSpeed;
+        matRef.current.opacity = damp(
+            matRef.current.opacity,
+            sharedTheme.particleOpacity,
+            2,
+            delta,
+        );
+    });
+
+    return (
+        <Points ref={pointsRef} positions={positions}>
+            <PointMaterial
+                ref={matRef}
+                transparent
+                size={0.065}
+                sizeAttenuation
+                depthWrite={false}
+                color="#ffffff"
+                blending={2}
+            />
+        </Points>
+    );
+}
+
+function OrbitNodes() {
+    const evenRef = useRef<InstancedMesh>(null);
+    const oddRef = useRef<InstancedMesh>(null);
+    const lineRef = useRef<LineSegments>(null);
+
+    const nodes = useMemo(() => {
+        const count = 22;
+        const random = mulberry32(6789);
+        return Array.from({ length: count }, (_, i) => ({
+            pos: new Vector3(
+                (random() - 0.5) * 8.5,
+                (random() - 0.5) * 4.5,
+                (random() - 0.5) * 5.5,
+            ),
+            scale: 0.08 + random() * 0.12,
+            isEven: i % 2 === 0,
+        }));
+    }, []);
+
+    useLayoutEffect(() => {
+        const setMatrices = (mesh: InstancedMesh | null, filtered: typeof nodes) => {
+            if (!mesh) return;
+            filtered.forEach((node, i) => {
+                scratchObj.position.copy(node.pos);
+                scratchObj.scale.setScalar(node.scale);
+                scratchObj.updateMatrix();
+                mesh.setMatrixAt(i, scratchObj.matrix);
+            });
+            mesh.instanceMatrix.needsUpdate = true;
+        };
+
+        setMatrices(evenRef.current, nodes.filter((n) => n.isEven));
+        setMatrices(oddRef.current, nodes.filter((n) => !n.isEven));
+    }, [nodes]);
+
+    useFrame((_, delta) => {
+        if (!evenRef.current || !oddRef.current || !lineRef.current) return;
+
+        const eMat = evenRef.current.material as MeshStandardMaterial;
+        const oMat = oddRef.current.material as MeshStandardMaterial;
+        const lMat = lineRef.current.material as LineBasicMaterial;
+
+        dampColor(eMat.emissive, sharedTheme.accent, 3, delta);
+        dampColor(oMat.emissive, sharedTheme.accent2, 3, delta);
+        lMat.color.lerp(sharedTheme.accent, 0.05); // slightly slower blend for line
+        lMat.opacity = damp(lMat.opacity, 0.18 + sharedTheme.pulse * 0.05, 2, delta);
+    });
+
+    return (
+        <group>
+            <instancedMesh ref={evenRef} args={[null, null, nodes.filter((n) => n.isEven).length]}>
+                <sphereGeometry args={[1, 16, 16]} />
+                <meshStandardMaterial emissiveIntensity={3} toneMapped={false} />
+            </instancedMesh>
+            <instancedMesh ref={oddRef} args={[null, null, nodes.filter((n) => !n.isEven).length]}>
+                <sphereGeometry args={[1, 16, 16]} />
+                <meshStandardMaterial emissiveIntensity={3} toneMapped={false} />
+            </instancedMesh>
+        </group>
+    );
+}
+
+function AgentCore() {
+    const groupRef = useRef<Group>(null);
+    const innerRef = useRef<Mesh>(null);
+    const outerRef = useRef<Mesh>(null);
+
+    useFrame((state, delta) => {
+        if (!groupRef.current || !innerRef.current || !outerRef.current) return;
+
+        const time = state.clock.getElapsedTime();
+        const p = sharedTheme.pulse;
+
+        groupRef.current.rotation.y += delta * 0.15;
+        groupRef.current.rotation.x = Math.sin(time * 0.2) * 0.08;
+
+        const sInner = damp(innerRef.current.scale.x, sharedTheme.coreScale, 2.5, delta);
+        innerRef.current.scale.setScalar(sInner);
+
+        const sOuter = damp(outerRef.current.scale.x, sharedTheme.ringScale, 2.2, delta);
+        outerRef.current.scale.setScalar(sOuter);
+
+        const iMat = innerRef.current.material as MeshStandardMaterial;
+        const oMat = outerRef.current.material as MeshStandardMaterial;
+
+        dampColor(iMat.emissive, sharedTheme.accent, 3, delta);
+        iMat.emissiveIntensity = 2.4 + Math.sin(time * 1.8) * 0.6 * p;
+
+        dampColor(oMat.emissive, sharedTheme.accent2, 3, delta);
+        oMat.emissiveIntensity = 1.8 + Math.cos(time * 1.5) * 0.4 * p;
+    });
+
+    return (
+        <Float speed={1.8} rotationIntensity={0.4} floatIntensity={0.5}>
+            <group ref={groupRef}>
+                <mesh ref={innerRef}>
+                    <torusGeometry args={[1.2, 0.015, 16, 80]} />
+                    <meshStandardMaterial roughness={0.1} metalness={0.9} toneMapped={false} />
+                </mesh>
+                <mesh ref={outerRef} rotation={[Math.PI / 2, 0, 0]}>
+                    <torusGeometry args={[1.5, 0.01, 12, 64]} />
+                    <meshStandardMaterial roughness={0.1} metalness={0.9} toneMapped={false} />
+                </mesh>
+            </group>
+        </Float>
+    );
+}
+
+const camTargetPos = new Vector3();
+
+function CameraRig({ stage }: { stage: SectionStage }) {
+    const { camera } = useThree();
+
+    useFrame((state, delta) => {
+        const target = CAMERA_TARGETS[stage];
+        camTargetPos.set(target[0], target[1], target[2]);
+
+        // Pointer influence
+        camTargetPos.x += state.pointer.x * 0.35;
+        camTargetPos.y += state.pointer.y * 0.25;
+
+        // Damped camera move
+        camera.position.lerp(camTargetPos, 1 - Math.exp(-2.2 * delta));
+        camera.lookAt(0, 0, 0);
+    });
+
+    return null;
+}
+
+function SceneContents({
+    stage,
+    themeProgressRef,
+}: {
+    stage: SectionStage;
+    themeProgressRef: NumberRef;
+}) {
+    const { scene } = useThree();
+    const ambientRef = useRef<AmbientLight>(null);
+    const dirRef = useRef<DirectionalLight>(null);
+    const pointARef = useRef<PointLight>(null);
+    const pointBRef = useRef<PointLight>(null);
+    const floorRef = useRef<Mesh>(null);
+
+    // Initial fog config (only runs once)
+    useLayoutEffect(() => {
+        scene.fog = new Fog("#000", 7.5, 16);
+        scene.background = new Color("#000");
+    }, [scene]);
+
+    useFrame((state, delta) => {
+        // 1. Update shared theme for all children
+        const theme = applyBlendedTheme(themeProgressRef.current);
+
+        // 2. Scene-level updates (no new allocations)
+        (scene.background as Color).set(theme.bg);
+        (scene.fog as Fog).color.set(theme.fog);
+
+        if (ambientRef.current) {
+            ambientRef.current.intensity = damp(
+                ambientRef.current.intensity,
+                0.52 + themeProgressRef.current * 0.04,
+                2,
+                delta,
+            );
+        }
+
+        if (dirRef.current) {
+            dirRef.current.intensity = damp(
+                dirRef.current.intensity,
+                1.15 + themeProgressRef.current * 0.1,
+                2,
+                delta,
+            );
+        }
+
+        if (pointARef.current) {
+            pointARef.current.intensity = damp(
+                pointARef.current.intensity,
+                1.8 + themeProgressRef.current * 0.28,
+                2,
+                delta,
+            );
+            dampColor(pointARef.current.color, theme.accent, 3, delta);
+        }
+
+        if (pointBRef.current) {
+            dampColor(pointBRef.current.color, theme.accent2, 3, delta);
+        }
+
+        if (floorRef.current) {
+            const mat = floorRef.current.material as MeshBasicMaterial;
+            mat.color.set(theme.accentStyle);
+            mat.opacity = damp(
+                mat.opacity,
+                0.08 + themeProgressRef.current * 0.015,
+                2,
+                delta,
+            );
+        }
+    });
+
+    return (
+        <>
+            <CameraRig stage={stage} />
+            <ambientLight ref={ambientRef} />
+            <directionalLight ref={dirRef} position={[5, 10, 5]} />
+            <pointLight ref={pointARef} position={[-4, 3, 2]} distance={15} />
+            <pointLight ref={pointBRef} position={[4, -2, 3]} distance={12} intensity={1.5} />
+
+            <AgentCore />
+            <DataArcs />
+            <OrbitNodes />
+            <ParticleField />
+
+            <mesh ref={floorRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -4, 0]}>
+                <planeGeometry args={[50, 50]} />
+                <meshBasicMaterial transparent opacity={0.08} depthWrite={false} />
+            </mesh>
+        </>
+    );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Main Component                                                             */
+/* -------------------------------------------------------------------------- */
+
+export function GeometryHero() {
+    const activeStage = useActiveGeometrySection();
+    const shouldReduceMotion = useReducedMotion();
+    const { scrollYProgress } = useScroll();
+
+    const smoothScroll = useSpring(scrollYProgress, {
+        stiffness: 100,
+        damping: 30,
+        restDelta: 0.001,
+    });
+
+    // Background Gradient Transforms
+    const currentStops = BG_STOPS[activeStage];
+    const bgFrom = useMotionValue(currentStops.from);
+    const bgVia = useMotionValue(currentStops.via);
+    const bgTo = useMotionValue(currentStops.to);
+
+    useEffect(() => {
+        const stops = BG_STOPS[activeStage];
+        const opts = { duration: 1.2, ease: "easeInOut" };
+        animate(bgFrom, stops.from, opts);
+        animate(bgVia, stops.via, opts);
+        animate(bgTo, stops.to, opts);
+    }, [activeStage, bgFrom, bgVia, bgTo]);
+
+    const background = useMotionTemplate`radial-gradient(circle at 50% -20%, ${bgVia}, ${bgFrom} 45%, ${bgTo} 90%)`;
+
+    // Glow Transforms
+    const currentGlow = GLOW_STOPS[activeStage];
+    const glowA = useMotionValue(currentGlow.a);
+    const glowB = useMotionValue(currentGlow.b);
+    const glowC = useMotionValue(currentGlow.c);
+
+    useEffect(() => {
+        const stops = GLOW_STOPS[activeStage];
+        const opts = { duration: 1.5, ease: "circOut" };
+        animate(glowA, stops.a, opts);
+        animate(glowB, stops.b, opts);
+        animate(glowC, stops.c, opts);
+    }, [activeStage, glowA, glowB, glowC]);
+
+    const glowGradient = useMotionTemplate`linear-gradient(135deg, ${glowA} 0%, ${glowB} 40%, ${glowC} 100%)`;
+
+    const opacity = useTransform(smoothScroll, [0, 0.15], [1, 0]);
+    const scale = useTransform(smoothScroll, [0, 0.15], [1, 0.92]);
+
+    return (
+        <div className="fixed inset-0 -z-10 h-screen w-full overflow-hidden outline-none">
+            <motion.div style={{ background, opacity, scale }} className="absolute inset-0">
+                <div className="absolute inset-0 bg-[url('/grid.svg')] bg-[size:40px_40px] bg-center [mask-image:radial-gradient(white,transparent_85%)] opacity-[0.12]" />
+
+                <motion.div
+                    style={{ background: glowGradient }}
+                    className="absolute inset-0 opacity-40 blur-[120px]"
+                />
+
+                <Canvas
+                    camera={{ position: [0, 0, 7], fov: 42 }}
+                    dpr={[1, 1.25]}
+                    gl={{
+                        antialias: true,
+                        alpha: true,
+                        powerPreference: "high-performance",
+                    }}
+                >
+                    <SceneWrapper stage={activeStage} />
+                </Canvas>
+            </motion.div>
+        </div>
+    );
+}
+
+/**
+ * Intermediate wrapper to access useFrame for theme progress
+ * without putting the logic in the main GeometryHero.
+ */
+function SceneWrapper({ stage }: { stage: SectionStage }) {
+    const themeProgressRef = useThemeProgress(stage);
+    return <SceneContents stage={stage} themeProgressRef={themeProgressRef} />;
+}

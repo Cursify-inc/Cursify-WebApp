@@ -1,21 +1,22 @@
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
 type BadgeProps = {
-    children: React.ReactNode
-    className?: string
-}
+    children: React.ReactNode;
+    className?: string;
+};
 
 export function Badge({ children, className }: BadgeProps) {
     return (
         <span
             className={cn(
-                "inline-flex items-center rounded-full border border-brand/15 " +
-                "bg-white/70 px-3 py-1 text-xs font-semibold text-brand shadow-sm backdrop-blur " +
-                "dark:bg-white/5 dark:text-brand-light",
+                "theme-color-fade inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold",
+                "border shadow-sm backdrop-blur",
+                "bg-(--badge-bg) text-(--badge-text) border-(--badge-border)",
                 className
             )}
         >
-      {children}
-    </span>
-    )
+            {children}
+        </span>
+    );
 }

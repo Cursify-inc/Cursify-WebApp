@@ -1,46 +1,82 @@
-import { ArrowRight, Download } from "lucide-react"
-import { Button } from "@/components/ui/Button"
-import { Container } from "@/components/ui/Container"
+"use client";
+
+import { useRef } from "react";
+import { motion, useInView, useReducedMotion } from "framer-motion";
+import { ArrowRight, Download, Sparkles } from "lucide-react";
+
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Container } from "@/components/ui/Container";
+import { Surface } from "@/components/ui/Surface";
 
 export function FinalCta() {
+    const ref = useRef<HTMLElement | null>(null);
+    const inView = useInView(ref, { once: true });
+    const reducedMotion = useReducedMotion() ?? false;
+
     return (
-        <section className="py-24">
-            <Container>
-                <div className="relative overflow-hidden rounded-[3rem] border border-brand/20 bg-brand px-6 py-16 text-center shadow-card sm:px-10">
-                    <div className="absolute left-10 top-10 h-24 w-24 rotate-45 rounded-3xl bg-white/10" />
-                    <div className="absolute bottom-10 right-12 h-32 w-32 rounded-full border border-white/15" />
-                    <div className="absolute left-1/2 top-0 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/10 blur-3xl" />
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.14),transparent_42%)]" />
+        <section ref={ref} data-geometry-section className="relative py-24">
+            <Container
+                as="div"
+                id="FinalCta"
+                variant="transparent"
+                width="wide"
+                className="relative overflow-hidden"
+            >
+                <div className="mx-auto max-w-4xl text-center">
+                    <motion.div
+                        initial={reducedMotion ? false : { opacity: 0, y: 24 }}
+                        animate={
+                            reducedMotion
+                                ? undefined
+                                : inView
+                                    ? { opacity: 1, y: 0 }
+                                    : { opacity: 0, y: 24 }
+                        }
+                        transition={{ duration: 0.7, ease: "easeOut" }}
+                    >
+                        <div className="flex justify-center">
+                            <Badge>
+                                <Sparkles className="mr-2 h-3.5 w-3.5" />
+                                Ready to launch your developer workspace
+                            </Badge>
+                        </div>
 
-                    <div className="relative mx-auto max-w-3xl">
-                        <h2 className="text-4xl font-bold tracking-tight text-white sm:text-6xl">
-                            Build your AI-powered developer workspace.
-                        </h2>
+                        <Surface
+                            variant="card"
+                            size="lg"
+                            className="mx-auto mt-7 max-w-4xl text-center"
+                        >
+                            <h2 className="text-2xl font-stretch-condensed tracking-tight text-[var(--text-primary)] sm:text-7xl lg:text-5xl">
+                                Build your AI-powered developer workspace.
+                            </h2>
+                        </Surface>
 
-                        <p className="mt-6 text-lg leading-8 text-white/80">
-                            Start with the web platform, pair your desktop IDE, connect your
-                            developer accounts, customize agents, and sync your workflow.
-                        </p>
+                        <Surface
+                            variant="card"
+                            size="md"
+                            className="mx-auto mt-5 max-w-2xl text-center"
+                        >
+                            <p className="text-lg leading-8 text-[var(--text-secondary)] sm:text-xl">
+                                Start with the web platform, pair your desktop IDE, connect your
+                                developer accounts, customize agents, and sync your workflow.
+                            </p>
+                        </Surface>
 
-                        <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-                            <Button href="/signup" variant="secondary" size="lg">
+                        <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                            <Button href="/signup" size="lg">
                                 Create account
                                 <ArrowRight className="ml-2 h-5 w-5" />
                             </Button>
 
-                            <Button
-                                href="/download"
-                                variant="ghost"
-                                size="lg"
-                                className="border border-white/15 text-white hover:bg-white/10 hover:text-white"
-                            >
+                            <Button href="/download" variant="secondary" size="lg">
                                 <Download className="mr-2 h-5 w-5" />
                                 Download desktop
                             </Button>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             </Container>
         </section>
-    )
+    );
 }
