@@ -15,24 +15,26 @@ import {
   Wrench,
   X,
 } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ElementType } from "react";
 
 const sidebarItems = [
-  { label: "Overview", icon: Grid2X2, active: true },
-  { label: "Downloads", icon: Download },
-  { label: "Devices", icon: MonitorDown },
-  { label: "Agents", icon: Gauge },
-  { label: "Tools", icon: Wrench },
-  { label: "Extensions", icon: Package },
-  { label: "Mirrors", icon: RefreshCcw },
+  { label: "Overview", icon: Grid2X2, href: "/dashboard" },
+  { label: "Downloads", icon: Download, href: "/dashboard/downloads" },
+  { label: "Devices", icon: MonitorDown, href: "/dashboard/devices" },
+  { label: "Agents", icon: Gauge, href: "/dashboard/agents" },
+  { label: "Tools", icon: Wrench, href: "/dashboard/tools" },
+  { label: "Extensions", icon: Package, href: "/dashboard/extensions" },
+  { label: "Mirrors", icon: RefreshCcw, href: "/dashboard/mirrors" },
 ];
 
 const accountItems = [
-  { label: "Linked Accounts", icon: Link2 },
-  { label: "Billing", icon: CreditCard },
-  { label: "Account", icon: User },
-  { label: "Security", icon: Shield },
-  { label: "Settings", icon: Settings },
+  { label: "Linked Accounts", icon: Link2, href: "/dashboard/linked-accounts" },
+  { label: "Billing", icon: CreditCard, href: "/dashboard/billing" },
+  { label: "Account", icon: User, href: "/dashboard/account" },
+  { label: "Security", icon: Shield, href: "/dashboard/security" },
+  { label: "Settings", icon: Settings, href: "/dashboard/settings" },
 ];
 
 export function DashboardSidebar({
@@ -121,8 +123,20 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
           Upgrade Plan
         </button>
 
-        <SidebarLink label="Help" icon={CircleHelp} onClick={onItemClick} />
-        <SidebarLink label="Logout" icon={LogOut} onClick={onItemClick} />
+        <SidebarLink
+          label="Help"
+          icon={CircleHelp}
+          href="/dashboard/help"
+          onClick={onItemClick}
+        />
+
+        <SidebarLink
+          label="Logout"
+          icon={LogOut}
+          href="/login"
+          onClick={onItemClick}
+          danger
+        />
       </div>
     </>
   );
@@ -131,33 +145,44 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
 function SidebarLink({
   label,
   icon: Icon,
-  active = false,
+  href,
   onClick,
+  danger = false,
 }: {
   label: string;
   icon: ElementType;
-  active?: boolean;
+  href: string;
   onClick?: () => void;
+  danger?: boolean;
 }) {
+  const pathname = usePathname();
+
+  const isActive =
+    href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
+
   return (
-    <button
-      type="button"
+    <Link
+      href={href}
       onClick={onClick}
       className={`group flex w-full cursor-pointer items-center gap-3 px-3 py-3 text-left font-mono text-sm transition-colors duration-200 ${
-        active
+        isActive
           ? "border-l-4 border-brand bg-[#E8EBFF] font-bold text-[#0F1522] dark:border-brand-light dark:bg-background-elevated dark:text-text-primary"
-          : "border-l-4 border-transparent text-text-primary hover:border-brand-light hover:bg-[#EEF2FF] hover:text-brand dark:text-text-secondary dark:hover:border-brand-light dark:hover:bg-background-elevated dark:hover:text-text-primary"
+          : danger
+            ? "border-l-4 border-transparent text-danger hover:border-danger hover:bg-danger-light hover:text-danger"
+            : "border-l-4 border-transparent text-text-primary hover:border-brand-light hover:bg-[#EEF2FF] hover:text-brand dark:text-text-secondary dark:hover:border-brand-light dark:hover:bg-background-elevated dark:hover:text-text-primary"
       }`}
     >
       <Icon
         className={`h-5 w-5 shrink-0 transition-colors duration-200 ${
-          active
+          isActive
             ? "text-[#0F1522] dark:text-text-primary"
-            : "text-text-secondary group-hover:text-brand dark:text-text-tertiary dark:group-hover:text-text-primary"
+            : danger
+              ? "text-danger"
+              : "text-text-secondary group-hover:text-brand dark:text-text-tertiary dark:group-hover:text-text-primary"
         }`}
       />
 
       <span>{label}</span>
-    </button>
+    </Link>
   );
 }
