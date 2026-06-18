@@ -46,7 +46,7 @@ export function DashboardSidebar({
 }) {
   return (
     <>
-<aside className="hidden h-screen border-r border-border bg-background-surface px-4 py-7 lg:flex lg:flex-col">
+<aside className="hidden min-h-screen border-r border-border bg-background-surface px-4 py-7 lg:flex lg:flex-col">
   <SidebarContent />
 </aside>
 
@@ -116,7 +116,7 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
         ))}
       </nav>
 
-      <div className="mt-auto space-y-3">
+      <div className="my-4 space-y-3">
         <div className="h-px bg-border" />
 
         <button className="flex h-11 w-full cursor-pointer items-center justify-center rounded-xl border border-border bg-[#E9EDFF] font-mono text-sm font-bold text-brand transition-colors duration-200 hover:bg-[#DCE3FF] dark:bg-background-elevated dark:text-text-primary dark:hover:bg-brand-hover">
