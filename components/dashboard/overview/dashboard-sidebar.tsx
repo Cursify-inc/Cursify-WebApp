@@ -46,9 +46,9 @@ export function DashboardSidebar({
 }) {
   return (
     <>
-      <aside className="dashboard-sidebar-scroll hidden h-screen overflow-y-auto border-r border-border bg-background-surface px-4 py-7 lg:flex lg:flex-col">
-        <SidebarContent />
-      </aside>
+<aside className="hidden h-screen border-r border-border bg-background-surface px-4 py-7 lg:flex lg:flex-col">
+  <SidebarContent />
+</aside>
 
       {isMobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
