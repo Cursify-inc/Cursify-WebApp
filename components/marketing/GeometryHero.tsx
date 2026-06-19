@@ -28,6 +28,8 @@ import {
     Object3D,
     Vector3,
     BoxGeometry,
+    Plane,
+    Vector2,
 } from "three";
 
 type SectionStage = number;
@@ -204,6 +206,46 @@ export interface PacketInstance {
     burstPhase: number;
 }
 
+type InteractivePacketInstance = PacketInstance & {
+    collectedUntil: number;
+    escapeOffset: number;
+    escapeSign: -1 | 1;
+    panic: number;
+};
+
+const DATA_BUS_POINTER_PLANE = new Plane(new Vector3(0, 0, 1), -0.15);
+
+const PACKET_INTERACTION = {
+    updateFps: 60,
+    collectRadius: 0.115,
+    minCollectRadius: 0.075,
+    baseAvoidRadius: 0.22,
+    maxAvoidRadius: 0.95,
+    respawnDelay: 0.65,
+    maxRespawnDelay: 1.8,
+    escapeStep: 0.026,
+    escapeSpeed: 1.65,
+    maxEscapeSpeed: 5.25,
+    pointerActiveSeconds: 0.28,
+} as const;
+
+function createInteractivePacketInstances(
+    routes: PreparedRoute[],
+): InteractivePacketInstance[] {
+    return createPacketInstances(routes).map((packet) => ({
+        ...packet,
+        collectedUntil: 0,
+        escapeOffset: 0,
+        escapeSign: Math.random() > 0.5 ? 1 : -1,
+        panic: Math.random(),
+    }));
+}
+
+function packetDifficulty(collectedCount: number) {
+    return 1 - Math.exp(-collectedCount / 22);
+}
+
+
 function repeat01(t: number) {
     return ((t % 1) + 1) % 1;
 }
@@ -326,16 +368,16 @@ function createPacketInstances(routes: PreparedRoute[]): PacketInstance[] {
         let count: number;
 
         if (route.kind === "main") {
-            count = route.color === "primary" ? 10 : 10;
+            count = route.color === "primary" ? 60 : 60;
         } else {
             const r = Math.random() * 1000;
 
             if (r < 0.18) {
                 count = 0;
             } else if (r < 0.7) {
-                count = 20;
+                count = 30
             } else {
-                count = 10;
+                count = 30;
             }
         }
 
@@ -592,7 +634,7 @@ function createChipTracePositions() {
 
 
 const INSTANCE_DUMMY = new Object3D();
-const MAX_FRAME_DELTA = 1 / 144;
+const MAX_FRAME_DELTA = 1 / 60;
 
 function safeDelta(delta: number) {
     return Math.min(delta, MAX_FRAME_DELTA);
@@ -964,16 +1006,39 @@ function DataBusHud({
     themeRef: ThemeRef;
     themeProgressRef: NumberRef;
 }) {
+    const gl = useThree((state) => state.gl);
+
     const packetUpdateRef = useRef(0);
     const groupRef = useRef<Group>(null);
     const primaryLinesRef = useRef<LineSegments>(null);
     const secondaryLinesRef = useRef<LineSegments>(null);
     const packetsRef = useRef<InstancedMesh>(null);
 
-    const routes = useMemo(() => prepareRoutes(createDataBusRoutes()), []);
-    const packetInstances = useMemo(() => createPacketInstances(routes), [routes]);
+    const pointerNdcRef = useRef(new Vector2(999, 999));
+    const pointerWorldRef = useRef(new Vector3(999, 999, 999));
+    const pointerActiveUntilRef = useRef(0);
+    const collectedCountRef = useRef(0);
 
     const packetPositionRef = useRef(new Vector3());
+    const forwardProbeRef = useRef(new Vector3());
+    const backwardProbeRef = useRef(new Vector3());
+
+    const routes = useMemo(() => prepareRoutes(createDataBusRoutes()), []);
+
+    const initialPacketInstances = useMemo(
+        () => createInteractivePacketInstances(routes),
+        [routes],
+    );
+
+    const packetInstancesRef = useRef<InteractivePacketInstance[]>(
+        initialPacketInstances,
+    );
+
+    useEffect(() => {
+        packetInstancesRef.current = initialPacketInstances;
+    }, [initialPacketInstances]);
+
+
 
     const primaryPositions = useMemo(
         () => createLineSegmentsFromRoutes(routes.filter((r) => r.color === "primary")),
@@ -985,6 +1050,30 @@ function DataBusHud({
         [routes],
     );
 
+    useEffect(() => {
+        const updatePointer = (event: PointerEvent) => {
+            const rect = gl.domElement.getBoundingClientRect();
+
+            if (rect.width <= 0 || rect.height <= 0) return;
+
+            pointerNdcRef.current.set(
+                ((event.clientX - rect.left) / rect.width) * 2 - 1,
+                -((event.clientY - rect.top) / rect.height) * 2 + 1,
+            );
+
+            pointerActiveUntilRef.current =
+                performance.now() / 1000 + PACKET_INTERACTION.pointerActiveSeconds;
+        };
+
+        window.addEventListener("pointermove", updatePointer, { passive: true });
+        window.addEventListener("pointerdown", updatePointer, { passive: true });
+
+        return () => {
+            window.removeEventListener("pointermove", updatePointer);
+            window.removeEventListener("pointerdown", updatePointer);
+        };
+    }, [gl]);
+
     useFrame((state, delta) => {
         const time = state.clock.elapsedTime;
         const theme = themeRef.current;
@@ -992,8 +1081,12 @@ function DataBusHud({
 
         if (!theme) return;
 
-        const primaryMat = primaryLinesRef.current?.material as LineBasicMaterial | undefined;
-        const secondaryMat = secondaryLinesRef.current?.material as LineBasicMaterial | undefined;
+        const primaryMat = primaryLinesRef.current?.material as
+            | LineBasicMaterial
+            | undefined;
+        const secondaryMat = secondaryLinesRef.current?.material as
+            | LineBasicMaterial
+            | undefined;
 
         if (primaryMat) {
             primaryMat.color.copy(theme.accent);
@@ -1008,75 +1101,200 @@ function DataBusHud({
         const packets = packetsRef.current;
         if (!packets) return;
 
-        packetUpdateRef.current += safeDelta(delta);
+        const packetInstances = packetInstancesRef.current;
 
-        if (packetUpdateRef.current >= 1 / 144) {
-            packetUpdateRef.current = 0;
+        const frameDelta = safeDelta(delta);
+        packetUpdateRef.current += frameDelta;
 
-            let visibleCount = 0;
 
-            for (let i = 0; i < packetInstances.length; i++) {
-                const packet = packetInstances[i];
-                const route = routes[packet.routeIndex];
+        const updateInterval = 1 / PACKET_INTERACTION.updateFps;
+        if (packetUpdateRef.current < updateInterval) return;
 
-                let burstWave;
+        const updateDelta = packetUpdateRef.current;
+        packetUpdateRef.current = 0;
 
-                if (route.kind === "main") {
-                    burstWave = Math.sin(time * route.speed * 0.55 + packet.burstPhase);
-                } else {
-                    burstWave = Math.sin(time * route.speed * 0.4 + packet.burstPhase);
+        const difficulty = packetDifficulty(collectedCountRef.current);
+
+        const collectRadius = lerp(
+            PACKET_INTERACTION.collectRadius,
+            PACKET_INTERACTION.minCollectRadius,
+            difficulty,
+        );
+
+        const avoidRadius = lerp(
+            PACKET_INTERACTION.baseAvoidRadius,
+            PACKET_INTERACTION.maxAvoidRadius,
+            difficulty,
+        );
+
+        const escapeSpeed = lerp(
+            PACKET_INTERACTION.escapeSpeed,
+            PACKET_INTERACTION.maxEscapeSpeed,
+            difficulty,
+        );
+
+        const respawnDelay = lerp(
+            PACKET_INTERACTION.respawnDelay,
+            PACKET_INTERACTION.maxRespawnDelay,
+            difficulty,
+        );
+
+        const collectRadiusSq = collectRadius * collectRadius;
+        const avoidRadiusSq = avoidRadius * avoidRadius;
+
+        const pointerActive =
+            performance.now() / 1000 <= pointerActiveUntilRef.current;
+
+        let hasPointerWorld = false;
+
+        if (pointerActive) {
+            state.raycaster.setFromCamera(pointerNdcRef.current, state.camera);
+            hasPointerWorld = Boolean(
+                state.raycaster.ray.intersectPlane(
+                    DATA_BUS_POINTER_PLANE,
+                    pointerWorldRef.current,
+                ),
+            );
+        }
+
+        let visibleCount = 0;
+
+        for (let i = 0; i < packetInstances.length; i++) {
+            const packet = packetInstances[i];
+
+            if (packet.collectedUntil > 0) {
+                if (time < packet.collectedUntil) {
+                    continue;
                 }
 
-                const burst = burstWave > 0.6 ? 1.6 : 1;
-
-                // more packets visible
-                if (burstWave < -0.7) continue;
-
-                // faster movement
-                const t = time * route.speed * theme.dataSpeed * 1.4 + packet.offset;
-
-                samplePreparedRoute(route, t, packetPositionRef.current);
-
-                INSTANCE_DUMMY.position.copy(packetPositionRef.current);
-
-                const pulse =
-                    (0.88 + 0.24 * Math.abs(Math.sin(time * 1.2 + packet.offset * 6.0))) *
-                    (burst > 1 ? 1.25 : 1);
-                const isPinRoute = route.kind === "pin";
-
-                const baseX =
-                    isPinRoute
-                        ? 0.04
-                        : route.color === "primary"
-                            ? 0.085
-                            : 0.072;
-
-                const baseY = isPinRoute ? 0.02 : 0.032;
-                const baseZ = isPinRoute ? 0.025 : 0.03;
-
-                const scaleMul = packet.scale * pulse;
-
-                INSTANCE_DUMMY.scale.set(
-                    baseX * scaleMul,
-                    baseY * (0.95 + pulse * 0.08),
-                    baseZ,
-                );
-
-                INSTANCE_DUMMY.rotation.set(0, 0, 0);
-                INSTANCE_DUMMY.updateMatrix();
-
-                packets.setMatrixAt(visibleCount, INSTANCE_DUMMY.matrix);
-                visibleCount++;
+                packet.collectedUntil = 0;
+                packet.routeIndex = Math.floor(Math.random() * routes.length);
+                packet.offset = Math.random() * 12;
+                packet.escapeOffset = 0;
+                packet.escapeSign = Math.random() > 0.5 ? 1 : -1;
+                packet.panic = Math.random();
             }
 
+            const route = routes[packet.routeIndex];
 
-            packets.count = visibleCount;
-            packets.instanceMatrix.needsUpdate = true;
+            let burstWave: number;
+
+            if (route.kind === "main") {
+                burstWave = Math.sin(time * route.speed * 0.55 + packet.burstPhase);
+            } else {
+                burstWave = Math.sin(time * route.speed * 0.4 + packet.burstPhase);
+            }
+
+            if (burstWave < -0.7) continue;
+
+            const burst = burstWave > 0.6 ? 1.6 : 1;
+
+            let t =
+                time * route.speed * theme.dataSpeed * 1.4 +
+                packet.offset +
+                packet.escapeOffset;
+
+            samplePreparedRoute(route, t, packetPositionRef.current);
+
+            if (hasPointerWorld) {
+                const distanceSq =
+                    packetPositionRef.current.distanceToSquared(pointerWorldRef.current);
+
+                if (distanceSq <= collectRadiusSq) {
+                    packet.collectedUntil =
+                        time + respawnDelay + Math.random() * respawnDelay * 0.5;
+
+                    packet.escapeOffset = 0;
+                    collectedCountRef.current += 1;
+                    continue;
+                }
+
+                if (distanceSq <= avoidRadiusSq) {
+                    const distance = Math.sqrt(distanceSq);
+                    const proximity = 1 - distance / avoidRadius;
+                    const panic = 1 + packet.panic * 0.45;
+                    const escapeAmount =
+                        updateDelta *
+                        route.speed *
+                        escapeSpeed *
+                        proximity *
+                        proximity *
+                        panic;
+
+                    const probeStep =
+                        PACKET_INTERACTION.escapeStep + difficulty * 0.035;
+
+                    samplePreparedRoute(
+                        route,
+                        t + probeStep,
+                        forwardProbeRef.current,
+                    );
+
+                    samplePreparedRoute(
+                        route,
+                        t - probeStep,
+                        backwardProbeRef.current,
+                    );
+
+                    const forwardDistanceSq =
+                        forwardProbeRef.current.distanceToSquared(pointerWorldRef.current);
+                    const backwardDistanceSq =
+                        backwardProbeRef.current.distanceToSquared(pointerWorldRef.current);
+
+                    packet.escapeSign =
+                        backwardDistanceSq > forwardDistanceSq ? -1 : 1;
+
+                    packet.escapeOffset = repeat01(
+                        packet.escapeOffset + packet.escapeSign * escapeAmount,
+                    );
+
+                    t =
+                        time * route.speed * theme.dataSpeed * 1.4 +
+                        packet.offset +
+                        packet.escapeOffset;
+
+                    samplePreparedRoute(route, t, packetPositionRef.current);
+                }
+            }
+
+            INSTANCE_DUMMY.position.copy(packetPositionRef.current);
+
+            const pulse =
+                (0.88 +
+                    0.24 * Math.abs(Math.sin(time * 1.2 + packet.offset * 6.0))) *
+                (burst > 1 ? 1.25 : 1);
+
+            const isPinRoute = route.kind === "pin";
+
+            const baseX = isPinRoute
+                ? 0.04
+                : route.color === "primary"
+                    ? 0.085
+                    : 0.072;
+
+            const baseY = isPinRoute ? 0.02 : 0.032;
+            const baseZ = isPinRoute ? 0.025 : 0.03;
+            const scaleMul = packet.scale * pulse;
+
+            INSTANCE_DUMMY.scale.set(
+                baseX * scaleMul,
+                baseY * (0.95 + pulse * 0.08),
+                baseZ,
+            );
+
+            INSTANCE_DUMMY.rotation.set(0, 0, 0);
+            INSTANCE_DUMMY.updateMatrix();
+
+            packets.setMatrixAt(visibleCount, INSTANCE_DUMMY.matrix);
+            visibleCount++;
         }
+
+        packets.count = visibleCount;
+        packets.instanceMatrix.needsUpdate = true;
 
         const mat = packets.material as MeshBasicMaterial;
         mat.color.copy(theme.accent);
-        mat.opacity = 0.78;
+        mat.opacity = lerp(0.78, 0.92, difficulty);
     });
 
     return (
@@ -1117,7 +1335,7 @@ function DataBusHud({
 
             <instancedMesh
                 ref={packetsRef}
-                args={[undefined, undefined, packetInstances.length]}
+                args={[undefined, undefined, initialPacketInstances.length]}
             >
                 <primitive object={UNIT_BOX_GEOMETRY} attach="geometry" />
                 <meshBasicMaterial
@@ -1131,6 +1349,7 @@ function DataBusHud({
         </group>
     );
 }
+
 
 
 function HudFrames({
@@ -1503,11 +1722,11 @@ function SceneContents({
 
         const time = state.clock.elapsedTime;
 
-        group.rotation.z = Math.sin(time * 0.35) * 0.035;
-        group.rotation.x = Math.sin(time * 0.22) * 0.025;
-        group.position.y = Math.sin(time * 0.7) * 0.08;
+        group.rotation.z = Math.sin(time * 0.35) * 0.35;
+        group.rotation.x = (time * 2) * 0.25;
+        group.position.y = Math.sin(time * 0.7) * 0.8;
         group.scale.setScalar(theme.coreScale + Math.sin(time) * 0.025);
-    }, -10);
+    }, -0.11);
     const { gl } = useThree();
 
     useEffect(() => {
@@ -1598,7 +1817,7 @@ export function GeometryHero() {
             {canRenderWebGL && (
                 <Canvas
                     frameloop="demand"
-                    dpr={1}
+                    dpr={[1, 2]}
                     camera={HERO_CAMERA}
                     gl={glConfig}
                 >
@@ -1613,4 +1832,3 @@ export function GeometryHero() {
         </motion.div>
     );
 }
-
