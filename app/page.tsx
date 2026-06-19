@@ -4,7 +4,7 @@ import { ArchitectureSection } from "@/components/marketing/ArchitectureSection"
 import { EcosystemSection } from "@/components/marketing/EcosystemSection";
 import { FaqSection } from "@/components/marketing/FaqSection";
 import { FinalCta } from "@/components/marketing/FinalCta";
-import { GeometryHero } from "@/components/marketing/GeometryHero";
+import { GeometryHero } from "@/components/marketing/GeometryHero/GeometryHero";
 import { HeroSection } from "@/components/marketing/HeroSection";
 import { IdePreviewSection } from "@/components/marketing/IdePreviewSection";
 import { PricingPreview } from "@/components/marketing/PricingPreview";
