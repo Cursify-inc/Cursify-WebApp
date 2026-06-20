@@ -1,0 +1,1 @@
+export { MirrorsPanel } from "./mirrors-panel";
