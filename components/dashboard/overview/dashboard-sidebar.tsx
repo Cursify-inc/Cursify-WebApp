@@ -37,6 +37,14 @@ const accountItems = [
   { label: "Settings", icon: Settings, href: "/dashboard/settings" },
 ];
 
+const billingSidebarItems = [
+  { label: "Overview", icon: Grid2X2, href: "/dashboard" },
+  { label: "Account", icon: User, href: "/dashboard/account" },
+  { label: "Billing", icon: CreditCard, href: "/dashboard/billing" },
+  { label: "Settings", icon: Settings, href: "/dashboard/settings" },
+];
+
+
 export function DashboardSidebar({
   isMobileOpen,
   onClose,
@@ -90,8 +98,33 @@ export function DashboardSidebar({
 }
 
 function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
+  const pathname = usePathname();
+  const isBillingPage = pathname.startsWith("/dashboard/billing");
+
+ if (isBillingPage) {
   return (
-    <>
+    <div className="flex flex-col gap-4">
+      <div className="hidden px-2 lg:block">
+        <h2 className="text-2xl font-black tracking-[-0.04em] text-text-primary">
+          Cursify
+        </h2>
+
+        <p className="mt-1 font-mono text-xs text-text-primary">
+          AI IDE Platform
+        </p>
+      </div>
+
+      <nav className="space-y-1">
+        {billingSidebarItems.map((item) => (
+          <SidebarLink key={item.label} {...item} onClick={onItemClick} />
+        ))}
+      </nav>
+    </div>
+  );
+}
+
+  return (
+    <div className="flex flex-col gap-4">
       <div className="hidden px-2 lg:block">
         <h2 className="text-2xl font-black tracking-[-0.04em] text-text-primary">
           Cursify
@@ -102,13 +135,13 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
         </p>
       </div>
 
-      <nav className="space-y-1 lg:mt-9">
+      <nav className="space-y-1">
         {sidebarItems.map((item) => (
           <SidebarLink key={item.label} {...item} onClick={onItemClick} />
         ))}
       </nav>
 
-      <div className="my-4 h-px bg-border" />
+      <div className="h-px bg-border" />
 
       <nav className="space-y-1">
         {accountItems.map((item) => (
@@ -116,13 +149,13 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
         ))}
       </nav>
 
-      <div className="my-4 space-y-3">
-        <div className="h-px bg-border" />
+      <div className="h-px bg-border" />
 
-        <button className="flex h-11 w-full cursor-pointer items-center justify-center rounded-xl border border-border bg-[#E9EDFF] font-mono text-sm font-bold text-brand transition-colors duration-200 hover:bg-[#DCE3FF] dark:bg-background-elevated dark:text-text-primary dark:hover:bg-brand-hover">
-          Upgrade Plan
-        </button>
+      <button className="flex h-11 w-full cursor-pointer items-center justify-center rounded-xl border border-border bg-[#E9EDFF] font-mono text-sm font-bold text-brand transition-colors duration-200 hover:bg-[#DCE3FF] dark:bg-background-elevated dark:text-text-primary dark:hover:bg-brand-hover">
+        Upgrade Plan
+      </button>
 
+      <nav className="space-y-1">
         <SidebarLink
           label="Help"
           icon={CircleHelp}
@@ -137,8 +170,8 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
           onClick={onItemClick}
           danger
         />
-      </div>
-    </>
+      </nav>
+    </div>
   );
 }
 
