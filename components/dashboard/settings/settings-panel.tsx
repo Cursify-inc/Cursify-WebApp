@@ -1,5 +1,6 @@
 "use client";
 
+import { useTheme } from "next-themes";
 import {
   Beaker,
   Bell,
@@ -16,29 +17,15 @@ import { useEffect, useState } from "react";
 type ThemeMode = "light" | "dark" | "system";
 
 export function SettingsPanel() {
-  const [theme, setTheme] = useState<ThemeMode>(() => {
-    if (typeof window === "undefined") return "dark";
-
-    const storedTheme = localStorage.getItem("cursify-theme");
-
-    if (
-      storedTheme === "light" ||
-      storedTheme === "dark" ||
-      storedTheme === "system"
-    ) {
-      return storedTheme;
-    }
-
-    return "dark";
-  });
+  const {theme, setTheme} = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
+    setMounted(true);
+  }, []);
 
   function handleThemeChange(nextTheme: ThemeMode) {
     setTheme(nextTheme);
-    localStorage.setItem("cursify-theme", nextTheme);
   }
 
   return (
@@ -72,7 +59,7 @@ export function SettingsPanel() {
                 <ThemeOption
                   label="Light"
                   value="light"
-                  selected={theme === "light"}
+                  selected={mounted && theme === "light"}
                   onSelect={handleThemeChange}
                 >
                   <LightPreview />
@@ -81,7 +68,7 @@ export function SettingsPanel() {
                 <ThemeOption
                   label="Dark"
                   value="dark"
-                  selected={theme === "dark"}
+                  selected={mounted && theme === "dark"}
                   onSelect={handleThemeChange}
                 >
                   <DarkPreview />
@@ -90,7 +77,7 @@ export function SettingsPanel() {
                 <ThemeOption
                   label="System"
                   value="system"
-                  selected={theme === "system"}
+                  selected={mounted && theme === "system"}
                   onSelect={handleThemeChange}
                 >
                   <SystemPreview />
@@ -278,9 +265,9 @@ function ThemeOption({
   children,
 }: {
   label: string;
-  value: ThemeMode;
+  value: "light" | "dark" | "system";
   selected: boolean;
-  onSelect: (value: ThemeMode) => void;
+  onSelect: (value: "light" | "dark" | "system") => void;
   children: React.ReactNode;
 }) {
   return (
