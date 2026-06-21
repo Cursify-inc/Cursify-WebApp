@@ -14,7 +14,6 @@ import {
 import { LargeCard } from "@/components/ui/CardVariants";
 import { Container } from "@/components/ui/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { Surface } from "@/components/ui/Surface";
 
 const features = [
     {
@@ -74,63 +73,48 @@ export function ProductOverview() {
             id="platform"
             variant="section"
             width="wide"
+            ambient
+            grid
             className="relative overflow-hidden"
         >
-            <div className="pointer-events-none absolute inset-0 bg-[var(--product-overview-bg)]" />
+            <SectionHeading
+                eyebrow="Platform"
+                title="More than a website. A complete AI developer ecosystem."
+                description="Cursify gives developers a secure account platform for managing their AI-powered desktop IDE, subscription, devices, integrations, agents, tools, and sync state."
+            />
 
-            <div className="relative z-10">
-                <Surface size="lg" className="mx-auto mb-6 max-w-4xl text-center">
-                    <SectionHeading
-                        eyebrow="Platform"
-                        title="More than a website. A complete AI developer ecosystem."
-                        description="Cursify gives developers a secure account platform for managing their AI-powered desktop IDE, subscription, devices, integrations, agents, tools, and sync state."
-                    />
-                </Surface>
+            <div className="mt-16 grid auto-rows-fr gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {features.map((feature, index) => {
+                    const Icon = feature.icon;
 
-                <div className="grid auto-rows-fr gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                    {features.map((feature, index) => {
-                        const Icon = feature.icon;
+                    return (
+                        <LargeCard
+                            key={feature.title}
+                            interactive
+                            glow
+                            animateIn
+                            delay={index * 0.08}
+                            className="h-full transition-all duration-300 hover:-translate-y-1.5 hover:scale-[1.015]"
+                            contentClassName="flex h-full flex-col"
+                        >
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl
+                            bg-[linear-gradient(180deg,var(--brand-primary),var(--brand-secondary))]
+                            text-[var(--text-inverted)]
+                            shadow-lg shadow-[color-mix(in_srgb,var(--brand-primary)_35%,transparent)]">
 
-                        return (
-                            <div key={feature.title} className="h-full">
-                                <LargeCard
-                                    interactive
-                                    glow
-                                    animateIn
-                                    delay={Math.min(index, 5)}
-                                    className="h-full"
-                                    contentClassName="flex h-full flex-col"
-                                    edgeLightProps={{
-                                        quality: "balanced",
-                                        dashCount: 3,
-                                        syncColorToDash: true,
-                                    }}
-                                >
-                                    <div
-                                        className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--product-feature-icon-border)] bg-[var(--product-feature-icon-bg)] shadow-[var(--product-feature-icon-shadow)]"
-                                        style={{
-                                            transform: "translateZ(24px)",
-                                            backfaceVisibility: "hidden",
-                                        }}
-                                    >
-                                        <div className="absolute inset-px rounded-[15px] bg-linear-to-br from-[var(--product-feature-icon-highlight)] to-transparent opacity-75" />
-                                        <Icon className="theme-color-fade relative z-10 h-5 w-5 text-[var(--product-feature-icon-color)]" />
-                                    </div>
-
-                                    <h3 className="theme-color-fade mt-5 text-lg font-bold text-[var(--product-feature-title)]">
-                                        {feature.title}
-                                    </h3>
-
-                                    <p className="theme-color-fade mt-3 grow text-sm leading-7 text-[var(--product-feature-description)]">
-                                        {feature.description}
-                                    </p>
-                                </LargeCard>
+                                <Icon className="h-5 w-5" />
                             </div>
-                        );
-                    })}
-                </div>
 
+                            <h3 className="mt-5 text-lg font-semibold text-[var(--text-primary)]">
+                                {feature.title}
+                            </h3>
 
+                            <p className="mt-3 text-sm leading-7 text-[var(--text-secondary)]">
+                                {feature.description}
+                            </p>
+                        </LargeCard>
+                    );
+                })}
             </div>
         </Container>
     );

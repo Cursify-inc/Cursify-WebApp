@@ -35,10 +35,7 @@ type ThemeSeed = {
 export type GeometryCssTheme = Record<`--${string}`, string>;
 
 export const THEME_SEEDS: readonly ThemeSeed[] = [
-    { accent: "#00e5ff", accent2: "#8b5cf6", bg: "#020617" },
-    { accent: "#00ffc6", accent2: "#b026ff", bg: "#030014" },
-    { accent: "#ff2bd6", accent2: "#00e5ff", bg: "#050010" },
-    { accent: "#39ff14", accent2: "#00e5ff", bg: "#010409" },
+    { accent: "#00e5ff", accent2: "#8b5cf6", bg: "#ffffff" },
 ] as const;
 
 
@@ -67,7 +64,7 @@ export function useQualityTier(prefersReducedMotion: boolean | null): QualityCon
         const base = {
             tier: "medium",
             dpr: 1,
-            targetFps: 144,
+            targetFps: 60,
             idleFps: 8,
             particleCount: 0,
             coreDetail: 1,
@@ -76,21 +73,27 @@ export function useQualityTier(prefersReducedMotion: boolean | null): QualityCon
             enableNetwork: true,
             enableParticles: false,
             enablePointerParallax: true,
+            tracePositions: 96,
+            sidePins: 3,
+            topBottomPins: 20,
         } as QualityConfig;
 
         if (prefersReducedMotion) {
             return {
-                tier: "static",
+                tier: "medium",
                 dpr: 1,
-                targetFps: 0,
-                idleFps: 0,
+                targetFps: 60,
+                idleFps: 8,
                 particleCount: 0,
-                coreDetail: 0,
-                glowDetail: 0,
-                enableSecondHudLayer: false,
-                enableNetwork: false,
+                coreDetail: 1,
+                glowDetail: 1,
+                enableSecondHudLayer: true,
+                enableNetwork: true,
                 enableParticles: false,
-                enablePointerParallax: false,
+                enablePointerParallax: true,
+                tracePositions: 96,
+                sidePins: 3,
+                topBottomPins: 20,
             } as QualityConfig;
         }
 
@@ -113,34 +116,40 @@ export function useQualityTier(prefersReducedMotion: boolean | null): QualityCon
         // Low-End Logic
         if (lowEnd) {
             return {
-                tier: "low",
+                tier: "medium",
                 dpr: 1,
-                targetFps: 144,
-                idleFps: 4,
-                particleCount:0,
-                coreDetail: 0,
-                glowDetail: 0,
-                enableSecondHudLayer: false,
-                enableNetwork: !mobile,
+                targetFps: 60,
+                idleFps: 8,
+                particleCount: 0,
+                coreDetail: 1,
+                glowDetail: 1,
+                enableSecondHudLayer: true,
+                enableNetwork: true,
                 enableParticles: false,
-                enablePointerParallax: !mobile,
+                enablePointerParallax: true,
+                tracePositions: 96,
+                sidePins: 3,
+                topBottomPins: 20,
             } as QualityConfig;
         }
 
         // High-End Logic
         if (width >= 1280 && cores >= 8 && memory >= 8 && dpr <= 2) {
             return {
-                tier: "high",
-                dpr: [1, 1.2],
-                targetFps: 144,
-                idleFps: 10,
+                tier: "medium",
+                dpr: 1,
+                targetFps: 60,
+                idleFps: 8,
                 particleCount: 0,
                 coreDetail: 1,
-                glowDetail: 0,
+                glowDetail: 1,
                 enableSecondHudLayer: true,
                 enableNetwork: true,
                 enableParticles: false,
                 enablePointerParallax: true,
+                tracePositions: 96,
+                sidePins: 32,
+                topBottomPins: 20,
             } as QualityConfig;
         }
 
@@ -181,7 +190,7 @@ export type InteractivePacketInstance = PacketInstance & {
 
 
 export const PACKET_INTERACTION = {
-    updateFps: 144,
+    updateFps: 60,
     collectRadius: 0.115,
     minCollectRadius: 0.075,
     baseAvoidRadius: 0.22,

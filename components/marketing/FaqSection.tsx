@@ -35,8 +35,10 @@ export function FaqSection() {
         <Container
             as="section"
             id="faq"
-            variant="fit"
+            variant="section"
             width="wide"
+            ambient
+            grid
             className="relative overflow-hidden"
         >
             <SectionHeading
@@ -44,19 +46,22 @@ export function FaqSection() {
                 title="Built for a serious developer platform."
                 description="Clear answers about the product model, security posture, desktop pairing, and platform architecture."
             />
-            <div className="mx-auto mt-14 max-w-4xl space-y-4">
+
+            <div className="mx-auto mt-16 max-w-4xl space-y-5">
                 {faqs.map((faq, index) => (
                     <LargeCard
                         key={faq.question}
                         animateIn
-                        delay={Math.min(index, 5)}
-                        className="transition-colors duration-300 hover:border-[color:color-mix(in_srgb,var(--brand-primary)_30%,transparent)]"
+                        delay={index * 0.08}
+                        interactive
+                        className="transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--brand-primary)]/30"
+                        contentClassName="py-6"
                     >
-                        <h3 className="text-lg font-bold text-[var(--text-primary)]">
+                        <h3 className="text-lg font-semibold text-[var(--text-primary)]">
                             {faq.question}
                         </h3>
 
-                        <p className="mt-3 leading-7 text-[var(--text-secondary)]">
+                        <p className="mt-3 text-[15px] leading-7 text-[var(--text-secondary)]">
                             {faq.answer}
                         </p>
                     </LargeCard>

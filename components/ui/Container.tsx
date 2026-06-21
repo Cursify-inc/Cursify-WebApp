@@ -26,16 +26,10 @@ type ContainerProps = Omit<
     width?: ContainerWidth;
     gutter?: ContainerGutter;
 
-    /**
-     * Controls the whole container visibility.
-     * 1 = fully visible, 0 = invisible.
-     */
-    opacity?: number;
+    ambient?: boolean;
+    grid?: boolean;
 
-    /**
-     * Alternative to opacity.
-     * 0 = fully visible, 1 = invisible.
-     */
+    opacity?: number;
     transparency?: number;
 };
 
@@ -61,41 +55,13 @@ const variants: Record<
         gutter: ContainerGutter;
     }
 > = {
-    section: {
-        className: "py-20 sm:py-24 lg:py-28",
-        width: "default",
-        gutter: "md",
-    },
-    hero: {
-        className: "py-24 sm:py-32 lg:py-40",
-        width: "wide",
-        gutter: "md",
-    },
-    reading: {
-        className: "py-16 sm:py-20 lg:py-24",
-        width: "narrow",
-        gutter: "md",
-    },
-    bleed: {
-        className: "py-0",
-        width: "full",
-        gutter: "none",
-    },
-    shell: {
-        className: "py-8 sm:py-10 lg:py-12",
-        width: "default",
-        gutter: "md",
-    },
-    fit: {
-        className: "py-0",
-        width: "default",
-        gutter: "md",
-    },
-    transparent: {
-        className: "py-0",
-        width: "wide",
-        gutter: "md",
-    },
+    section: { className: "py-20 sm:py-24 lg:py-28", width: "default", gutter: "md" },
+    hero: { className: "py-24 sm:py-32 lg:py-40", width: "wide", gutter: "md" },
+    reading: { className: "py-16 sm:py-20 lg:py-24", width: "narrow", gutter: "md" },
+    bleed: { className: "py-0", width: "full", gutter: "none" },
+    shell: { className: "py-8 sm:py-10 lg:py-12", width: "default", gutter: "md" },
+    fit: { className: "py-0", width: "default", gutter: "md" },
+    transparent: { className: "py-0", width: "wide", gutter: "md" },
 };
 
 const clamp = (value: number) => Math.min(1, Math.max(0, value));
@@ -108,6 +74,8 @@ export function Container({
                               variant = "section",
                               width,
                               gutter,
+                              ambient,
+                              grid,
                               opacity,
                               transparency,
                               style,
@@ -123,17 +91,35 @@ export function Container({
         {
             ...props,
             className: cn(
-                "mx-auto h-fit w-full bg-transparent",
+                "relative isolate mx-auto w-full h-fit bg-transparent",
                 widths[width ?? config.width],
                 gutters[gutter ?? config.gutter],
                 config.className,
                 className
             ),
-            style: {
-                ...style,
-                opacity: clamp(resolvedOpacity),
-            },
+            style: { ...style, opacity: clamp(resolvedOpacity) },
         },
-        <div className={cn("w-full", contentClassName)}>{children}</div>
+        <>
+            {(ambient || grid) && (
+                <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+                    {ambient && (
+                        <div className="absolute left-1/2 top-0 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.25),transparent_70%)] blur-3xl" />
+                    )}
+
+                    {grid && (
+                        <div
+                            className="absolute inset-0 opacity-[0.08]"
+                            style={{
+                                backgroundImage:
+                                    "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
+                                backgroundSize: "60px 60px",
+                            }}
+                        />
+                    )}
+                </div>
+            )}
+
+            <div className={cn("w-full", contentClassName)}>{children}</div>
+        </>
     );
 }

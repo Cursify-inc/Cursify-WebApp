@@ -280,16 +280,16 @@ function createPacketInstances(routes: PreparedRoute[]): PacketInstance[] {
         let count: number;
 
         if (route.kind === "main") {
-            count = route.color === "primary" ? 10 : 10;
+            count = route.color === "primary" ? 1 : 1;
         } else {
             const r = Math.random() * 1000;
 
             if (r < 0.18) {
                 count = 0;
             } else if (r < 0.7) {
-                count = 10
+                count = 1
             } else {
-                count = 10;
+                count = 1;
             }
         }
 
@@ -376,13 +376,14 @@ type ChipPackageModel = {
     routeZ: number;
 };
 
-type BoardModel = {
+export type BoardModel = {
     chip: ChipPackageModel;
     pins: ProceduralPin[];
     modules: BoardModule[];
     anchors: BoardModuleAnchor[];
     nets: BoardNet[];
     routes: Route[];
+    complexity: number;
 };
 
 export type ProceduralBoardConfig = {
@@ -396,11 +397,11 @@ export type ProceduralBoardConfig = {
 };
 
 export const DEFAULT_BOARD_CONFIG: ProceduralBoardConfig = {
-    sidePins: 18,
+    sidePins: 5,
     topBottomPins: 14,
     boardHalfW: 3.05,
     boardHalfH: 2.05,
-    routeZ: 0.06,
+    routeZ: 0.0625,
     seed: 1000000000,
     maxRoutes: 440,
 };
@@ -415,9 +416,20 @@ export const CHIP_PACKAGE: ChipPackageModel = {
     topBottomPins: DEFAULT_BOARD_CONFIG.topBottomPins,
     pinInset: 0.085,
     pinLength: 0.28,
-    pinZ: 0.13105,
+    pinZ: 0.06,
     routeZ: DEFAULT_BOARD_CONFIG.routeZ,
 };
+
+export function scrollBoardDensity(progress: number) {
+    const t = clamp(progress, 0, 1);
+    return Math.pow(t, 1.65);
+}
+
+export function quantizeBoardDensity(density: number) {
+    // Prevents rebuilding on every micro-scroll.
+    return Math.round(clamp(density, 0, 1) * 20) / 20;
+}
+
 
 function clamp(value: number, min: number, max: number) {
     return Math.min(max, Math.max(min, value));
@@ -427,7 +439,7 @@ export function scrollBoardScale(progress: number) {
     const t = clamp(progress, 0, 1);
 
     // Top of page = compact board, bottom = larger board.
-    return lerp(0.5, 2, easeOutCubic(t));
+    return lerp(0.5, 20, easeOutCubic(t));
 }
 
 export function quantizeBoardScale(scale: number) {
@@ -435,31 +447,126 @@ export function quantizeBoardScale(scale: number) {
     return Math.round(scale * 40) / 40;
 }
 
+function boardComplexityFromScale(boardScale: number) {
+    return clamp((boardScale - 0.5) / 1.5, 0, 1);
+}
+
+function boardComplexityFromDensity(boardDensity: number) {
+    const d = clamp(boardDensity, 0, 1);
+
+    // Nonlinear: final 25% of progression adds a lot of electronic density.
+    return clamp(d * 0.75 + d * d * 0.55, 0, 1);
+}
+
+function scaledPinCount(
+    baseCount: number,
+    complexity: number,
+    minCount: number,
+    maxCount: number,
+) {
+    const t = easeOutCubic(clamp(complexity, 0, 1));
+    const multiplier = lerp(0.65, 2.15, t);
+    return Math.round(clamp(baseCount * multiplier, minCount, maxCount));
+}
+
+
+function scaledRouteBudget(
+    quality: QualityConfig | undefined,
+    config: ProceduralBoardConfig,
+    complexity: number,
+) {
+    const t = easeOutCubic(clamp(complexity, 0, 1));
+
+    if (quality?.tier === "static") {
+        return Math.round(lerp(10, 28, t));
+    }
+
+    if (quality?.tier === "low") {
+        return Math.round(lerp(18, 96, t));
+    }
+
+    if (quality?.tier === "high") {
+        return Math.round(lerp(120, config.maxRoutes, t));
+    }
+
+    // medium/default
+    return Math.round(lerp(36, Math.min(config.maxRoutes, 220), t));
+}
+
 function createScaledBoardConfig(
     baseConfig: ProceduralBoardConfig,
     boardScale: number,
+    boardDensity = 0,
 ): ProceduralBoardConfig {
-    const safeScale = clamp(boardScale, 0.72, 3);
+    // Let scrollBoardScale's actual range participate.
+    const safeScale = clamp(boardScale, 0.5, 2.0);
+
+    const scaleComplexity = boardComplexityFromScale(safeScale);
+    const densityComplexity = boardComplexityFromDensity(boardDensity);
+
+    // Density should dominate visual electronics.
+    const complexity = clamp(
+        scaleComplexity * 0.35 + densityComplexity * 0.9,
+        0,
+        1,
+    );
 
     return {
         ...baseConfig,
+
         boardHalfW: DEFAULT_BOARD_CONFIG.boardHalfW * safeScale,
         boardHalfH: DEFAULT_BOARD_CONFIG.boardHalfH * safeScale,
 
-        // Keep Z stable so traces, packets, and chip surfaces do not float.
+        sidePins: scaledPinCount(
+            baseConfig.sidePins,
+            complexity,
+            8,
+            42,
+        ),
+
+        topBottomPins: scaledPinCount(
+            baseConfig.topBottomPins,
+            complexity,
+            20,
+            120,
+        ),
+
+        maxRoutes: Math.round(
+            lerp(
+                Math.min(baseConfig.maxRoutes, 80),
+                baseConfig.maxRoutes,
+                easeOutCubic(complexity),
+            ),
+        ),
+
         routeZ: baseConfig.routeZ,
     };
 }
+
+
 
 function createScaledChipPackage(
     quality: QualityConfig | undefined,
     config: ProceduralBoardConfig,
     boardScale: number,
+    boardDensity = 0,
 ): ChipPackageModel {
-    const safeScale = clamp(boardScale, 0.72, 1.45);
+    const safeScale = clamp(boardScale, 0.5, 2.0);
 
-    // Chip reacts to scroll too, but slightly less than the whole board.
-    const chipScale = lerp(0.9, 1.12, clamp((safeScale - 0.82) / 0.44, 0, 1));
+    const scaleComplexity = boardComplexityFromScale(safeScale);
+    const densityComplexity = boardComplexityFromDensity(boardDensity);
+
+    const complexity = clamp(
+        scaleComplexity * 0.3 + densityComplexity * 0.9,
+        0,
+        1,
+    );
+
+    // Chip grows mildly. Density mainly increases pins, not chip size.
+    const chipScale = lerp(0.86, 1.16, scaleComplexity);
+
+    const qualitySide = qualitySidePins(quality);
+    const qualityTopBottom = qualityTopBottomPins(quality);
 
     return {
         ...CHIP_PACKAGE,
@@ -469,14 +576,28 @@ function createScaledChipPackage(
         dieHalfW: CHIP_PACKAGE.dieHalfW * chipScale,
         dieHalfH: CHIP_PACKAGE.dieHalfH * chipScale,
 
-        // These are still quality-dependent.
-        sidePins: qualitySidePins(quality),
-        topBottomPins: qualityTopBottomPins(quality),
+        sidePins: scaledPinCount(
+            Math.max(qualitySide, config.sidePins),
+            complexity,
+            Math.min(qualitySide, 8),
+            Math.max(config.sidePins, qualitySide, 42),
+        ),
 
-        // Pin/route depths stay aligned with the board.
+        topBottomPins: scaledPinCount(
+            Math.max(qualityTopBottom, config.topBottomPins),
+            complexity,
+            Math.min(qualityTopBottom, 20),
+            Math.max(config.topBottomPins, qualityTopBottom, 120),
+        ),
+
+        pinInset: CHIP_PACKAGE.pinInset,
+        pinLength: CHIP_PACKAGE.pinLength,
+        pinZ: CHIP_PACKAGE.pinZ,
         routeZ: config.routeZ,
     };
 }
+
+
 
 
 const BOARD_MODEL_CACHE = new Map<string, BoardModel>();
@@ -489,17 +610,31 @@ function qualityTopBottomPins(quality?: QualityConfig): number {
     return Math.max(5, quality?.topBottomPins ?? DEFAULT_BOARD_CONFIG.topBottomPins);
 }
 
-function modelCacheKey(quality?: QualityConfig, config = DEFAULT_BOARD_CONFIG): string {
+function modelCacheKey(
+    quality?: QualityConfig,
+    config: ProceduralBoardConfig & {
+        moduleComplexity?: number;
+        boardScale?: number;
+        boardDensity?: number;
+    } = DEFAULT_BOARD_CONFIG,
+): string {
     return [
         quality?.tier ?? "default",
         qualitySidePins(quality),
         qualityTopBottomPins(quality),
         config.boardHalfW,
         config.boardHalfH,
+        config.sidePins,
+        config.topBottomPins,
+        config.routeZ,
         config.seed,
         config.maxRoutes,
+        config.moduleComplexity ?? 0,
+        config.boardScale ?? 1,
+        config.boardDensity ?? 0,
     ].join(":");
 }
+
 
 function sideAxis(side: ChipSide): "x" | "y" {
     return side === "left" || side === "right" ? "y" : "x";
@@ -609,19 +744,1019 @@ function createAnchor(
     };
 }
 
-function createModule(
-    id: string,
-    kind: BoardModuleKind,
-    signal: SignalClass,
-    position: Vector3,
-    scale: [number, number, number],
-    anchorSide: ChipSide,
-    anchorCount: number,
-    color: RouteColor,
-    rotation = 0,
-): BoardModule {
+// -----------------------------------------------------------------------------
+// Procedural Board Module Synthesis Pipeline
+// -----------------------------------------------------------------------------
+//
+// Architecture:
+// 1. Semantic templates describe reusable electrical/visual behavior.
+// 2. Module specs describe normalized board-relative placement.
+// 3. Expansion layer supports mirroring, deterministic variation, and profiles.
+// 4. Physical resolver converts normalized specs into BoardModule instances.
+// 5. Validation catches bad anchors, invalid dimensions, and basic overlaps.
+//
+// This keeps the final BoardModule[] compatible with your current renderer/router.
+// -----------------------------------------------------------------------------
+
+type ModuleVec3Tuple = [number, number, number];
+
+type BoardLayoutProfile =
+    | "minimal"
+    | "balanced"
+    | "dense"
+    | "server"
+    | "extreme";
+
+type AnchorLayoutKind =
+    | "uniform"
+    | "clustered"
+    | "staggered"
+    | "dual-row";
+
+type ModuleZLayer =
+    | "module"
+    | "passive"
+    | "low"
+    | "raised"
+    | number;
+
+type ModuleTemplate = {
+    kind: BoardModuleKind;
+    signal: SignalClass;
+    color: RouteColor;
+    anchorSide: ChipSide;
+    anchorCount: number;
+    anchorLayout?: AnchorLayoutKind;
+    depth: number;
+};
+
+
+type SemanticModuleSpec = {
+    id: string;
+    template: ModuleTemplateKey;
+
+    /**
+     * Normalized board position.
+     * -1..1 approximately maps to the board area.
+     */
+    x: number;
+    y: number;
+
+    width: number;
+    height: number;
+
+    kind?: BoardModuleKind;
+    signal?: SignalClass;
+    color?: RouteColor;
+    anchorSide?: ChipSide;
+    anchorCount?: number;
+    anchorLayout?: AnchorLayoutKind;
+    depth?: number;
+    rotation?: number;
+    z?: ModuleZLayer;
+
+    variation?: {
+        positionJitter?: number;
+        rotationJitter?: number;
+        scaleJitter?: number;
+        anchorCountJitter?: number;
+    };
+
+    tags?: string[];
+};
+
+type ExpandedModuleSpec = {
+    id: string;
+    template: ModuleTemplateKey;
+
+    x: number;
+    y: number;
+
+    width: number;
+    height: number;
+    depth: number;
+
+    kind: BoardModuleKind;
+    signal: SignalClass;
+    color: RouteColor;
+
+    anchorSide: ChipSide;
+    anchorCount: number;
+    anchorLayout: AnchorLayoutKind;
+
+    rotation: number;
+    z: ModuleZLayer;
+
+    tags: string[];
+};
+
+type SemanticBoardModuleOptions = {
+    boardScale?: number;
+    boardDensity?: number;
+    complexity?: number;
+    seed?: number;
+    profile?: BoardLayoutProfile;
+    validate?: boolean;
+};
+
+
+type ModuleTemplateKey =
+    | "memory"
+    | "vrm"
+    | "connector"
+    | "debug"
+    | "chiplet"
+    | "passive"
+    | "sensor"
+    | "clock"
+    | "storage"
+    | "rf"
+    | "power-filter"
+    | "micro-connector";
+
+type ModuleFactoryOptions = {
+    id: string;
+    kind: BoardModuleKind;
+    signal: SignalClass;
+    position: Vector3;
+    scale: ModuleVec3Tuple;
+    anchorSide: ChipSide;
+    anchorCount: number;
+    color: RouteColor;
+    rotation?: number;
+    anchorLayout?: AnchorLayoutKind;
+};
+
+type BoardSynthesisContext = {
+    config: ProceduralBoardConfig;
+    chip: ChipPackageModel;
+
+    boardScale: number;
+    boardDensity: number;
+    complexity: number;
+    profile: BoardLayoutProfile;
+    seed: number;
+
+    boardScaleX: number;
+    boardScaleY: number;
+    moduleScale: number;
+
+    moduleZ: number;
+    passiveZ: number;
+    lowZ: number;
+    raisedZ: number;
+
+    rng: DeterministicRandom;
+
+    position: (xRatio: number, yRatio: number, z?: number) => Vector3;
+
+    size: (
+        width: number,
+        height: number,
+        depth: number,
+    ) => ModuleVec3Tuple;
+
+    resolveZ: (layer?: ModuleZLayer) => number;
+};
+
+// -----------------------------------------------------------------------------
+// Deterministic Random Utility
+// -----------------------------------------------------------------------------
+class DeterministicRandom {
+    private state: number;
+
+    constructor(seed = 1337) {
+        this.state = seed >>> 0;
+    }
+
+    next(): number {
+        this.state += 0x6d2b79f5;
+
+        let t = this.state;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    }
+
+    range(min: number, max: number): number {
+        return min + (max - min) * this.next();
+    }
+
+    int(min: number, max: number): number {
+        return Math.floor(this.range(min, max + 1));
+    }
+
+    signed(amount: number): number {
+        return this.range(-amount, amount);
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Templates
+// -----------------------------------------------------------------------------
+
+const MODULE_TEMPLATES: Record<ModuleTemplateKey, ModuleTemplate> = {
+    memory: {
+        kind: "memory",
+        signal: "memory",
+        color: "primary",
+        anchorSide: "bottom",
+        anchorCount: 5,
+        anchorLayout: "uniform",
+        depth: 0.08,
+    },
+
+    vrm: {
+        kind: "vrm",
+        signal: "power",
+        color: "secondary",
+        anchorSide: "right",
+        anchorCount: 5,
+        anchorLayout: "clustered",
+        depth: 0.09,
+    },
+
+    connector: {
+        kind: "connector",
+        signal: "io",
+        color: "primary",
+        anchorSide: "left",
+        anchorCount: 8,
+        anchorLayout: "uniform",
+        depth: 0.08,
+    },
+
+    debug: {
+        kind: "debug",
+        signal: "debug",
+        color: "secondary",
+        anchorSide: "top",
+        anchorCount: 5,
+        anchorLayout: "uniform",
+        depth: 0.07,
+    },
+
+    chiplet: {
+        kind: "chiplet",
+        signal: "aux",
+        color: "secondary",
+        anchorSide: "top",
+        anchorCount: 4,
+        anchorLayout: "uniform",
+        depth: 0.08,
+    },
+
+    passive: {
+        kind: "passive",
+        signal: "control",
+        color: "secondary",
+        anchorSide: "right",
+        anchorCount: 3,
+        anchorLayout: "clustered",
+        depth: 0.05,
+    },
+
+    sensor: {
+        kind: "chiplet",
+        signal: "aux",
+        color: "secondary",
+        anchorSide: "bottom",
+        anchorCount: 3,
+        anchorLayout: "uniform",
+        depth: 0.055,
+    },
+
+    clock: {
+        kind: "passive",
+        signal: "control",
+        color: "primary",
+        anchorSide: "left",
+        anchorCount: 2,
+        anchorLayout: "uniform",
+        depth: 0.045,
+    },
+
+    storage: {
+        kind: "memory",
+        signal: "memory",
+        color: "secondary",
+        anchorSide: "bottom",
+        anchorCount: 4,
+        anchorLayout: "uniform",
+        depth: 0.075,
+    },
+
+    rf: {
+        kind: "chiplet",
+        signal: "io",
+        color: "primary",
+        anchorSide: "left",
+        anchorCount: 4,
+        anchorLayout: "clustered",
+        depth: 0.06,
+    },
+
+    "power-filter": {
+        kind: "passive",
+        signal: "power",
+        color: "secondary",
+        anchorSide: "right",
+        anchorCount: 3,
+        anchorLayout: "clustered",
+        depth: 0.045,
+    },
+
+    "micro-connector": {
+        kind: "connector",
+        signal: "io",
+        color: "secondary",
+        anchorSide: "top",
+        anchorCount: 4,
+        anchorLayout: "uniform",
+        depth: 0.055,
+    },
+};
+
+
+// -----------------------------------------------------------------------------
+// Context / Scaling
+// -----------------------------------------------------------------------------
+
+function createBoardSynthesisContext(
+    config: ProceduralBoardConfig,
+    chip: ChipPackageModel,
+    options: Required<SemanticBoardModuleOptions>,
+): BoardSynthesisContext {
+    const boardScaleX =
+        config.boardHalfW / DEFAULT_BOARD_CONFIG.boardHalfW;
+
+    const boardScaleY =
+        config.boardHalfH / DEFAULT_BOARD_CONFIG.boardHalfH;
+
+    const moduleScale = (boardScaleX + boardScaleY) * 0.5;
+
+    const moduleZ = config.routeZ * 0.435;
+    const passiveZ = config.routeZ * 0.38;
+    const lowZ = config.routeZ * 0.32;
+    const raisedZ = config.routeZ * 0.49;
+
+    const position = (xRatio: number, yRatio: number, z = moduleZ) =>
+        new Vector3(
+            config.boardHalfW * xRatio,
+            config.boardHalfH * yRatio,
+            z,
+        );
+
+    const size = (
+        width: number,
+        height: number,
+        depth: number,
+    ): ModuleVec3Tuple => [
+        width * boardScaleX,
+        height * boardScaleY,
+        depth * moduleScale,
+    ];
+
+    const resolveZ = (layer: ModuleZLayer = "module") => {
+        if (typeof layer === "number") return layer;
+
+        switch (layer) {
+            case "module":
+                return moduleZ;
+            case "passive":
+                return passiveZ;
+            case "low":
+                return lowZ;
+            case "raised":
+                return raisedZ;
+            default:
+                return moduleZ;
+        }
+    };
+
+    return {
+        config,
+        chip,
+
+        boardScale: options.boardScale,
+        boardDensity: options.boardDensity,
+        complexity: options.complexity,
+        profile: options.profile,
+        seed: options.seed,
+
+        boardScaleX,
+        boardScaleY,
+        moduleScale,
+
+        moduleZ,
+        passiveZ,
+        lowZ,
+        raisedZ,
+
+        rng: new DeterministicRandom(options.seed),
+
+        position,
+        size,
+        resolveZ,
+    };
+}
+
+function profileFromBoardScale(
+    boardScale: number,
+    complexity: number,
+    boardDensity = complexity,
+): BoardLayoutProfile {
+    const s = boardComplexityFromScale(boardScale);
+    const d = clamp(boardDensity, 0, 1);
+
+    const score = clamp(s * 0.35 + d * 0.85, 0, 1);
+
+    if (score < 0.18) return "minimal";
+    if (score < 0.42) return "balanced";
+    if (score < 0.66) return "dense";
+    if (score < 0.86) return "server";
+    return "extreme";
+}
+
+
+
+// -----------------------------------------------------------------------------
+// Declarative Board Profiles
+// -----------------------------------------------------------------------------
+
+function createMinimalSpecs(): SemanticModuleSpec[] {
+    return [
+        {
+            id: "mem-a",
+            template: "memory",
+            x: -0.24,
+            y: 0.65,
+            width: 0.78,
+            height: 0.22,
+            anchorCount: 4,
+        },
+        {
+            id: "vrm-a",
+            template: "vrm",
+            x: -0.58,
+            y: 0.02,
+            width: 0.28,
+            height: 0.74,
+            anchorCount: 4,
+        },
+        {
+            id: "io-main",
+            template: "connector",
+            x: 0.61,
+            y: 0.04,
+            width: 0.32,
+            height: 1.08,
+            anchorCount: 6,
+        },
+        {
+            id: "debug",
+            template: "debug",
+            x: -0.14,
+            y: -0.65,
+            width: 0.72,
+            height: 0.2,
+            anchorCount: 4,
+        },
+        {
+            id: "caps-left",
+            template: "passive",
+            x: -0.38,
+            y: -0.5,
+            width: 0.42,
+            height: 0.14,
+            z: "passive",
+            rotation: 0.08,
+            anchorCount: 3,
+        },
+    ];
+}
+
+function createBalancedSpecs(): SemanticModuleSpec[] {
+    return [
+        {
+            id: "mem-a",
+            template: "memory",
+            x: -0.24,
+            y: 0.65,
+            width: 0.78,
+            height: 0.22,
+            anchorCount: 5,
+        },
+        {
+            id: "mem-b",
+            template: "memory",
+            x: 0.24,
+            y: 0.65,
+            width: 0.78,
+            height: 0.22,
+            anchorCount: 5,
+        },
+        {
+            id: "vrm-a",
+            template: "vrm",
+            x: -0.58,
+            y: 0.17,
+            width: 0.28,
+            height: 0.66,
+            anchorCount: 5,
+        },
+        {
+            id: "vrm-b",
+            template: "vrm",
+            x: -0.58,
+            y: -0.25,
+            width: 0.28,
+            height: 0.5,
+            anchorCount: 4,
+        },
+        {
+            id: "io-main",
+            template: "connector",
+            x: 0.61,
+            y: 0.04,
+            width: 0.32,
+            height: 1.24,
+            anchorCount: 8,
+        },
+        {
+            id: "debug",
+            template: "debug",
+            x: -0.14,
+            y: -0.65,
+            width: 0.86,
+            height: 0.22,
+            anchorCount: 5,
+        },
+        {
+            id: "aux",
+            template: "chiplet",
+            x: 0.27,
+            y: -0.59,
+            width: 0.58,
+            height: 0.3,
+            anchorCount: 4,
+        },
+        {
+            id: "caps-left",
+            template: "passive",
+            x: -0.38,
+            y: -0.5,
+            width: 0.48,
+            height: 0.16,
+            z: "passive",
+            rotation: 0.08,
+            anchorCount: 3,
+        },
+    ];
+}
+
+function createComplexityExpansionSpecs(
+    ctx: BoardSynthesisContext,
+): SemanticModuleSpec[] {
+    const specs: SemanticModuleSpec[] = [];
+
+    const tier = Math.floor(clamp(ctx.complexity, 0, 1) * 6);
+
+    if (tier >= 2) {
+        specs.push(
+            {
+                id: "clock-a",
+                template: "clock",
+                x: -0.06,
+                y: 0.36,
+                width: 0.22,
+                height: 0.14,
+                z: "passive",
+                variation: {
+                    rotationJitter: 0.025,
+                },
+            },
+            {
+                id: "sensor-a",
+                template: "sensor",
+                x: 0.5,
+                y: -0.38,
+                width: 0.26,
+                height: 0.16,
+                z: "passive",
+                anchorSide: "left",
+                variation: {
+                    rotationJitter: 0.035,
+                },
+            },
+        );
+    }
+
+    if (tier >= 3) {
+        specs.push(
+            {
+                id: "storage-a",
+                template: "storage",
+                x: 0.52,
+                y: 0.47,
+                width: 0.42,
+                height: 0.2,
+                anchorCount: 4,
+            },
+            {
+                id: "rf-a",
+                template: "rf",
+                x: 0.46,
+                y: -0.14,
+                width: 0.3,
+                height: 0.22,
+                anchorSide: "left",
+                anchorCount: 4,
+                z: "module",
+            },
+            {
+                id: "caps-right",
+                template: "power-filter",
+                x: 0.12,
+                y: -0.42,
+                width: 0.34,
+                height: 0.12,
+                z: "passive",
+                rotation: -0.06,
+            },
+        );
+    }
+
+    if (tier >= 4) {
+        specs.push(
+            {
+                id: "mem-c",
+                template: "memory",
+                x: -0.52,
+                y: 0.42,
+                width: 0.5,
+                height: 0.18,
+                anchorSide: "bottom",
+                anchorCount: 4,
+            },
+            {
+                id: "mem-d",
+                template: "memory",
+                x: 0.52,
+                y: 0.42,
+                width: 0.5,
+                height: 0.18,
+                anchorSide: "bottom",
+                anchorCount: 4,
+            },
+            {
+                id: "vrm-c",
+                template: "vrm",
+                x: -0.72,
+                y: 0.02,
+                width: 0.2,
+                height: 0.46,
+                anchorSide: "right",
+                anchorCount: 4,
+            },
+            {
+                id: "micro-io-a",
+                template: "micro-connector",
+                x: 0.13,
+                y: -0.78,
+                width: 0.36,
+                height: 0.14,
+                anchorSide: "top",
+                anchorCount: 4,
+                z: "raised",
+            },
+        );
+    }
+
+    if (tier >= 5) {
+        specs.push(
+            {
+                id: "aux-b",
+                template: "chiplet",
+                x: 0.05,
+                y: -0.18,
+                width: 0.28,
+                height: 0.22,
+                anchorSide: "bottom",
+                anchorCount: 4,
+                z: "module",
+                variation: {
+                    rotationJitter: 0.03,
+                },
+            },
+            {
+                id: "sensor-b",
+                template: "sensor",
+                x: -0.42,
+                y: 0.38,
+                width: 0.24,
+                height: 0.14,
+                z: "passive",
+                anchorSide: "right",
+            },
+            {
+                id: "filter-bank-a",
+                template: "power-filter",
+                x: -0.24,
+                y: -0.33,
+                width: 0.32,
+                height: 0.12,
+                z: "passive",
+                rotation: 0.04,
+            },
+            {
+                id: "filter-bank-b",
+                template: "power-filter",
+                x: 0.32,
+                y: 0.25,
+                width: 0.32,
+                height: 0.12,
+                z: "passive",
+                rotation: -0.04,
+                anchorSide: "left",
+            },
+        );
+    }
+
+    return specs;
+}
+
+function createDensityDetailSpecs(
+    ctx: BoardSynthesisContext,
+): SemanticModuleSpec[] {
+    const specs: SemanticModuleSpec[] = [];
+
+    const d = clamp(ctx.boardDensity, 0, 1);
+
+    if (d < 0.18) {
+        return specs;
+    }
+
+    const count =
+        d < 0.35 ? 4 :
+            d < 0.55 ? 8 :
+                d < 0.75 ? 14 :
+                    d < 0.9 ? 22 :
+                        32;
+
+    const templates: ModuleTemplateKey[] = [
+        "passive",
+        "power-filter",
+        "clock",
+        "sensor",
+        "micro-connector",
+    ];
+
+    for (let i = 0; i < count; i += 1) {
+        const template = templates[i % templates.length];
+
+        // Avoid central chip area roughly.
+        let x = ctx.rng.range(-0.86, 0.86);
+        let y = ctx.rng.range(-0.82, 0.82);
+
+        const nearChip =
+            Math.abs(x) < 0.32 &&
+            Math.abs(y) < 0.28;
+
+        if (nearChip) {
+            x += x >= 0 ? 0.34 : -0.34;
+            y += y >= 0 ? 0.22 : -0.22;
+        }
+
+        const tiny = template === "clock" || template === "sensor";
+
+        specs.push({
+            id: `density-detail-${i}`,
+            template,
+            x,
+            y,
+            width: tiny
+                ? ctx.rng.range(0.12, 0.24)
+                : ctx.rng.range(0.18, 0.38),
+            height: tiny
+                ? ctx.rng.range(0.08, 0.16)
+                : ctx.rng.range(0.08, 0.18),
+            z: template === "micro-connector" ? "raised" : "passive",
+            rotation: ctx.rng.range(-0.12, 0.12),
+            anchorCount: ctx.rng.int(1, d > 0.7 ? 4 : 3),
+            anchorSide: (["left", "right", "top", "bottom"] as ChipSide[])[
+                ctx.rng.int(0, 3)
+                ],
+            variation: {
+                positionJitter: 0.018,
+                rotationJitter: 0.04,
+                scaleJitter: 0.12,
+            },
+            tags: ["density-detail"],
+        });
+    }
+
+    return specs;
+}
+
+
+function createSemanticSpecsForProfile(
+    profile: BoardLayoutProfile,
+): SemanticModuleSpec[] {
+    switch (profile) {
+        case "minimal":
+            return createMinimalSpecs();
+
+        case "balanced":
+            return createBalancedSpecs();
+
+        case "dense":
+            return [
+                ...createBalancedSpecs(),
+                {
+                    id: "dense-aux-a",
+                    template: "chiplet",
+                    x: 0.16,
+                    y: -0.28,
+                    width: 0.32,
+                    height: 0.22,
+                    anchorCount: 4,
+                },
+            ];
+
+        case "server":
+            return [
+                ...createBalancedSpecs(),
+                {
+                    id: "server-vrm-right",
+                    template: "vrm",
+                    x: 0.72,
+                    y: 0.25,
+                    width: 0.22,
+                    height: 0.48,
+                    anchorSide: "left",
+                    anchorCount: 5,
+                },
+                {
+                    id: "server-io-bottom",
+                    template: "connector",
+                    x: 0.38,
+                    y: -0.76,
+                    width: 0.62,
+                    height: 0.16,
+                    anchorSide: "top",
+                    anchorCount: 7,
+                },
+            ];
+
+        case "extreme":
+            return [
+                ...createBalancedSpecs(),
+                {
+                    id: "extreme-vrm-right-a",
+                    template: "vrm",
+                    x: 0.72,
+                    y: 0.26,
+                    width: 0.22,
+                    height: 0.46,
+                    anchorSide: "left",
+                    anchorCount: 5,
+                },
+                {
+                    id: "extreme-vrm-right-b",
+                    template: "vrm",
+                    x: 0.72,
+                    y: -0.24,
+                    width: 0.22,
+                    height: 0.42,
+                    anchorSide: "left",
+                    anchorCount: 4,
+                },
+                {
+                    id: "extreme-io-bottom",
+                    template: "connector",
+                    x: 0.36,
+                    y: -0.78,
+                    width: 0.68,
+                    height: 0.16,
+                    anchorSide: "top",
+                    anchorCount: 8,
+                    z: "raised",
+                },
+            ];
+
+        default:
+            return createBalancedSpecs();
+    }
+}
+
+
+// -----------------------------------------------------------------------------
+// Spec Expansion
+// -----------------------------------------------------------------------------
+
+function expandModuleSpec(
+    spec: SemanticModuleSpec,
+    ctx: BoardSynthesisContext,
+): ExpandedModuleSpec {
+    const template = MODULE_TEMPLATES[spec.template];
+
+    let x = spec.x;
+    let y = spec.y;
+    let width = spec.width;
+    let height = spec.height;
+    let rotation = spec.rotation ?? 0;
+    let anchorCount = spec.anchorCount ?? template.anchorCount;
+
+    const variation = spec.variation;
+
+    if (variation?.positionJitter) {
+        x += ctx.rng.signed(variation.positionJitter);
+        y += ctx.rng.signed(variation.positionJitter);
+    }
+
+    if (variation?.rotationJitter) {
+        rotation += ctx.rng.signed(variation.rotationJitter);
+    }
+
+    if (variation?.scaleJitter) {
+        const scaleNoise = 1 + ctx.rng.signed(variation.scaleJitter);
+        width *= scaleNoise;
+        height *= scaleNoise;
+    }
+
+    if (variation?.anchorCountJitter) {
+        anchorCount += ctx.rng.int(
+            -variation.anchorCountJitter,
+            variation.anchorCountJitter,
+        );
+    }
+    const densityAnchorBoost =
+        1 + clamp(ctx.boardDensity, 0, 1) * 0.9;
+
+    anchorCount *= densityAnchorBoost;
+    anchorCount = Math.max(1, Math.round(anchorCount));
+
+    return {
+        id: spec.id,
+        template: spec.template,
+
+        x,
+        y,
+
+        width,
+        height,
+        depth: spec.depth ?? template.depth,
+
+        kind: spec.kind ?? template.kind,
+        signal: spec.signal ?? template.signal,
+        color: spec.color ?? template.color,
+
+        anchorSide: spec.anchorSide ?? template.anchorSide,
+        anchorCount,
+        anchorLayout:
+            spec.anchorLayout ??
+            template.anchorLayout ??
+            "uniform",
+
+        rotation,
+        z: spec.z ?? "module",
+
+        tags: spec.tags ?? [],
+    };
+}
+
+function expandSemanticSpecs(
+    specs: SemanticModuleSpec[],
+    ctx: BoardSynthesisContext,
+): ExpandedModuleSpec[] {
+    return specs.map((spec) => expandModuleSpec(spec, ctx));
+}
+
+function createModule(options: ModuleFactoryOptions): BoardModule {
+    const {
+        id,
+        kind,
+        signal,
+        position,
+        scale,
+        anchorSide,
+        anchorCount,
+        color,
+        rotation = 0,
+    } = options;
+
     const anchors = Array.from({ length: anchorCount }, (_, index) =>
-        createAnchor(id, anchorSide, index, anchorCount, position, scale, signal),
+        createAnchor(
+            id,
+            anchorSide,
+            index,
+            anchorCount,
+            position,
+            scale,
+            signal,
+        ),
     );
 
     return {
@@ -636,114 +1771,145 @@ function createModule(
     };
 }
 
-function createSemanticBoardModules(
+function resolvePhysicalModule(
+    spec: ExpandedModuleSpec,
+    ctx: BoardSynthesisContext,
+): BoardModule {
+    const z = ctx.resolveZ(spec.z);
+
+    return createModule({
+        id: spec.id,
+        kind: spec.kind,
+        signal: spec.signal,
+        position: ctx.position(spec.x, spec.y, z),
+        scale: ctx.size(spec.width, spec.height, spec.depth),
+        anchorSide: spec.anchorSide,
+        anchorCount: spec.anchorCount,
+        color: spec.color,
+        rotation: spec.rotation,
+        anchorLayout: spec.anchorLayout,
+    });
+}
+
+// -----------------------------------------------------------------------------
+// Geometry
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// Anchor Layout Hook
+// -----------------------------------------------------------------------------
+//
+// This keeps compatibility with your current createAnchor() API.
+// The layout parameter is currently used as metadata/hook point.
+// If you want true clustered/staggered anchors, the next step is to update
+// createAnchor() or introduce createAnchorWithLayout().
+//
+
+
+// -----------------------------------------------------------------------------
+// Validation
+// -----------------------------------------------------------------------------
+function validateExpandedSpecs(specs: ExpandedModuleSpec[]): void {
+    const ids = new Set<string>();
+
+    for (const spec of specs) {
+        if (ids.has(spec.id)) {
+            throw new Error(`Duplicate module id "${spec.id}".`);
+        }
+
+        ids.add(spec.id);
+
+        if (spec.width <= 0 || spec.height <= 0 || spec.depth <= 0) {
+            throw new Error(
+                `Module "${spec.id}" has invalid dimensions: ` +
+                `${spec.width} x ${spec.height} x ${spec.depth}.`,
+            );
+        }// -----------------------------------------------------------------------------
+// Physical Resolver
+// -----------------------------------------------------------------------------
+
+        if (spec.anchorCount < 1) {
+            throw new Error(
+                `Module "${spec.id}" must have at least one anchor.`,
+            );
+        }
+
+        if (Math.abs(spec.x) > 1.35 || Math.abs(spec.y) > 1.35) {
+            throw new Error(
+                `Module "${spec.id}" is outside normalized board bounds.`,
+            );
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Main Public API
+// -----------------------------------------------------------------------------
+
+export function createSemanticBoardModules(
     config: ProceduralBoardConfig = DEFAULT_BOARD_CONFIG,
-    _chip: ChipPackageModel = CHIP_PACKAGE,
+    chip: ChipPackageModel = CHIP_PACKAGE,
+    options: SemanticBoardModuleOptions = {},
 ): BoardModule[] {
-    const boardScaleX = config.boardHalfW / DEFAULT_BOARD_CONFIG.boardHalfW;
-    const boardScaleY = config.boardHalfH / DEFAULT_BOARD_CONFIG.boardHalfH;
-    const moduleScale = (boardScaleX + boardScaleY) * 0.5;
+    const boardScale = options.boardScale ?? 1;
+    const boardDensity = options.boardDensity ?? boardComplexityFromScale(boardScale);
 
-    // Keep module Z stable enough that routing/packets remain visually aligned.
-    const moduleZ = config.routeZ * 0.435;
-    const passiveZ = config.routeZ * 0.38;
+    const complexity =
+        options.complexity ??
+        clamp(
+            boardComplexityFromScale(boardScale) * 0.35 +
+            boardComplexityFromDensity(boardDensity) * 1.15,
+            0,
+            1,
+        );
 
-    const position = (xRatio: number, yRatio: number, z = moduleZ) =>
-        new Vector3(config.boardHalfW * xRatio, config.boardHalfH * yRatio, z);
+    const profile =
+        options.profile ??
+        profileFromBoardScale(boardScale, complexity, boardDensity);
 
-    const size = (
-        width: number,
-        height: number,
-        depth: number,
-    ): [number, number, number] => [
-        width * boardScaleX,
-        height * boardScaleY,
-        depth * moduleScale,
+    const seed =
+        options.seed ??
+        config.seed ??
+        1337;
+
+    const validate = options.validate ?? true;
+
+    const normalizedOptions: Required<SemanticBoardModuleOptions> = {
+        boardScale,
+        boardDensity,
+        complexity,
+        seed,
+        profile,
+        validate,
+    };
+
+
+    const ctx = createBoardSynthesisContext(
+        config,
+        chip,
+        normalizedOptions,
+    );
+
+    const profileSpecs = createSemanticSpecsForProfile(profile);
+    const expansionSpecs = createComplexityExpansionSpecs(ctx);
+    const densitySpecs = createDensityDetailSpecs(ctx);
+
+    const semanticSpecs = [
+        ...profileSpecs,
+        ...expansionSpecs,
+        ...densitySpecs,
     ];
 
-    return [
-        createModule(
-            "mem-a",
-            "memory",
-            "memory",
-            position(-0.24, 0.65),
-            size(0.78, 0.22, 0.08),
-            "bottom",
-            5,
-            "primary",
-        ),
-        createModule(
-            "mem-b",
-            "memory",
-            "memory",
-            position(0.24, 0.65),
-            size(0.78, 0.22, 0.08),
-            "bottom",
-            5,
-            "primary",
-        ),
-        createModule(
-            "vrm-a",
-            "vrm",
-            "power",
-            position(-0.58, 0.17),
-            size(0.28, 0.66, 0.09),
-            "right",
-            5,
-            "secondary",
-        ),
-        createModule(
-            "vrm-b",
-            "vrm",
-            "power",
-            position(-0.58, -0.25),
-            size(0.28, 0.5, 0.09),
-            "right",
-            4,
-            "secondary",
-        ),
-        createModule(
-            "io-main",
-            "connector",
-            "io",
-            position(0.61, 0.04),
-            size(0.32, 1.24, 0.08),
-            "left",
-            8,
-            "primary",
-        ),
-        createModule(
-            "debug",
-            "debug",
-            "debug",
-            position(-0.14, -0.65),
-            size(0.86, 0.22, 0.07),
-            "top",
-            5,
-            "secondary",
-        ),
-        createModule(
-            "aux",
-            "chiplet",
-            "aux",
-            position(0.27, -0.59),
-            size(0.58, 0.3, 0.08),
-            "top",
-            4,
-            "secondary",
-        ),
-        createModule(
-            "caps-left",
-            "passive",
-            "control",
-            position(-0.38, -0.5, passiveZ),
-            size(0.48, 0.16, 0.05),
-            "right",
-            3,
-            "secondary",
-            0.08 * moduleScale,
-        ),
-    ];
+
+    const expandedSpecs = expandSemanticSpecs(semanticSpecs, ctx);
+
+    if (validate) {
+        validateExpandedSpecs(expandedSpecs);
+    }
+
+    return expandedSpecs.map((spec) =>
+        resolvePhysicalModule(spec, ctx),
+    );
 }
 
 function anchorCompatibility(pin: ProceduralPin, anchor: BoardModuleAnchor): number {
@@ -803,7 +1969,7 @@ function pushPoint(points: Vector3[], point: Vector3): void {
     }
 }
 
-function routeNet(net: BoardNet, laneIndex: number): Route {
+function routeNet(net: BoardNet, laneIndex: number, density = 0): Route {
     const { pin, anchor } = net;
     const z = DEFAULT_BOARD_CONFIG.routeZ;
     const points: Vector3[] = [];
@@ -838,9 +2004,24 @@ function routeNet(net: BoardNet, laneIndex: number): Route {
                 : clamp((exit.y + target.y) * 0.5, -1.45, 1.45);
 
         pushPoint(points, new Vector3(laneX, exit.y, z));
+
+        if (density > 0.32) {
+            const dogleg = 0.035 + density * 0.09;
+            const doglegSign = laneIndex % 2 === 0 ? 1 : -1;
+
+            const yA = lerp(exit.y, midY, 0.34);
+            const yB = lerp(exit.y, midY, 0.68);
+
+            pushPoint(points, new Vector3(laneX, yA, z));
+            pushPoint(points, new Vector3(laneX + dogleg * doglegSign, yA, z));
+            pushPoint(points, new Vector3(laneX + dogleg * doglegSign, yB, z));
+            pushPoint(points, new Vector3(laneX, yB, z));
+        }
+
         pushPoint(points, new Vector3(laneX, midY, z));
         pushPoint(points, new Vector3(target.x, midY, z));
         pushPoint(points, target);
+
     } else {
         const laneY = lane;
         const midX =
@@ -849,9 +2030,24 @@ function routeNet(net: BoardNet, laneIndex: number): Route {
                 : clamp((exit.x + target.x) * 0.5, -2.25, 2.25);
 
         pushPoint(points, new Vector3(exit.x, laneY, z));
+
+        if (density > 0.32) {
+            const dogleg = 0.035 + density * 0.09;
+            const doglegSign = laneIndex % 2 === 0 ? 1 : -1;
+
+            const xA = lerp(exit.x, midX, 0.34);
+            const xB = lerp(exit.x, midX, 0.68);
+
+            pushPoint(points, new Vector3(xA, laneY, z));
+            pushPoint(points, new Vector3(xA, laneY + dogleg * doglegSign, z));
+            pushPoint(points, new Vector3(xB, laneY + dogleg * doglegSign, z));
+            pushPoint(points, new Vector3(xB, laneY, z));
+        }
+
         pushPoint(points, new Vector3(midX, laneY, z));
         pushPoint(points, new Vector3(midX, target.y, z));
         pushPoint(points, target);
+
     }
 
     return {
@@ -864,7 +2060,11 @@ function routeNet(net: BoardNet, laneIndex: number): Route {
     };
 }
 
-function createRoutesFromNets(nets: BoardNet[], maxRoutes: number): Route[] {
+function createRoutesFromNets(
+    nets: BoardNet[],
+    maxRoutes: number,
+    density = 0,
+): Route[] {
     const laneCounters = new Map<string, number>();
 
     return nets.slice(0, maxRoutes).map((net) => {
@@ -873,79 +2073,134 @@ function createRoutesFromNets(nets: BoardNet[], maxRoutes: number): Route[] {
         laneCounters.set(key, next + 1);
 
         const laneIndex = next - Math.floor((next + 1) / 2);
-        return routeNet(net, laneIndex);
+        return routeNet(net, laneIndex, density);
     });
 }
 
+
 export function createBoardModel(
-    quality?: QualityConfig,
+    scale: number,
+    quality: QualityConfig,
     config: ProceduralBoardConfig = DEFAULT_BOARD_CONFIG,
     boardScale = 1,
+    boardDensity = 0,
 ): BoardModel {
     const scaledBoardScale = quantizeBoardScale(boardScale);
-    const scaledConfig = createScaledBoardConfig(config, scaledBoardScale);
+    const density = quantizeBoardDensity(boardDensity);
+
+    const scaledConfig = createScaledBoardConfig(
+        config,
+        scaledBoardScale,
+        density,
+    );
+
+    const scaleComplexity = boardComplexityFromScale(scaledBoardScale);
+    const densityComplexity = boardComplexityFromDensity(density);
+
+    const complexity = clamp(
+        scaleComplexity * 0.35 +
+        densityComplexity * 1.15 +
+        (quality.enableNetwork ? 0.12 : 0) +
+        (quality.enableSecondHudLayer ? 0.08 : 0),
+        0,
+        1,
+    );
+
+    const synthesisSeed =
+        scaledConfig.seed +
+        Math.round(scaledBoardScale * 1000) +
+        Math.round(density * 10000) +
+        scaledConfig.sidePins * 17 +
+        scaledConfig.topBottomPins * 31;
 
     const key = modelCacheKey(quality, {
         ...scaledConfig,
-        seed: scaledConfig.seed + Math.round(scaledBoardScale * 1000),
+        seed: synthesisSeed,
+        moduleComplexity: complexity,
+        boardScale: scaledBoardScale,
+        boardDensity: density,
     });
 
     const cached = BOARD_MODEL_CACHE.get(key);
     if (cached) return cached;
 
-    const chip = createScaledChipPackage(quality, scaledConfig, scaledBoardScale);
+    const chip = createScaledChipPackage(
+        quality,
+        scaledConfig,
+        scaledBoardScale,
+        density,
+    );
 
     const pins = createCanonicalChipPins(chip);
 
-    // Important:
-    // If your module generator currently uses hardcoded positions, upgrade it to accept scaledConfig.
-    const modules = createSemanticBoardModules(scaledConfig, chip);
+    const modules = createSemanticBoardModules(scaledConfig, chip, {
+        boardScale: scaledBoardScale,
+        boardDensity: density,
+        complexity,
+        seed: synthesisSeed,
+    });
 
     const anchors = modules.flatMap((module) => module.anchors);
+
     const nets = createDeterministicNets(pins, modules);
 
-    const routeBudget =
-        quality?.tier === "static" ? 14 :
-            quality?.tier === "low" ? 24 :
-                quality?.tier === "high" ? scaledConfig.maxRoutes :
-                    36;
+    const routeBudget = scaledRouteBudget(
+        quality,
+        scaledConfig,
+        complexity,
+    );
 
     const routes = createRoutesFromNets(
         nets,
         Math.min(scaledConfig.maxRoutes, routeBudget),
+        density,
     );
 
-    const model = {
+    const model: BoardModel = {
         chip,
         pins,
         modules,
         anchors,
         nets,
         routes,
+        complexity,
     };
 
     BOARD_MODEL_CACHE.set(key, model);
     return model;
 }
 
-
 /**
  * Internal chip trace geometry now comes from the same pin model.
  * Returns packed line positions: [x1, y1, z1, x2, y2, z2, ...]
  */
 export function createProceduralChipTracePositions(
-    quality?: QualityConfig,
+    quality: QualityConfig,
     boardScale = 1,
+    boardDensity = 0,
 ): Float32Array {
-    const model = createBoardModel(quality, DEFAULT_BOARD_CONFIG, boardScale);
+    const model = createBoardModel(
+        boardScale,
+        quality,
+        DEFAULT_BOARD_CONFIG,
+        boardScale,
+        boardDensity,
+        )
+    ;
     const chip = model.chip;
     const z = chip.pinZ + 0.018;
 
+    const density = clamp(boardDensity, 0, 1);
+
     const maxPins =
-        quality?.tier === "static" ? 14 :
-            quality?.tier === "low" ? 22 :
+        quality?.tier === "static" ? Math.round(10 + density * 8) :
+            quality?.tier === "low" ? Math.round(18 + density * 22) :
                 quality?.tier === "high" ? model.pins.length :
-                    Math.min(model.pins.length, 30);
+                    Math.min(
+                        model.pins.length,
+                        Math.round(26 + density * 48),
+                    );
+
 
     const positions: number[] = [];
 
@@ -1005,7 +2260,7 @@ export function createProceduralChipTracePositions(
 }
 
 const INSTANCE_DUMMY = new Object3D();
-const MAX_FRAME_DELTA = 1 / 144;
+const MAX_FRAME_DELTA = 1 / 60;
 
 function safeDelta(delta: number) {
     return Math.min(delta, MAX_FRAME_DELTA);
@@ -1207,24 +2462,47 @@ function RenderTicker({
 }
 const UNIT_BOX_GEOMETRY = new BoxGeometry(1, 1, 1);
 
+
+function useBoardComplexity(boardModel: BoardModel) {
+    return useMemo(() => {
+        const raw = boardModel.complexity ?? 1;
+        return Math.min(1, raw / 5);
+    }, [boardModel.complexity]);
+}
+
+
+function seededRandom(seed: number) {
+    const x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+}
+
+
 function DataBusHud({
                         themeRef,
                         themeProgressRef,
                         quality,
                         boardScale,
+                        boardDensity,
                     }: {
     themeRef: ThemeRef;
     themeProgressRef: NumberRef;
     quality: QualityConfig;
     boardScale: number;
+    boardDensity: number;
 }) {
     const boardModel = useMemo(
-        () => createBoardModel(quality, DEFAULT_BOARD_CONFIG, boardScale),
-        [quality, boardScale],
+        () => createBoardModel(
+            boardScale,
+            quality,
+            DEFAULT_BOARD_CONFIG,
+            boardScale,
+            boardDensity,
+        ),
+        [quality, boardScale, boardDensity],
     );
 
     const gl = useThree((state) => state.gl);
-
+    const complexity = useBoardComplexity(boardModel);
     const packetUpdateRef = useRef(0);
     const groupRef = useRef<Group>(null);
     const primaryLinesRef = useRef<LineSegments>(null);
@@ -1244,10 +2522,26 @@ function DataBusHud({
         [boardModel],
     );
 
-    const initialPacketInstances = useMemo(
-        () => createInteractivePacketInstances(routes),
-        [routes],
-    );
+    const initialPacketInstances = useMemo(() => {
+        const base = createInteractivePacketInstances(routes);
+        const extraCount = Math.floor(base.length * (0.25 + complexity * 1.8));
+
+        const extraPackets = Array.from({ length: extraCount }, (_, i) => {
+            const r1 = seededRandom(i + base.length);
+            const r2 = seededRandom(i * 7 + 13);
+
+            const p = base[Math.floor(r1 * base.length)];
+
+            return {
+                ...p,
+                progress: r2,
+            };
+        });
+
+        return [...base, ...extraPackets];
+
+    }, [routes, complexity]);
+
 
     const packetInstancesRef = useRef<InteractivePacketInstance[]>(
         initialPacketInstances,
@@ -1302,12 +2596,16 @@ function DataBusHud({
 
         if (primaryMat) {
             primaryMat.color.copy(theme.accent);
-            primaryMat.opacity = 0.72 + progress * 0.05;
+            primaryMat.opacity =
+                (0.72 + progress * 0.05) *
+                (1.0 + complexity * 0.4);
         }
 
         if (secondaryMat) {
             secondaryMat.color.copy(theme.accent2);
-            secondaryMat.opacity = 0.5 + progress * 0.04;
+            secondaryMat.opacity =
+                (0.5 + progress * 0.04) *
+                (1.0 + complexity * 0.3);
         }
 
         const packets = packetsRef.current;
@@ -1326,21 +2624,26 @@ function DataBusHud({
 
         const difficulty = packetDifficulty(collectedCountRef.current);
 
-        const collectRadius = lerp(
-            PACKET_INTERACTION.collectRadius,
-            PACKET_INTERACTION.minCollectRadius,
-            difficulty,
-        );
+        // amplify difficulty by board complexity
+        const dynamicDifficulty = lerp(difficulty, difficulty * 1.6, complexity);
 
+// integrate into speed + avoidance
         const avoidRadius = lerp(
             PACKET_INTERACTION.baseAvoidRadius,
-            PACKET_INTERACTION.maxAvoidRadius,
-            difficulty,
+            PACKET_INTERACTION.maxAvoidRadius * (1.0 + complexity * 0.8),
+            dynamicDifficulty,
         );
 
         const escapeSpeed = lerp(
             PACKET_INTERACTION.escapeSpeed,
-            PACKET_INTERACTION.maxEscapeSpeed,
+            PACKET_INTERACTION.maxEscapeSpeed * (1.1 + complexity * 0.9),
+            dynamicDifficulty,
+        );
+
+
+        const collectRadius = lerp(
+            PACKET_INTERACTION.collectRadius,
+            PACKET_INTERACTION.minCollectRadius,
             difficulty,
         );
 
@@ -1606,20 +2909,30 @@ function BoardModules({
                           themeProgressRef,
                           quality,
                           boardScale,
+                          boardDensity,
                       }: {
     themeRef: ThemeRef;
     themeProgressRef: NumberRef;
     quality: QualityConfig;
     boardScale: number;
+    boardDensity: number;
 }) {
+
     const bodyRef = useRef<InstancedMesh>(null);
     const glowRef = useRef<InstancedMesh>(null);
     const anchorRef = useRef<InstancedMesh>(null);
 
     const boardModel = useMemo(
-        () => createBoardModel(quality, DEFAULT_BOARD_CONFIG, boardScale),
-        [quality, boardScale],
+        () => createBoardModel(
+            boardScale,
+            quality,
+            DEFAULT_BOARD_CONFIG,
+            boardScale,
+            boardDensity,
+        ),
+        [quality, boardScale, boardDensity],
     );
+
 
     const modules = boardModel.modules;
     const anchors = boardModel.anchors;
@@ -1666,8 +2979,10 @@ function BoardModules({
         glowMesh.instanceMatrix.needsUpdate = true;
         anchorMesh.instanceMatrix.needsUpdate = true;
     }, [modules, anchors]);
+    const complexity = useBoardComplexity(boardModel);
 
     useFrame((state) => {
+
         const theme = themeRef.current;
         const progress = themeProgressRef.current ?? 0;
         const time = state.clock.elapsedTime;
@@ -1683,16 +2998,17 @@ function BoardModules({
         );
 
         updateBasicMaterial(
-            glowRef.current?.material as MeshBasicMaterial | undefined,
+            glowRef.current?.material as MeshBasicMaterial,
             theme.accent2,
-            0.045 + Math.sin(time * 1.4) * 0.012,
+            (0.045 + Math.sin(time * 1.4) * 0.012) * (1 + complexity * 0.8),
         );
 
         updateBasicMaterial(
-            anchorRef.current?.material as MeshBasicMaterial | undefined,
+            anchorRef.current?.material as MeshBasicMaterial,
             theme.accent2,
-            0.38 + Math.sin(time * 2.1) * 0.05,
+            (0.38 + Math.sin(time * 2.1) * 0.05) * (1 + complexity * 0.6),
         );
+
     });
 
     return (
@@ -1732,15 +3048,17 @@ function BoardModules({
     );
 }
 function ChipCore({
-                      themeRef,
-                      themeProgressRef,
-                      quality,
-                      boardScale,
-                  }: {
+                        themeRef,
+                        themeProgressRef,
+                        quality,
+                        boardScale,
+                        boardDensity,
+                    }: {
     themeRef: ThemeRef;
     themeProgressRef: NumberRef;
     quality: QualityConfig;
     boardScale: number;
+    boardDensity: number;
 }) {
     const groupRef = useRef<Group>(null);
     const packageRef = useRef<Mesh>(null);
@@ -1752,17 +3070,30 @@ function ChipCore({
     const pinMeshRef = useRef<InstancedMesh>(null);
 
     const boardModel = useMemo(
-        () => createBoardModel(quality, DEFAULT_BOARD_CONFIG, boardScale),
-        [quality, boardScale],
+        () => createBoardModel(
+            boardScale,
+            quality,
+            DEFAULT_BOARD_CONFIG,
+            boardScale,
+            boardDensity,
+        ),
+        [quality, boardScale, boardDensity],
     );
+
 
     const chip = boardModel.chip;
     const pins = boardModel.pins;
 
     const tracePositions = useMemo(
-        () => createProceduralChipTracePositions(quality, boardScale),
-        [quality, boardScale],
+        () => createProceduralChipTracePositions(
+            quality,
+            boardScale,
+            boardDensity,
+        ),
+        [quality, boardScale, boardDensity],
     );
+
+    const complexity = useBoardComplexity(boardModel);
 
     useEffect(() => {
         const pinMesh = pinMeshRef.current;
@@ -1805,7 +3136,9 @@ function ChipCore({
 
         if (packageGlowMat) {
             packageGlowMat.color.copy(theme.accent);
-            packageGlowMat.opacity = 0.09 + progress * 0.04;
+            packageGlowMat.opacity =
+                (0.09 + progress * 0.04) * (1 + complexity * 0.4);
+
         }
 
         if (dieMat) {
@@ -1815,7 +3148,10 @@ function ChipCore({
 
         if (dieGlowMat) {
             dieGlowMat.color.copy(theme.accent2);
-            dieGlowMat.opacity = 0.16 + Math.sin(time * 1.8) * 0.028;
+            dieGlowMat.opacity =
+                (0.16 + Math.sin(time * (1.8 + complexity * 1.2)) * 0.028) *
+                (1 + complexity * 0.75);
+
         }
 
         if (scanMat) {
@@ -1837,8 +3173,8 @@ function ChipCore({
         if (scanRef.current) {
             scanRef.current.position.x = lerp(
                 scanRef.current.position.x,
-                Math.sin(time * 1.2) * chip.dieHalfW * 0.75,
-                frameDelta * 3.2,
+                Math.sin(time * (1.2 + complexity * 1.3)) * chip.dieHalfW * (0.75 + complexity * 0.3),
+                frameDelta * (3.2 + complexity * 2),
             );
         }
     });
@@ -2004,19 +3340,25 @@ function SceneContents({
     const themeProgressRef = useThemeProgress(stage);
     const themeRef = useRef<RuntimeTheme>(createRuntimeTheme(getTheme(0)));
     const { gl } = useThree();
-
     const boardScaleRef = useRef(1);
+    const boardDensityRef = useRef(0);
     const [boardScale, setBoardScale] = useState(1);
+    const [boardDensity, setBoardDensity] = useState(0);
 
-    useFrame(() => {
-        const scrollProgress = progressRef.current ?? 0;
-        const nextBoardScale = quantizeBoardScale(scrollBoardScale(scrollProgress));
+    const boardModel = useMemo(
+        () => createBoardModel(
+            boardScale,
+            quality,
+            DEFAULT_BOARD_CONFIG,
+            boardScale,
+            boardDensity,
+        ),
+        [quality, boardScale, boardDensity],
+    );
 
-        if (Math.abs(nextBoardScale - boardScaleRef.current) >= 0.025) {
-            boardScaleRef.current = nextBoardScale;
-            setBoardScale(nextBoardScale);
-        }
-    });
+
+    const complexity = useBoardComplexity(boardModel);
+
 
     useEffect(() => {
         gl.setClearAlpha(0);
@@ -2033,25 +3375,38 @@ function SceneContents({
         const frameDelta = safeDelta(delta);
 
         const scrollProgress = progressRef.current ?? 0;
-        const nextBoardScale = quantizeBoardScale(scrollBoardScale(scrollProgress));
+
+        const nextBoardScale = quantizeBoardScale(
+            scrollBoardScale(scrollProgress),
+        );
+
+        const nextBoardDensity = quantizeBoardDensity(
+            scrollBoardDensity(scrollProgress),
+        );
 
         if (Math.abs(nextBoardScale - boardScaleRef.current) >= 0.025) {
             boardScaleRef.current = nextBoardScale;
             setBoardScale(nextBoardScale);
         }
 
+        if (Math.abs(nextBoardDensity - boardDensityRef.current) >= 0.05) {
+            boardDensityRef.current = nextBoardDensity;
+            setBoardDensity(nextBoardDensity);
+        }
         group.rotation.x = lerp(group.rotation.x, -1.06, frameDelta * 2.4);
         group.rotation.y = lerp(group.rotation.y, 0.08, frameDelta * 2.4);
         group.rotation.z = lerp(
             group.rotation.z,
-            (time * 8) * 0.045,
+            (time * (8 + complexity * 5)) * 0.045,
             frameDelta * 2,
         );
+        const scaleBoost = 1 + complexity * 0.1;
+        group.scale.setScalar(theme.coreScale * scaleBoost);
+
 
         // Keep global theme scaling, but do not double-scale the board here.
         // The board model itself is already generated larger/smaller.
-        group.scale.setScalar(theme.coreScale);
-    }, -0.11);
+    }, -0.0011);
 
 
     return (
@@ -2061,6 +3416,7 @@ function SceneContents({
                 themeProgressRef={themeProgressRef}
                 quality={quality}
                 boardScale={boardScale}
+                boardDensity={boardDensity}
             />
 
             <DataBusHud
@@ -2068,6 +3424,7 @@ function SceneContents({
                 themeProgressRef={themeProgressRef}
                 quality={quality}
                 boardScale={boardScale}
+                boardDensity={boardDensity}
             />
 
             <ChipCore
@@ -2075,6 +3432,7 @@ function SceneContents({
                 themeProgressRef={themeProgressRef}
                 quality={quality}
                 boardScale={boardScale}
+                boardDensity={boardDensity}
             />
         </group>
     );

@@ -13,48 +13,41 @@ const items = [
     "S3-compatible Storage",
 ];
 
-function TrustedStrip() {
+export default function TrustedStrip() {
     return (
         <Container
             as="section"
             variant="shell"
             width="wide"
+            ambient
             className="relative"
-            contentClassName="relative overflow-hidden rounded-4xl border border-[var(--trusted-strip-border)] bg-[var(--trusted-strip-bg)] px-5 py-6 shadow-[var(--trusted-strip-shadow)] backdrop-blur-xl sm:px-7 sm:py-7 lg:px-8"
+            contentClassName="relative overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--bg-1)]/40 px-6 py-7 backdrop-blur-xl"
         >
-            <div className="pointer-events-none absolute inset-0 rounded-4xl bg-[radial-gradient(circle_at_50%_0%,var(--trusted-strip-glow),transparent_58%)]" />
-            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-linear-to-r from-transparent via-(--trusted-strip-highlight) to-transparent" />
+            <p className="text-center text-xs font-semibold uppercase tracking-[0.24em] text-[var(--text-secondary)]">
+                Designed around a secure, scalable architecture
+            </p>
 
-            <div className="relative">
-                <p className="theme-color-fade text-center text-xs font-semibold uppercase tracking-[0.24em] text-(--trusted-strip-eyebrow)">
-                    Designed around a secure, scalable architecture
-                </p>
-
-                <div className="mt-5 grid grid-cols-2 items-stretch gap-4 sm:grid-cols-3 lg:grid-cols-6">
-                    {items.map((item, index) => (
-                        <TinyCard
-                            key={item}
-                            animateIn
-                            delay={Math.min(index, 3)}
-                            interactive
-                            glow
-                            className="h-full"
-                            contentClassName="h-full min-h-[4.75rem] justify-center"
+            <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                {items.map((item, index) => (
+                    <TinyCard
+                        key={item}
+                        animateIn
+                        delay={index * 0.05}
+                        interactive
+                        glow
+                        className="h-full"
+                        contentClassName="h-full min-h-[4.5rem] justify-center"
+                    >
+                        <span
+                            className={cn(
+                                "block text-center text-sm font-semibold text-[var(--text-primary)]"
+                            )}
                         >
-                            <span
-                                className={cn(
-                                    "theme-color-fade block text-center text-sm font-semibold leading-snug",
-                                    "text-(--trusted-strip-item-text)"
-                                )}
-                            >
-                                {item}
-                            </span>
-                        </TinyCard>
-                    ))}
-                </div>
+                            {item}
+                        </span>
+                    </TinyCard>
+                ))}
             </div>
         </Container>
     );
 }
-
-export default TrustedStrip

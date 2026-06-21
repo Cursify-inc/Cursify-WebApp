@@ -32,14 +32,21 @@ export function Surface({
     return (
         <div
             className={cn(
-                "theme-color-fade box-border h-fit min-w-0 border shadow-[var(--trusted-strip-shadow)] backdrop-blur-xl",
-                "bg-[var(--badge-bg)] text-[var(--badge-text)] border-[var(--badge-border)]",
+                "relative overflow-hidden border backdrop-blur-xl",
+                "border-white/10",
+                "bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))]",
+                "shadow-[0_10px_40px_-10px_rgba(0,0,0,0.7)]",
                 variantStyles[variant],
                 sizeStyles[size],
                 className
             )}
         >
-            {children}
+            <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-[inherit] bg-[linear-gradient(120deg,rgba(255,255,255,0.12),transparent_40%)] opacity-40"
+            />
+
+            <div className="relative z-10">{children}</div>
         </div>
     );
 }

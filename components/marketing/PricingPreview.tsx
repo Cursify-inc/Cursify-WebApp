@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/Button";
 import { LargeCard } from "@/components/ui/CardVariants";
 import { Container } from "@/components/ui/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { Surface } from "@/components/ui/Surface";
 
 const plans = [
     {
@@ -62,134 +61,87 @@ export function PricingPreview() {
             id="pricing"
             variant="section"
             width="wide"
+            ambient
+            grid
             className="relative overflow-hidden"
         >
-            <div className="pointer-events-none absolute inset-0 bg-[var(--pricing-section-bg)]" />
+            <SectionHeading
+                eyebrow="Pricing"
+                title="Simple plans for individuals and teams."
+                description="Start free, upgrade when you need full desktop sync, AI agents, device controls, and professional workflow integrations."
+            />
 
-            <div className="relative z-10">
-                <Surface size="lg" className="mb-6">
-                    <SectionHeading
-                        eyebrow="Pricing"
-                        title="Simple plans for individuals and teams."
-                        description="Start free, upgrade when you need full desktop sync, AI agents, device controls, and professional workflow integrations."
-                    />
-                </Surface>
+            <div className="mt-16 grid auto-rows-fr gap-6 lg:grid-cols-3">
 
-                <div className="grid auto-rows-fr items-stretch gap-5 lg:grid-cols-3">
-                    {plans.map((plan, index) => {
-                        const isHighlighted = plan.highlighted === true;
+                {plans.map((plan, index) => {
+                    const isHighlighted = plan.highlighted === true;
 
-                        return (
-                            <LargeCard
-                                key={plan.name}
-                                interactive
-                                glow
-                                animateIn
-                                delay={index}
-                                style={isHighlighted ? featuredCardVars : undefined}
-                                className="h-full"
-                                contentClassName="relative flex h-full min-h-[32rem] flex-col"
-                                edgeLightProps={{
-                                    quality: isHighlighted ? "ultra" : "balanced",
-                                    dashCount: isHighlighted ? 4 : 3,
-                                    syncColorToDash: true,
-                                    coreOpacity: isHighlighted ? 0.86 : 0.68,
-                                    glowOpacity: isHighlighted ? 0.32 : 0.2,
-                                }}
-                            >
-                                {isHighlighted ? (
-                                    <span className="theme-color-fade absolute right-6 top-6 rounded-full border border-[var(--pricing-badge-border)] bg-[var(--pricing-badge-bg)] px-3 py-1 text-xs font-bold text-[var(--pricing-badge-text)] shadow-[var(--pricing-badge-shadow)]">
-                                        Popular
-                                    </span>
-                                ) : null}
+                    return (
+                        <LargeCard
+                            key={plan.name}
+                            interactive
+                            glow
+                            animateIn
+                            delay={index * 0.1}
+                            style={isHighlighted ? featuredCardVars : undefined}
+                            className="h-full transition-transform duration-300 hover:-translate-y-1.5 hover:scale-[1.015]"
+                            contentClassName="relative flex h-full min-h-[32rem] flex-col"
+                        >
 
-                                <h3
-                                    className={
-                                        isHighlighted
-                                            ? "theme-color-fade text-xl font-bold text-[var(--pricing-featured-title)]"
-                                            : "theme-color-fade text-xl font-bold text-[var(--pricing-plan-title)]"
-                                    }
+                            {isHighlighted && (
+                                <span className="absolute right-6 top-6 rounded-full bg-[var(--brand-primary)] px-3 py-1 text-xs font-semibold text-[var(--text-inverted)] shadow-md">
+                                    Popular
+                                </span>
+                            )}
+
+                            <h3 className="text-xl font-semibold text-[var(--text-primary)]">
+                                {plan.name}
+                            </h3>
+
+                            <div className="mt-6 flex items-end gap-1">
+                                <span className="text-5xl font-bold tracking-tight text-[var(--text-primary)]">
+                                    {plan.price}
+                                </span>
+
+                                <span className="pb-1 text-[var(--text-secondary)]">
+                                    /mo
+                                </span>
+                            </div>
+
+                            <p className="mt-4 text-sm leading-7 text-[var(--text-secondary)]">
+                                {plan.description}
+                            </p>
+
+                            <div className="mt-7 space-y-3">
+                                {plan.features.map((feature) => (
+                                    <div key={feature} className="flex items-center gap-3">
+
+                                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--brand-primary)]/15">
+                                            <Check className="h-3.5 w-3.5 text-[var(--brand-primary)]" />
+                                        </span>
+
+                                        <span className="text-sm text-[var(--text-secondary)]">
+                                            {feature}
+                                        </span>
+
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="mt-auto pt-8">
+                                <Button
+                                    href="/signup"
+                                    variant={isHighlighted ? "secondary" : "primary"}
+                                    className="w-full"
                                 >
-                                    {plan.name}
-                                </h3>
+                                    Get started
+                                </Button>
+                            </div>
 
-                                <div className="mt-5 flex items-end gap-1">
-                                    <span
-                                        className={
-                                            isHighlighted
-                                                ? "theme-color-fade text-5xl font-bold tracking-tight text-[var(--pricing-featured-price)]"
-                                                : "theme-color-fade text-5xl font-bold tracking-tight text-[var(--pricing-plan-price)]"
-                                        }
-                                    >
-                                        {plan.price}
-                                    </span>
+                        </LargeCard>
+                    );
+                })}
 
-                                    <span
-                                        className={
-                                            isHighlighted
-                                                ? "theme-color-fade pb-1 text-[var(--pricing-featured-period)]"
-                                                : "theme-color-fade pb-1 text-[var(--pricing-plan-period)]"
-                                        }
-                                    >
-                                        /mo
-                                    </span>
-                                </div>
-
-                                <p
-                                    className={
-                                        isHighlighted
-                                            ? "theme-color-fade mt-4 text-sm leading-7 text-[var(--pricing-featured-description)]"
-                                            : "theme-color-fade mt-4 text-sm leading-7 text-[var(--pricing-plan-description)]"
-                                    }
-                                >
-                                    {plan.description}
-                                </p>
-
-                                <div className="mt-7 space-y-3">
-                                    {plan.features.map((feature) => (
-                                        <div key={feature} className="flex items-center gap-3">
-                                            <span
-                                                className={
-                                                    isHighlighted
-                                                        ? "flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--pricing-featured-check-bg)]"
-                                                        : "flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--pricing-check-bg)]"
-                                                }
-                                            >
-                                                <Check
-                                                    className={
-                                                        isHighlighted
-                                                            ? "theme-color-fade h-3.5 w-3.5 text-[var(--pricing-featured-check)]"
-                                                            : "theme-color-fade h-3.5 w-3.5 text-[var(--pricing-check)]"
-                                                    }
-                                                />
-                                            </span>
-
-                                            <span
-                                                className={
-                                                    isHighlighted
-                                                        ? "theme-color-fade text-sm text-[var(--pricing-featured-feature)]"
-                                                        : "theme-color-fade text-sm text-[var(--pricing-plan-feature)]"
-                                                }
-                                            >
-                                                {feature}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="mt-auto pt-8">
-                                    <Button
-                                        href="/signup"
-                                        variant={isHighlighted ? "secondary" : "primary"}
-                                        className="w-full"
-                                    >
-                                        Get started
-                                    </Button>
-                                </div>
-                            </LargeCard>
-                        );
-                    })}
-                </div>
             </div>
         </Container>
     );

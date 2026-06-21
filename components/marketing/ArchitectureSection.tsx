@@ -42,8 +42,10 @@ export function ArchitectureSection() {
         <Container
             as="section"
             id="ArchitectureSection"
-            variant="fit"
+            variant="section"
             width="wide"
+            ambient
+            grid
             className="relative overflow-hidden"
         >
             <SectionHeading
@@ -52,8 +54,8 @@ export function ArchitectureSection() {
                 description="Cursify can start as a focused Go API plus Rust security service, then split into specialized services as traffic and product complexity grow."
             />
 
-            <div className="mt-14 rounded-3xl border border-[var(--border)] bg-[color:color-mix(in_srgb,var(--bg-1)_30%,transparent)] p-2 sm:p-4">
-                <div className="grid auto-rows-[1fr] items-stretch gap-4 md:grid-cols-2 lg:grid-cols-5">
+            <div className="mt-16 relative rounded-3xl border border-[var(--border)]/60 bg-[var(--bg-1)]/40 backdrop-blur-xl p-3 sm:p-5 shadow-[0_20px_60px_-25px_rgba(0,0,0,0.6)]">
+                <div className="grid auto-rows-[1fr] gap-5 md:grid-cols-2 lg:grid-cols-5">
                     {architecture.map((item, index) => {
                         const Icon = item.icon;
 
@@ -61,8 +63,8 @@ export function ArchitectureSection() {
                             <LargeCard
                                 key={item.title}
                                 animateIn
-                                delay={Math.min(index, 5)}
-                                className="h-full transition-transform duration-300 hover:-translate-y-1"
+                                delay={index * 0.08}
+                                className="h-full transition-all duration-300 hover:-translate-y-1.5 hover:scale-[1.015]"
                                 contentClassName="flex h-full min-h-[17rem] flex-col"
                                 edgeLightProps={{
                                     quality: "balanced",
@@ -70,11 +72,15 @@ export function ArchitectureSection() {
                                     syncColorToDash: true,
                                 }}
                             >
-                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--brand-primary)] text-[var(--text-inverted)]">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-2xl
+                                bg-[linear-gradient(180deg,var(--brand-primary),var(--brand-secondary))]
+                                text-[var(--text-inverted)]
+                                shadow-lg shadow-[color-mix(in_srgb,var(--brand-primary)_35%,transparent)]">
+
                                     <Icon className="h-5 w-5" />
                                 </div>
 
-                                <h3 className="mt-4 font-bold text-[var(--text-primary)]">
+                                <h3 className="mt-5 text-base font-semibold text-[var(--text-primary)]">
                                     {item.title}
                                 </h3>
 
