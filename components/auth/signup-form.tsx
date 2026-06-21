@@ -35,8 +35,8 @@ function getPasswordStrength(password: string) {
     return {
       label: "Medium password",
       width: "66%",
-      className: "bg-yellow-500",
-      textClassName: "text-yellow-500",
+      className: "bg-warning",
+      textClassName: "text-warning",
     };
   }
 
@@ -136,7 +136,7 @@ export function SignupForm() {
 
             {passwordStrength && (
               <div className="space-y-1.5">
-                <div className="h-1.5 w-full overflow-hidden bg-outline-variant">
+                <div className="h-1.5 w-full overflow-hidden bg-background-elevated">
                   <div
                     className={`h-full transition-all duration-300 ${passwordStrength.className}`}
                     style={{ width: passwordStrength.width }}
@@ -179,9 +179,9 @@ export function SignupForm() {
           </div>
         </div>
 
-        <label className="flex items-start gap-3 border border-outline-variant bg-surface-container-low p-3 text-xs text-on-surface-variant">
+        <label className="flex items-start gap-3 border border-border bg-background-surface p-3 text-xs text-text-secondary">
           <input
-            className="mt-0.5 h-4 w-4 rounded-none accent-primary-container"
+            className="mt-0.5 h-4 w-4 rounded-none accent-text-primary"
             type="checkbox"
             {...form.register("terms")}
           />
@@ -218,20 +218,20 @@ export function SignupForm() {
       )}
 
       <div className="flex items-center">
-        <div className="h-px flex-1 bg-outline-variant" />
+        <div className="h-px flex-1 bg-border" />
 
-        <span className="mx-4 font-mono text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
+        <span className="mx-4 font-mono text-[10px] uppercase tracking-[0.16em] text-text-tertiary">
           OR OAUTH
         </span>
 
-        <div className="h-px flex-1 bg-outline-variant" />
+        <div className="h-px flex-1 bg-border" />
       </div>
 
       <OAuthButtons />
 
-      <footer className="-mx-6 -mb-6 border-t border-outline-variant bg-surface-container-low p-4 text-center text-xs text-on-surface-variant">
+      <footer className="-mx-6 -mb-6 border-t border-border bg-background-surface p-4 text-center text-xs text-text-secondary">
         Already provisioned?{" "}
-        <Link href="/login" className="font-bold text-primary hover:underline">
+        <Link href="/login" className="font-bold text-text-primary hover:underline">
           Initialize Session
         </Link>
       </footer>

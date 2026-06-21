@@ -60,7 +60,7 @@ export function LoginForm() {
               <KeyRound className="h-4 w-4" /> Security Token
             </label>
             <button
-              className="text-xs font-semibold uppercase tracking-[0.12em] text-surface-tint hover:text-primary hover:underline"
+              className="text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary hover:text-primary hover:underline"
               type="button"
             >
               Reset Token?
@@ -100,16 +100,16 @@ export function LoginForm() {
       )}
 
       <div className="flex items-center py-1">
-        <div className="h-px flex-1 bg-outline-variant" />
-        <span className="mx-4 font-mono text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
+        <div className="h-px flex-1 bg-border" />
+        <span className="mx-4 font-mono text-[10px] uppercase tracking-[0.16em] text-text-tertiary">
           OR OAUTH
         </span>
-        <div className="h-px flex-1 bg-outline-variant" />
+        <div className="h-px flex-1 bg-border" />
       </div>
 
       <OAuthButtons />
 
-      <footer className="-mx-6 -mb-6 border-t border-outline-variant bg-surface-container-low p-4 text-center text-xs text-on-surface-variant">
+      <footer className="-mx-6 -mb-6 border-t border-border bg-background-surface p-4 text-center text-xs text-text-secondary">
         New to Cursify?{" "}
         <Link href="/signup" className="font-bold text-primary hover:underline">
           Initialize Account

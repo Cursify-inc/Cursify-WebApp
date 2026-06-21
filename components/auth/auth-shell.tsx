@@ -3,8 +3,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Terminal } from "lucide-react";
 import { ReactNode } from "react";
-import { GeometricBackground } from "./geometric-background";
-
 export function AuthShell({
   mode,
   children,
@@ -18,7 +16,7 @@ export function AuthShell({
 
   return (
     <main className="auth-page-background relative flex min-h-screen items-center justify-center overflow-hidden p-4 md:p-6">
-      <GeometricBackground />
+      {/* <GeometricBackground /> */}
 
       <div
         className={`relative z-10 mx-auto grid w-full items-center gap-5 ${
