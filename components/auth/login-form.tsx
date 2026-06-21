@@ -38,7 +38,7 @@ export function LoginForm() {
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
         <div className="space-y-1.5">
           <label className="auth-label" htmlFor="email">
-            <Mail className="h-4 w-4" /> Email Address
+            <Mail className="h-4 w-4" /> Email or phone 
           </label>
           <input
             id="email"
@@ -57,13 +57,13 @@ export function LoginForm() {
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-4">
             <label className="auth-label" htmlFor="password">
-              <KeyRound className="h-4 w-4" /> Security Token
+              <KeyRound className="h-4 w-4" /> password
             </label>
             <button
-              className="text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary hover:text-primary hover:underline"
+              className="text-xs font-mono uppercase tracking-[0.12em] text-text-tertiary hover:text-primary hover:underline"
               type="button"
             >
-              Reset Token?
+              forget password?
             </button>
           </div>
           <input
@@ -84,7 +84,7 @@ export function LoginForm() {
   type="submit"
   disabled={isPending}
 >
-  {isPending ? "Initializing..." : "Initialize Session"}
+  {isPending ? "logging in..." : "login"}
   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
 </button>
       </form>
@@ -112,7 +112,7 @@ export function LoginForm() {
       <footer className="-mx-6 -mb-6 border-t border-border bg-background-surface p-4 text-center text-xs text-text-secondary">
         New to Cursify?{" "}
         <Link href="/signup" className="font-bold text-primary hover:underline">
-          Initialize Account
+          Create an Account
         </Link>
       </footer>
     </div>
