@@ -270,7 +270,7 @@ body {
 }
 
 /* Auth pages */
-.auth-page-background {
+/* .auth-page-background {
   background-color: var(--surface-base);
   color: var(--on-surface);
   background-image:
@@ -308,7 +308,21 @@ body {
       transparent 75%,
       rgba(58, 75, 107, 0.035) 75%
     );
+} */
+
+.auth-page-background {
+  background-color: var(--background);
+  color: var(--text-primary);
+  background-image: url("/images/auth-bg-dark.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
+
+.light .auth-page-background {
+  background-image: url("/images/auth-bg-light.png");
+}
+
 
 .auth-input {
   width: 100%;

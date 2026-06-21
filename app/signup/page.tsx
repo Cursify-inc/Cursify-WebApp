@@ -4,7 +4,7 @@ import { SignupForm } from "@/components/auth/signup-form";
 
 export default function SignupPage() {
   return (
-    <AuthShell mode="signup" before={<AuthBrochure />}>
+    <AuthShell mode="signup" after={<AuthBrochure />}>
       <SignupForm />
     </AuthShell>
   );
