@@ -16,5 +16,6 @@ export async function signupUser(values: SignupInput) {
     status: "Initialized account",
     email: values.email,
     name: values.name,
+    phone: values.phone
   };
 }

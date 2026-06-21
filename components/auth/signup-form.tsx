@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import { ArrowRight, KeyRound, Mail, UserRound } from "lucide-react";
+import { ArrowRight, KeyRound, Mail,Phone, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -83,7 +83,7 @@ export function SignupForm() {
       <form className="space-y-3.5" onSubmit={form.handleSubmit(onSubmit)}>
         <div className="space-y-1.5">
           <label className="auth-label" htmlFor="name">
-            <UserRound className="h-4 w-4" /> Operator Name
+            <UserRound className="h-4 w-4" /> your name
           </label>
 
           <input
@@ -119,7 +119,25 @@ export function SignupForm() {
             </p>
           )}
         </div>
+          <div className="space-y-1.5">
+  <label className="auth-label" htmlFor="phone">
+    <Phone className="h-4 w-4" /> Phone Number
+  </label>
 
+  <input
+    id="phone"
+    className="auth-input"
+    placeholder="+1 555 012 3456"
+    type="tel"
+    {...form.register("phone")}
+  />
+
+  {form.formState.errors.phone && (
+    <p className="font-mono text-xs text-danger">
+      {form.formState.errors.phone.message}
+    </p>
+  )}
+</div>
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1.5">
             <label className="auth-label" htmlFor="password">
@@ -202,7 +220,7 @@ export function SignupForm() {
           type="submit"
           disabled={isPending}
         >
-          {isPending ? "Provisioning..." : "Initialize Account"}
+          {isPending ? "Provisioning..." : "Create Account"}
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
         </button>
       </form>
@@ -232,7 +250,7 @@ export function SignupForm() {
       <footer className="-mx-6 -mb-6 border-t border-border bg-background-surface p-4 text-center text-xs text-text-secondary">
         Already provisioned?{" "}
         <Link href="/login" className="font-bold text-text-primary hover:underline">
-          Initialize Session
+          login
         </Link>
       </footer>
     </div>

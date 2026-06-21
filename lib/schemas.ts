@@ -9,6 +9,11 @@ export const signupSchema = z
   .object({
     name: z.string().min(2, "Name must be at least 2 chars."),
     email: z.string().email("Enter a valid engineer email."),
+    phone: z
+    .string()
+    .min(10, "Phone number must be at least 10 digits")
+    .optional()
+    .or(z.literal("")),
     password: z.string().min(8, "Security token must be at least 8 chars."),
     confirmPassword: z.string().min(8, "Confirm the token."),
     terms: z.boolean().refine(Boolean, "Accept the protocol terms.")
