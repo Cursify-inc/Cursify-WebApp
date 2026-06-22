@@ -2,9 +2,20 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, KeyRound, Mail, Phone, UserRound } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  KeyRound,
+  Mail,
+  Minus,
+  Phone,
+  Plus,
+  UserRound,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { FaGithub, FaLinkedin } from "react-icons/fa";
 import { useForm } from "react-hook-form";
 import {
   sendSignupVerification,
@@ -15,11 +26,10 @@ import { SignupInput, signupSchema } from "@/lib/schemas";
 import { OAuthButtons } from "./oauth-buttons";
 
 type SignupResult = Awaited<ReturnType<typeof signupUser>>;
+type AddableField = "phone" | "linkedin" | "github";
 
 function getPasswordStrength(password: string) {
-  if (!password) {
-    return null;
-  }
+  if (!password) return null;
 
   const hasMinLength = password.length >= 8;
   const hasLetter = /[A-Za-z]/.test(password);
@@ -52,8 +62,96 @@ function getPasswordStrength(password: string) {
   };
 }
 
+function FieldCheck({ active }: { active: boolean }) {
+  if (!active) return null;
+
+  return (
+    <motion.span
+      initial={{ opacity: 0, scale: 0.4, rotate: -35 }}
+      animate={{
+        opacity: 1,
+        scale: [0.4, 1.25, 1],
+        rotate: 0,
+      }}
+      transition={{
+        duration: 0.35,
+        ease: "easeOut",
+      }}
+      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-success"
+      aria-hidden="true"
+    >
+      <CheckCircle2 className="h-4 w-4" />
+    </motion.span>
+  );
+}
+
+function AnimatedToggleIcon({ open }: { open: boolean }) {
+  return (
+    <motion.span
+      key={open ? "minus" : "plus"}
+      initial={{ opacity: 0, scale: 0.4, rotate: open ? -90 : 90 }}
+      animate={{
+        opacity: 1,
+        scale: [0.4, 1.2, 1],
+        rotate: 0,
+      }}
+      exit={{ opacity: 0, scale: 0.4, rotate: open ? 90 : -90 }}
+      transition={{
+        duration: 0.28,
+        ease: "easeOut",
+      }}
+      className="flex items-center justify-center"
+      aria-hidden="true"
+    >
+      {open ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+    </motion.span>
+  );
+}
+
+function AnimatedPlusIcon() {
+  return (
+    <motion.span
+      whileHover={{ rotate: 90, scale: 1.15 }}
+      whileTap={{ scale: 0.85 }}
+      className="text-text-tertiary"
+      aria-hidden="true"
+    >
+      <Plus className="h-4 w-4" />
+    </motion.span>
+  );
+}
+
+function AnimatedMinusIcon() {
+  return (
+    <motion.span
+      whileHover={{ rotate: 90, scale: 1.15 }}
+      whileTap={{ scale: 0.85 }}
+      aria-hidden="true"
+    >
+      <Minus className="h-3.5 w-3.5" />
+    </motion.span>
+  );
+}
+
+function hasValidEmail(value: string | undefined) {
+  return Boolean(value && value.includes("@") && value.includes("."));
+}
+
+function hasValidPhone(value: string | undefined) {
+  return Boolean(value && value.replace(/\D/g, "").length >= 10);
+}
+
 export function SignupForm() {
   const [step, setStep] = useState<"details" | "verify">("details");
+  const [showFieldPicker, setShowFieldPicker] = useState(false);
+  const [addableFields, setAddableFields] = useState<
+    Record<AddableField, boolean>
+  >({
+    phone: false,
+    linkedin: false,
+    github: false,
+  });
+
   const [isPending, setIsPending] = useState(false);
   const [result, setResult] = useState<SignupResult | null>(null);
   const [signupValues, setSignupValues] = useState<SignupInput | null>(null);
@@ -67,14 +165,45 @@ export function SignupForm() {
       name: "",
       email: "",
       phone: "",
+      linkedin: "",
+      github: "",
       password: "",
       confirmPassword: "",
       terms: false,
     },
   });
 
+  const name = form.watch("name");
+  const email = form.watch("email");
+  const phone = form.watch("phone");
+  const linkedin = form.watch("linkedin");
+  const github = form.watch("github");
   const password = form.watch("password");
+  const confirmPassword = form.watch("confirmPassword");
+  const terms = form.watch("terms");
+
   const passwordStrength = getPasswordStrength(password);
+
+  const hasAddedFields =
+    addableFields.phone || addableFields.linkedin || addableFields.github;
+
+  const addField = (field: AddableField) => {
+    setAddableFields((current) => ({
+      ...current,
+      [field]: true,
+    }));
+
+    setShowFieldPicker(false);
+  };
+
+  const removeField = (field: AddableField) => {
+    setAddableFields((current) => ({
+      ...current,
+      [field]: false,
+    }));
+
+    form.setValue(field, "");
+  };
 
   const onSubmit = async (values: SignupInput) => {
     setIsPending(true);
@@ -83,6 +212,7 @@ export function SignupForm() {
 
     try {
       const data = await sendSignupVerification(values);
+
       setSignupValues(values);
       setExpectedCode(data.code);
       setVerificationCode("");
@@ -127,17 +257,8 @@ export function SignupForm() {
           <p className="text-sm leading-6 text-text-secondary">
             We sent a verification code to{" "}
             <span className="font-semibold text-text-primary">
-              {signupValues?.email}
+              {signupValues?.email || signupValues?.phone}
             </span>
-            {signupValues?.phone ? (
-              <>
-                {" "}
-                and{" "}
-                <span className="font-semibold text-text-primary">
-                  {signupValues.phone}
-                </span>
-              </>
-            ) : null}
             .
           </p>
         </div>
@@ -192,7 +313,7 @@ export function SignupForm() {
             animate={{ opacity: 1, y: 0 }}
             className="border border-success/40 bg-success/10 p-3 font-mono text-xs text-success"
           >
-            {result.status} · {result.email}
+            {result.status} · {result.email || result.phone}
           </motion.div>
         )}
       </div>
@@ -207,12 +328,16 @@ export function SignupForm() {
             <UserRound className="h-4 w-4" /> your name
           </label>
 
-          <input
-            id="name"
-            className="auth-input"
-            placeholder="Ada Lovelace"
-            {...form.register("name")}
-          />
+          <div className="relative">
+            <input
+              id="name"
+              className="auth-input pr-10"
+              placeholder="Ada Lovelace"
+              {...form.register("name")}
+            />
+
+            <FieldCheck active={name.trim().length >= 2} />
+          </div>
 
           {form.formState.errors.name && (
             <p className="font-mono text-xs text-danger">
@@ -222,17 +347,32 @@ export function SignupForm() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="auth-label" htmlFor="email">
-            <Mail className="h-4 w-4" /> Email Address
-          </label>
+          <div className="flex items-center justify-between gap-3">
+            <label className="auth-label" htmlFor="email">
+              <Mail className="h-4 w-4" /> Email Address
+            </label>
 
-          <input
-            id="email"
-            className="auth-input"
-            placeholder="engineer@domain.com"
-            type="email"
-            {...form.register("email")}
-          />
+            <button
+              className="flex h-7 w-7 items-center justify-center border border-border bg-background-surface text-text-secondary transition-colors hover:bg-background-elevated hover:text-text-primary"
+              type="button"
+              aria-label="Add extra signup field"
+              onClick={() => setShowFieldPicker((current) => !current)}
+            >
+              <AnimatedToggleIcon open={showFieldPicker} />
+            </button>
+          </div>
+
+          <div className="relative">
+            <input
+              id="email"
+              className="auth-input pr-10"
+              placeholder="engineer@domain.com"
+              type="email"
+              {...form.register("email")}
+            />
+
+            <FieldCheck active={hasValidEmail(email)} />
+          </div>
 
           {form.formState.errors.email && (
             <p className="font-mono text-xs text-danger">
@@ -241,23 +381,197 @@ export function SignupForm() {
           )}
         </div>
 
-        <div className="space-y-1.5">
-          <label className="auth-label" htmlFor="phone">
-            <Phone className="h-4 w-4" /> Phone Number
-          </label>
+        <div className="space-y-3">
+          {showFieldPicker && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="grid gap-2 border border-border bg-background-light p-3"
+            >
+              {!addableFields.phone && (
+                <button
+                  className="flex items-center justify-between border border-border bg-background-surface p-3 text-left text-xs font-semibold text-text-secondary transition-colors hover:bg-background-elevated hover:text-text-primary"
+                  type="button"
+                  onClick={() => addField("phone")}
+                >
+                  <span className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    Phone Number
+                  </span>
 
-          <input
-            id="phone"
-            className="auth-input"
-            placeholder="+1 555 012 3456"
-            type="tel"
-            {...form.register("phone")}
-          />
+                  <AnimatedPlusIcon />
+                </button>
+              )}
 
-          {form.formState.errors.phone && (
-            <p className="font-mono text-xs text-danger">
-              {form.formState.errors.phone.message}
-            </p>
+              {!addableFields.linkedin && (
+                <button
+                  className="flex items-center justify-between border border-border bg-background-surface p-3 text-left text-xs font-semibold text-text-secondary transition-colors hover:bg-background-elevated hover:text-text-primary"
+                  type="button"
+                  onClick={() => addField("linkedin")}
+                >
+                  <span className="flex items-center gap-2">
+                    <FaLinkedin className="h-4 w-4" />
+                    LinkedIn
+                  </span>
+
+                  <AnimatedPlusIcon />
+                </button>
+              )}
+
+              {!addableFields.github && (
+                <button
+                  className="flex items-center justify-between border border-border bg-background-surface p-3 text-left text-xs font-semibold text-text-secondary transition-colors hover:bg-background-elevated hover:text-text-primary"
+                  type="button"
+                  onClick={() => addField("github")}
+                >
+                  <span className="flex items-center gap-2">
+                    <FaGithub className="h-4 w-4" />
+                    GitHub
+                  </span>
+
+                  <AnimatedPlusIcon />
+                </button>
+              )}
+
+              {addableFields.phone &&
+                addableFields.linkedin &&
+                addableFields.github && (
+                  <p className="p-2 text-xs text-text-tertiary">
+                    All extra fields have been added.
+                  </p>
+                )}
+            </motion.div>
+          )}
+
+          {hasAddedFields && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-3 border border-border bg-background-light p-3"
+            >
+              {addableFields.phone && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="auth-label" htmlFor="phone">
+                      <Phone className="h-4 w-4" /> Phone Number
+                    </label>
+
+                    <button
+                      className="flex h-6 w-6 items-center justify-center border border-border bg-background-surface text-text-tertiary transition-colors hover:border-danger hover:text-danger"
+                      type="button"
+                      aria-label="Remove phone number field"
+                      onClick={() => removeField("phone")}
+                    >
+                      <AnimatedMinusIcon />
+                    </button>
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      id="phone"
+                      className="auth-input pr-10"
+                      placeholder="+1 555 012 3456"
+                      type="tel"
+                      {...form.register("phone")}
+                    />
+
+                    <FieldCheck active={hasValidPhone(phone)} />
+                  </div>
+
+                  {form.formState.errors.phone && (
+                    <p className="font-mono text-xs text-danger">
+                      {form.formState.errors.phone.message}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {addableFields.linkedin && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="auth-label" htmlFor="linkedin">
+                      <FaLinkedin className="h-4 w-4" /> LinkedIn
+                    </label>
+
+                    <button
+                      className="flex h-6 w-6 items-center justify-center border border-border bg-background-surface text-text-tertiary transition-colors hover:border-danger hover:text-danger"
+                      type="button"
+                      aria-label="Remove LinkedIn field"
+                      onClick={() => removeField("linkedin")}
+                    >
+                      <AnimatedMinusIcon />
+                    </button>
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      id="linkedin"
+                      className="auth-input pr-10"
+                      placeholder="https://linkedin.com/in/username"
+                      type="url"
+                      {...form.register("linkedin")}
+                    />
+
+                    <FieldCheck
+                      active={
+                        Boolean(linkedin) &&
+                        linkedin.startsWith("https://") &&
+                        linkedin.includes("linkedin.com")
+                      }
+                    />
+                  </div>
+
+                  {form.formState.errors.linkedin && (
+                    <p className="font-mono text-xs text-danger">
+                      {form.formState.errors.linkedin.message}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {addableFields.github && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="auth-label" htmlFor="github">
+                      <FaGithub className="h-4 w-4" /> GitHub
+                    </label>
+
+                    <button
+                      className="flex h-6 w-6 items-center justify-center border border-border bg-background-surface text-text-tertiary transition-colors hover:border-danger hover:text-danger"
+                      type="button"
+                      aria-label="Remove GitHub field"
+                      onClick={() => removeField("github")}
+                    >
+                      <AnimatedMinusIcon />
+                    </button>
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      id="github"
+                      className="auth-input pr-10"
+                      placeholder="https://github.com/username"
+                      type="url"
+                      {...form.register("github")}
+                    />
+
+                    <FieldCheck
+                      active={
+                        Boolean(github) &&
+                        github.startsWith("https://") &&
+                        github.includes("github.com")
+                      }
+                    />
+                  </div>
+
+                  {form.formState.errors.github && (
+                    <p className="font-mono text-xs text-danger">
+                      {form.formState.errors.github.message}
+                    </p>
+                  )}
+                </div>
+              )}
+            </motion.div>
           )}
         </div>
 
@@ -267,13 +581,17 @@ export function SignupForm() {
               <KeyRound className="h-4 w-4" /> Password
             </label>
 
-            <input
-              id="password"
-              className="auth-input"
-              placeholder="••••••••"
-              type="password"
-              {...form.register("password")}
-            />
+            <div className="relative">
+              <input
+                id="password"
+                className="auth-input pr-10"
+                placeholder="••••••••"
+                type="password"
+                {...form.register("password")}
+              />
+
+              <FieldCheck active={Boolean(passwordStrength)} />
+            </div>
 
             {passwordStrength && (
               <div className="space-y-1.5">
@@ -304,13 +622,19 @@ export function SignupForm() {
               <KeyRound className="h-4 w-4" /> Confirm
             </label>
 
-            <input
-              id="confirmPassword"
-              className="auth-input"
-              placeholder="••••••••"
-              type="password"
-              {...form.register("confirmPassword")}
-            />
+            <div className="relative">
+              <input
+                id="confirmPassword"
+                className="auth-input pr-10"
+                placeholder="••••••••"
+                type="password"
+                {...form.register("confirmPassword")}
+              />
+
+              <FieldCheck
+                active={Boolean(confirmPassword) && confirmPassword === password}
+              />
+            </div>
 
             {form.formState.errors.confirmPassword && (
               <p className="font-mono text-xs text-danger">
@@ -320,16 +644,35 @@ export function SignupForm() {
           </div>
         </div>
 
-        <label className="flex items-start gap-3 border border-border bg-background-surface p-3 text-xs text-text-secondary">
-          <input
-            className="mt-0.5 h-4 w-4 rounded-none accent-text-primary"
-            type="checkbox"
-            {...form.register("terms")}
-          />
+        <label className="flex cursor-pointer items-start gap-3 border border-border bg-background-surface p-3 text-xs text-text-secondary">
+          <span className="relative mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center border border-border bg-background-light">
+            <input
+              className="peer sr-only"
+              type="checkbox"
+              {...form.register("terms")}
+            />
 
-          <span>
-            I accept the Cursify workspace protocol and deployment rules.
+            {terms && (
+              <motion.span
+                initial={{ opacity: 0, scale: 0.4, rotate: -35 }}
+                animate={{
+                  opacity: 1,
+                  scale: [0.4, 1.25, 1],
+                  rotate: 0,
+                }}
+                transition={{
+                  duration: 0.35,
+                  ease: "easeOut",
+                }}
+                className="text-success"
+                aria-hidden="true"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+              </motion.span>
+            )}
           </span>
+
+          <span>I accept the Cursify workspace protocol and deployment rules.</span>
         </label>
 
         {form.formState.errors.terms && (
