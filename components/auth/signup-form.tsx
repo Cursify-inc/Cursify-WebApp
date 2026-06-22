@@ -166,6 +166,7 @@ export function SignupForm() {
     resolver: zodResolver(signupSchema),
     defaultValues: {
       name: "",
+      username: "",
       email: "",
       phone: "",
       linkedin: "",
@@ -177,6 +178,7 @@ export function SignupForm() {
   });
 
   const name = form.watch("name");
+  const username = form.watch("username");
   const email = form.watch("email");
   const phone = form.watch("phone");
   const linkedin = form.watch("linkedin");
@@ -187,6 +189,7 @@ export function SignupForm() {
 
   const passwordStrength = getPasswordStrength(password);
   const isNameValid = name.trim().length >= 2;
+  const isUsernameValid = username.length >= 5;
   const isEmailValid = hasValidEmail(email);
   const isPhoneValid = hasValidPhone(phone);
   const isLinkedInValid =
@@ -197,7 +200,8 @@ export function SignupForm() {
     Boolean(github) &&
     github.startsWith("https://") &&
     github.includes("github.com");
-  const isConfirmValid = Boolean(confirmPassword) && confirmPassword === password;
+  const isConfirmValid =
+    Boolean(confirmPassword) && confirmPassword === password;
 
   const hasAddedFields =
     addableFields.phone || addableFields.linkedin || addableFields.github;
@@ -221,18 +225,26 @@ export function SignupForm() {
   };
 
   const onSubmit = async (values: SignupInput) => {
+
+    console.log("submit values:", values)
     setIsPending(true);
     setResult(null);
     setVerifyError(null);
 
     try {
-      const data = await sendSignupVerification(values);
+      const data = await signupUser(values);
 
       setSignupValues(values);
-      setExpectedCode(data.code);
+      setExpectedCode("");
       setVerificationCode("");
       setStep("verify");
-    } finally {
+
+      console.log("signup response:", data);
+    } catch (error) {
+      setVerifyError(
+        error instanceof Error ? error.message : "signup failed"
+      );
+     } finally {
       setIsPending(false);
     }
   };
@@ -247,10 +259,16 @@ export function SignupForm() {
     try {
       await verifySignupCode(verificationCode, expectedCode);
       const data = await signupUser(signupValues);
-      setResult(data);
-    } catch (error) {
+setResult({
+
+      message: "Account verified",
+      user_id: "mock-user-id",
+      email: signupValues.email,
+      phone_number: signupValues.phone,
+    });    
+  } catch (error) {
       setVerifyError(
-        error instanceof Error ? error.message : "Verification failed"
+        error instanceof Error ? error.message : "Verification failed",
       );
     } finally {
       setIsPending(false);
@@ -328,7 +346,7 @@ export function SignupForm() {
             animate={{ opacity: 1, y: 0 }}
             className="border border-success/40 bg-success/10 p-3 font-mono text-xs text-success"
           >
-            {result.status} · {result.email || result.phone}
+            {result.message} · {result.email || result.phone_number}
           </motion.div>
         )}
       </div>
@@ -357,6 +375,28 @@ export function SignupForm() {
           {form.formState.errors.name && (
             <p className="font-mono text-xs text-danger">
               {form.formState.errors.name.message}
+            </p>
+          )}
+        </div>
+        <div className="space-y-1.5">
+          <label className="auth-label" htmlFor="username">
+            <UserRound className="h-4 w-4" /> username
+          </label>
+
+          <div className="relative">
+            <input
+              id="username"
+              className={inputClass(isUsernameValid)}
+              placeholder="Ada_2026"
+              {...form.register("username")}
+            />
+
+            <FieldCheck active={isUsernameValid} />
+          </div>
+
+          {form.formState.errors.username && (
+            <p className="font-mono text-xs text-danger">
+              {form.formState.errors.username.message}
             </p>
           )}
         </div>
@@ -677,7 +717,9 @@ export function SignupForm() {
             )}
           </span>
 
-          <span>I accept the Cursify workspace protocol and deployment rules.</span>
+          <span>
+            I accept the Cursify workspace protocol and deployment rules.
+          </span>
         </label>
 
         {form.formState.errors.terms && (

@@ -8,6 +8,7 @@ export const loginSchema = z.object({
 export const signupSchema = z
   .object({
     name: z.string().min(2, "Name must be at least 2 chars."),
+    username: z.string().min(5, "Name must be at least 5 chars."),
 
     email: z
       .string()
@@ -43,13 +44,10 @@ export const signupSchema = z
     message: "Enter either an email address or phone number.",
     path: ["email"],
   })
-  .refine(
-    (data) => !data.phone || data.phone.replace(/\D/g, "").length >= 10,
-    {
-      message: "Phone number must include at least 10 digits.",
-      path: ["phone"],
-    }
-  );
+  .refine((data) => !data.phone || data.phone.replace(/\D/g, "").length >= 10, {
+    message: "Phone number must include at least 10 digits.",
+    path: ["phone"],
+  });
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type SignupInput = z.infer<typeof signupSchema>;
