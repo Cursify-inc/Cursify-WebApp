@@ -327,8 +327,8 @@ body {
 .auth-input {
   width: 100%;
   border-radius: 0;
-  border: 1px solid var(--outline);
-  background: var(--surface-container-lowest);
+  border: 1px solid var(--border);
+  background-color: var(--background-surface);
   padding: 0.5rem 0.75rem;
   font-family:
     ui-monospace,
@@ -340,19 +340,30 @@ body {
     "Courier New",
     monospace;
   font-size: 0.875rem;
-  color: var(--on-surface);
+  color: var(--text-primary);
   transition: all 180ms ease;
   outline: none;
 }
 
 .auth-input::placeholder {
-  color: color-mix(in srgb, var(--on-surface-variant) 60%, transparent);
+  color: var(--text-tertiary);
 }
 
 .auth-input:focus {
   border-left-width: 4px;
-  border-color: var(--surface-tint);
+  border-color: var(--text-primary);
   outline: none;
+}
+
+.auth-input:-webkit-autofill,
+.auth-input:-webkit-autofill:hover,
+.auth-input:-webkit-autofill:focus,
+.auth-input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--text-primary);
+  caret-color: var(--text-primary);
+  box-shadow: 0 0 0 1000px var(--background-surface) inset;
+  -webkit-box-shadow: 0 0 0 1000px var(--background-surface) inset;
+  transition: background-color 9999s ease-in-out 0s;
 }
 
 .auth-label {
@@ -363,7 +374,7 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  color: var(--on-surface);
+  color: var(--text-primary);
 }
 
 .auth-button-primary {
@@ -372,20 +383,20 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border: 0;
+  border: 1px solid var(--border);
   border-radius: 0;
-  background: var(--primary-container);
+  background: var(--text-primary);
   padding: 0.75rem 1rem;
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  color: var(--on-primary);
+  color: var(--text-inverse);
   transition: all 180ms ease;
 }
 
 .auth-button-primary:hover {
-  background: var(--on-primary-fixed-variant);
+  background: var(--text-secondary);
 }
 
 .auth-button-primary:active {
@@ -404,17 +415,43 @@ body {
   justify-content: center;
   gap: 0.75rem;
   border-radius: 0;
-  border: 1px solid var(--on-primary-fixed-variant);
-  background: var(--surface-container-lowest);
+  border: 1px solid var(--border);
+  background: var(--background-surface);
   padding: 0.625rem 1rem;
   font-size: 0.875rem;
-  color: var(--on-surface);
+  color: var(--text-primary);
   transition: background-color 180ms ease;
 }
 
 .auth-button-secondary:hover {
-  background: var(--surface-container-low);
+  background: var(--background-elevated);
 }
+
+.auth-input-filled {
+  background-color: color-mix(
+    in srgb,
+    var(--success) 7%,
+    var(--background-surface)
+  );
+  border-color: color-mix(in srgb, var(--success) 28%, var(--border));
+}
+
+.auth-input-filled:focus {
+  border-color: color-mix(in srgb, var(--success) 45%, var(--text-primary));
+}
+
+.auth-input-filled:-webkit-autofill,
+.auth-input-filled:-webkit-autofill:hover,
+.auth-input-filled:-webkit-autofill:focus,
+.auth-input-filled:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--text-primary);
+  caret-color: var(--text-primary);
+  box-shadow: 0 0 0 1000px
+    color-mix(in srgb, var(--success) 7%, var(--background-surface)) inset;
+  -webkit-box-shadow: 0 0 0 1000px
+    color-mix(in srgb, var(--success) 7%, var(--background-surface)) inset;
+}
+
 
 @media (prefers-reduced-motion: reduce) {
   html {

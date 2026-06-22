@@ -77,7 +77,7 @@ function FieldCheck({ active }: { active: boolean }) {
         duration: 0.35,
         ease: "easeOut",
       }}
-      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-success"
+      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-success opacity-90"
       aria-hidden="true"
     >
       <CheckCircle2 className="h-4 w-4" />
@@ -95,7 +95,6 @@ function AnimatedToggleIcon({ open }: { open: boolean }) {
         scale: [0.4, 1.2, 1],
         rotate: 0,
       }}
-      exit={{ opacity: 0, scale: 0.4, rotate: open ? 90 : -90 }}
       transition={{
         duration: 0.28,
         ease: "easeOut",
@@ -141,6 +140,10 @@ function hasValidPhone(value: string | undefined) {
   return Boolean(value && value.replace(/\D/g, "").length >= 10);
 }
 
+function inputClass(isFilled: boolean) {
+  return `auth-input pr-10 ${isFilled ? "auth-input-filled" : ""}`;
+}
+
 export function SignupForm() {
   const [step, setStep] = useState<"details" | "verify">("details");
   const [showFieldPicker, setShowFieldPicker] = useState(false);
@@ -183,6 +186,18 @@ export function SignupForm() {
   const terms = form.watch("terms");
 
   const passwordStrength = getPasswordStrength(password);
+  const isNameValid = name.trim().length >= 2;
+  const isEmailValid = hasValidEmail(email);
+  const isPhoneValid = hasValidPhone(phone);
+  const isLinkedInValid =
+    Boolean(linkedin) &&
+    linkedin.startsWith("https://") &&
+    linkedin.includes("linkedin.com");
+  const isGitHubValid =
+    Boolean(github) &&
+    github.startsWith("https://") &&
+    github.includes("github.com");
+  const isConfirmValid = Boolean(confirmPassword) && confirmPassword === password;
 
   const hasAddedFields =
     addableFields.phone || addableFields.linkedin || addableFields.github;
@@ -331,12 +346,12 @@ export function SignupForm() {
           <div className="relative">
             <input
               id="name"
-              className="auth-input pr-10"
+              className={inputClass(isNameValid)}
               placeholder="Ada Lovelace"
               {...form.register("name")}
             />
 
-            <FieldCheck active={name.trim().length >= 2} />
+            <FieldCheck active={isNameValid} />
           </div>
 
           {form.formState.errors.name && (
@@ -365,13 +380,13 @@ export function SignupForm() {
           <div className="relative">
             <input
               id="email"
-              className="auth-input pr-10"
+              className={inputClass(isEmailValid)}
               placeholder="engineer@domain.com"
               type="email"
               {...form.register("email")}
             />
 
-            <FieldCheck active={hasValidEmail(email)} />
+            <FieldCheck active={isEmailValid} />
           </div>
 
           {form.formState.errors.email && (
@@ -386,7 +401,7 @@ export function SignupForm() {
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="grid gap-2 border border-border bg-background-light p-3"
+              className="grid gap-2 border border-border bg-background-surface p-3"
             >
               {!addableFields.phone && (
                 <button
@@ -447,7 +462,7 @@ export function SignupForm() {
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="space-y-3 border border-border bg-background-light p-3"
+              className="space-y-3 border border-border bg-background-surface p-3"
             >
               {addableFields.phone && (
                 <div className="space-y-1.5">
@@ -469,13 +484,13 @@ export function SignupForm() {
                   <div className="relative">
                     <input
                       id="phone"
-                      className="auth-input pr-10"
+                      className={inputClass(isPhoneValid)}
                       placeholder="+1 555 012 3456"
                       type="tel"
                       {...form.register("phone")}
                     />
 
-                    <FieldCheck active={hasValidPhone(phone)} />
+                    <FieldCheck active={isPhoneValid} />
                   </div>
 
                   {form.formState.errors.phone && (
@@ -506,19 +521,13 @@ export function SignupForm() {
                   <div className="relative">
                     <input
                       id="linkedin"
-                      className="auth-input pr-10"
+                      className={inputClass(isLinkedInValid)}
                       placeholder="https://linkedin.com/in/username"
                       type="url"
                       {...form.register("linkedin")}
                     />
 
-                    <FieldCheck
-                      active={
-                        Boolean(linkedin) &&
-                        linkedin.startsWith("https://") &&
-                        linkedin.includes("linkedin.com")
-                      }
-                    />
+                    <FieldCheck active={isLinkedInValid} />
                   </div>
 
                   {form.formState.errors.linkedin && (
@@ -549,19 +558,13 @@ export function SignupForm() {
                   <div className="relative">
                     <input
                       id="github"
-                      className="auth-input pr-10"
+                      className={inputClass(isGitHubValid)}
                       placeholder="https://github.com/username"
                       type="url"
                       {...form.register("github")}
                     />
 
-                    <FieldCheck
-                      active={
-                        Boolean(github) &&
-                        github.startsWith("https://") &&
-                        github.includes("github.com")
-                      }
-                    />
+                    <FieldCheck active={isGitHubValid} />
                   </div>
 
                   {form.formState.errors.github && (
@@ -584,7 +587,7 @@ export function SignupForm() {
             <div className="relative">
               <input
                 id="password"
-                className="auth-input pr-10"
+                className={inputClass(Boolean(passwordStrength))}
                 placeholder="••••••••"
                 type="password"
                 {...form.register("password")}
@@ -625,15 +628,13 @@ export function SignupForm() {
             <div className="relative">
               <input
                 id="confirmPassword"
-                className="auth-input pr-10"
+                className={inputClass(isConfirmValid)}
                 placeholder="••••••••"
                 type="password"
                 {...form.register("confirmPassword")}
               />
 
-              <FieldCheck
-                active={Boolean(confirmPassword) && confirmPassword === password}
-              />
+              <FieldCheck active={isConfirmValid} />
             </div>
 
             {form.formState.errors.confirmPassword && (
@@ -645,7 +646,11 @@ export function SignupForm() {
         </div>
 
         <label className="flex cursor-pointer items-start gap-3 border border-border bg-background-surface p-3 text-xs text-text-secondary">
-          <span className="relative mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center border border-border bg-background-light">
+          <span
+            className={`relative mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center border border-border bg-background-surface ${
+              terms ? "auth-input-filled" : ""
+            }`}
+          >
             <input
               className="peer sr-only"
               type="checkbox"
