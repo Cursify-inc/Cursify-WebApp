@@ -55,7 +55,7 @@ export function LoginForm() {
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
         <div className="space-y-1.5">
           <label className="auth-label" htmlFor="email">
-            <Mail className="h-4 w-4" /> Email Address
+            <Mail className="h-4 w-4" /> Email or phone
           </label>
 
           <input
