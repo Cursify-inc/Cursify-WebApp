@@ -71,8 +71,8 @@ export function AuthShell({ children, before, after, mode }: AuthShellProps) {
 
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-text-tertiary">
                 {mode === "login"
-                  ? "Create your Cursify account"
-                  : "Sign in to access your AI-powered IDE"}
+                  ? "Sign in to access your AI-powered IDE"
+                  : "Create your Cursify account"}
               </p>
             </header>
 
