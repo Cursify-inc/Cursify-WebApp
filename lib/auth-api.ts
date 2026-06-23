@@ -5,7 +5,7 @@ import type { LoginInput, SignupInput } from "./schemas";
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/v1";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://staging-api.cursify.com/v1";
 
 type ApiErrorResponse = {
   error?: string;

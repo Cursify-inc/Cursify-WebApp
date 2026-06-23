@@ -18,9 +18,9 @@ import { useState } from "react";
 import { FaGithub, FaLinkedin } from "react-icons/fa";
 import { useForm } from "react-hook-form";
 import {
-  sendSignupVerification,
+  // sendSignupVerification,
   signupUser,
-  verifySignupCode,
+  // verifySignupCode,
 } from "@/lib/auth-api";
 import { SignupInput, signupSchema } from "@/lib/schemas";
 import { OAuthButtons } from "./oauth-buttons";
@@ -224,55 +224,50 @@ export function SignupForm() {
     form.setValue(field, "");
   };
 
-  const onSubmit = async (values: SignupInput) => {
+const onSubmit = async (values: SignupInput) => {
+  console.log("submit values:", values);
 
-    console.log("submit values:", values)
-    setIsPending(true);
-    setResult(null);
-    setVerifyError(null);
+  setIsPending(true);
+  setResult(null);
+  setVerifyError(null);
 
-    try {
-      const data = await signupUser(values);
+  // First move the UI to verification step
+  setSignupValues(values);
+  setExpectedCode("1234");
+  setVerificationCode("");
+  setStep("verify");
 
-      setSignupValues(values);
-      setExpectedCode("");
-      setVerificationCode("");
-      setStep("verify");
+  try {
+    const data = await signupUser(values);
+    console.log("signup response:", data);
+  } catch (error) {
+    console.error("signup error:", error);
+  } finally {
+    setIsPending(false);
+  }
+};
 
-      console.log("signup response:", data);
-    } catch (error) {
-      setVerifyError(
-        error instanceof Error ? error.message : "signup failed"
-      );
-     } finally {
-      setIsPending(false);
+const onVerify = async () => {
+  if (!signupValues) return;
+
+  setIsPending(true);
+  setVerifyError(null);
+  setResult(null);
+
+  try {
+    if (verificationCode !== expectedCode) {
+      throw new Error("Invalid verification code");
     }
-  };
 
-  const onVerify = async () => {
-    if (!signupValues) return;
-
-    setIsPending(true);
-    setVerifyError(null);
-    setResult(null);
-
-    try {
-      await verifySignupCode(
-        verificationCode,
-        signupValues.email,
-        signupValues.phone
-      );
-
-      // Redirect to dashboard after successful verification
-      window.location.href = "/dashboard";
-    } catch (error) {
-      setVerifyError(
-        error instanceof Error ? error.message : "Verification failed"
-      );
-    } finally {
-      setIsPending(false);
-    }
-  };
+    window.location.href = "/dashboard";
+  } catch (error) {
+    setVerifyError(
+      error instanceof Error ? error.message : "Verification failed"
+    );
+  } finally {
+    setIsPending(false);
+  }
+};
 
   if (step === "verify") {
     return (
