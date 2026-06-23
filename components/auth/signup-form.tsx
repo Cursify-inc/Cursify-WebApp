@@ -165,7 +165,8 @@ export function SignupForm() {
   const form = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
-      name: "",
+      firstName: "",
+      lastName: "",
       username: "",
       email: "",
       phone: "",
@@ -177,7 +178,8 @@ export function SignupForm() {
     },
   });
 
-  const name = form.watch("name");
+  const firstName = form.watch("firstName");
+  const lastName = form.watch("lastName");
   const username = form.watch("username");
   const email = form.watch("email");
   const phone = form.watch("phone");
@@ -188,8 +190,8 @@ export function SignupForm() {
   const terms = form.watch("terms");
 
   const passwordStrength = getPasswordStrength(password);
-  const isNameValid = name.trim().length >= 2;
-  const isUsernameValid = username.length >= 5;
+const isFirstNameValid = firstName.trim().length >= 2;
+const isLastNameValid = lastName.trim().length >= 2;  const isUsernameValid = username.length >= 5;
   const isEmailValid = hasValidEmail(email);
   const isPhoneValid = hasValidPhone(phone);
   const isLinkedInValid =
@@ -350,28 +352,53 @@ const onVerify = async () => {
   return (
     <div className="space-y-5 p-6">
       <form className="space-y-3.5" onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="space-y-1.5">
-          <label className="auth-label" htmlFor="name">
-            <UserRound className="h-4 w-4" /> your name
-          </label>
+        <div className="grid gap-3 md:grid-cols-2">
+  <div className="space-y-1.5">
+    <label className="auth-label" htmlFor="firstName">
+      <UserRound className="h-4 w-4" /> First name
+    </label>
 
-          <div className="relative">
-            <input
-              id="name"
-              className={inputClass(isNameValid)}
-              placeholder="Ada Lovelace"
-              {...form.register("name")}
-            />
+    <div className="relative">
+      <input
+        id="firstName"
+        className={inputClass(isFirstNameValid)}
+        placeholder="Ada"
+        {...form.register("firstName")}
+      />
 
-            <FieldCheck active={isNameValid} />
-          </div>
+      <FieldCheck active={isFirstNameValid} />
+    </div>
 
-          {form.formState.errors.name && (
-            <p className="font-mono text-xs text-danger">
-              {form.formState.errors.name.message}
-            </p>
-          )}
-        </div>
+    {form.formState.errors.firstName && (
+      <p className="font-mono text-xs text-danger">
+        {form.formState.errors.firstName.message}
+      </p>
+    )}
+  </div>
+
+  <div className="space-y-1.5">
+    <label className="auth-label" htmlFor="lastName">
+      <UserRound className="h-4 w-4" /> Last name
+    </label>
+
+    <div className="relative">
+      <input
+        id="lastName"
+        className={inputClass(isLastNameValid)}
+        placeholder="Lovelace"
+        {...form.register("lastName")}
+      />
+
+      <FieldCheck active={isLastNameValid} />
+    </div>
+
+    {form.formState.errors.lastName && (
+      <p className="font-mono text-xs text-danger">
+        {form.formState.errors.lastName.message}
+      </p>
+    )}
+  </div>
+</div>
         <div className="space-y-1.5">
           <label className="auth-label" htmlFor="username">
             <UserRound className="h-4 w-4" /> username

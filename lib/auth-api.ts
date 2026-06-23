@@ -83,13 +83,6 @@ async function requestApi<TResponse>(
   return data as TResponse;
 }
 
-function splitFullName(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return {
-    first_name: parts[0] || "User",
-    last_name: parts.slice(1).join(" ") || "Cursify",
-  };
-}
 
 function storeAuthToken(token: string, refreshToken?: string) {
   if (typeof window !== "undefined") {
@@ -103,14 +96,13 @@ function storeAuthToken(token: string, refreshToken?: string) {
 export async function signupUser(values: SignupInput) {
   await pause(900);
 
-  const { first_name, last_name } = splitFullName(values.name);
   const cleanPhone = values.phone ? values.phone.replace(/\D/g, "") : undefined;
 
   return requestApi<SignupResponse>("/auth/signup", {
     method: "POST",
     body: JSON.stringify({
-      first_name,
-      last_name,
+      first_name: values.firstName,
+      last_name: values.lastName,
       username: values.username,
       password: values.password,
       email: values.email || undefined,

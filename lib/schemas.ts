@@ -16,9 +16,14 @@ export const loginSchema = z.object({
 
 export const signupSchema = z
   .object({
-    name: z.string().min(2, "Name must be at least 2 chars."),
-    username: z.string().min(5, "Name must be at least 5 chars."),
-
+firstName: z
+  .string()
+  .min(2, "First name must be at least 2 chars.")
+  .max(100, "First name must be at most 100 chars."),
+lastName: z
+  .string()
+  .min(2, "Last name must be at least 2 chars.")
+  .max(100, "Last name must be at most 100 chars."),    username: z.string().min(5, "Name must be at least 5 chars."),
     email: z
       .string()
       .email("Enter a valid engineer email.")
