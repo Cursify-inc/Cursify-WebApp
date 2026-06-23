@@ -13,9 +13,6 @@ import { boolean } from "zod";
 
 type LoginResult = Awaited<ReturnType<typeof loginUser>>;
 
-function hasValidEmail(value: string | undefined) {
-  return Boolean(value && value.includes("@") && value.includes("."));
-}
 
 function inputClass(isFilled: boolean) {
   return `auth-input ${isFilled ? "auth-input-filled" : ""}`;
@@ -36,34 +33,30 @@ export function LoginForm() {
   const emailOrPhone = form.watch("emailOrPhone");
   const password = form.watch("password");
 
-  const isEmailOrPhoneFilled = boolean(
+  const isEmailOrPhoneFilled = Boolean(
     emailOrPhone &&
       (emailOrPhone.includes("@") || 
       emailOrPhone.replace(/\D/g, "").length >= 10)
   );
   const isPasswordFilled = Boolean(password && password.length >= 8);
 
-  const onSubmit = async (values: LoginInput) => {
-    setIsPending(true);
-    setResult(null);
+const onSubmit = async (values: LoginInput) => {
+  setIsPending(true);
+  setResult(null);
 
-    try {
-      const data = await loginUser(values);
-      setResult(data);
+  try {
+    const data = await loginUser(values);
+    setResult(data);
+  } catch (error) {
+    console.error("login error:", error);
+  } finally {
+    setIsPending(false);
 
-      // Redirect to dashboard after successful login
-      setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 500);
-    } catch (error) {
-      form.setError("root", {
-        message: error instanceof Error ? error.message : "Login failed",
-      });
-    } finally {
-      setIsPending(false);
-    }
-  };
-
+    setTimeout(() => {
+      window.location.href = "/dashboard";
+    }, 500);
+  }
+};
 
   return (
     <div className="space-y-5 p-6">
@@ -127,15 +120,15 @@ export function LoginForm() {
         </button>
       </form>
 
-      {result && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="border border-success/40 bg-success/10 p-3 font-mono text-xs text-success"
-        >
-          {result.status} · {result.email}
-        </motion.div>
-      )}
+  {result && (
+  <motion.div
+    initial={{ opacity: 0, y: 8 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="border border-success/40 bg-success/10 p-3 font-mono text-xs text-success"
+  >
+    Login successful. Redirecting...
+  </motion.div>
+)}
 
       <div className="flex items-center">
         <div className="h-px flex-1 bg-border" />
