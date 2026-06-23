@@ -9,6 +9,7 @@ import { useForm } from "react-hook-form";
 import { loginUser } from "@/lib/auth-api";
 import { LoginInput, loginSchema } from "@/lib/schemas";
 import { OAuthButtons } from "./oauth-buttons";
+import { boolean } from "zod";
 
 type LoginResult = Awaited<ReturnType<typeof loginUser>>;
 
@@ -27,15 +28,19 @@ export function LoginForm() {
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
+      emailOrPhone: "",
       password: "",
     },
   });
 
-  const email = form.watch("email");
+  const emailOrPhone = form.watch("emailOrPhone");
   const password = form.watch("password");
 
-  const isEmailFilled = hasValidEmail(email);
+  const isEmailOrPhoneFilled = boolean(
+    emailOrPhone &&
+      (emailOrPhone.includes("@") || 
+      emailOrPhone.replace(/\D/g, "").length >= 10)
+  );
   const isPasswordFilled = Boolean(password && password.length >= 8);
 
   const onSubmit = async (values: LoginInput) => {
@@ -45,30 +50,40 @@ export function LoginForm() {
     try {
       const data = await loginUser(values);
       setResult(data);
+
+      // Redirect to dashboard after successful login
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 500);
+    } catch (error) {
+      form.setError("root", {
+        message: error instanceof Error ? error.message : "Login failed",
+      });
     } finally {
       setIsPending(false);
     }
   };
 
+
   return (
     <div className="space-y-5 p-6">
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
         <div className="space-y-1.5">
-          <label className="auth-label" htmlFor="email">
+          <label className="auth-label" htmlFor="emailOrPhone">
             <Mail className="h-4 w-4" /> Email or phone
           </label>
 
           <input
-            id="email"
-            className={inputClass(isEmailFilled)}
-            placeholder="engineer@domain.com"
-            type="email"
-            {...form.register("email")}
+            id="emailOrPhone"
+            className={inputClass(isEmailOrPhoneFilled)}
+            placeholder="engineer@domain.com or +1 555 012 3456"
+            type="text"
+            {...form.register("emailOrPhone")}
           />
 
-          {form.formState.errors.email && (
+          {form.formState.errors.emailOrPhone && (
             <p className="font-mono text-xs text-danger">
-              {form.formState.errors.email.message}
+              {form.formState.errors.emailOrPhone.message}
             </p>
           )}
         </div>

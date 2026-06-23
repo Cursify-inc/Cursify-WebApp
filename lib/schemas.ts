@@ -1,7 +1,16 @@
 import { z } from "zod";
 
 export const loginSchema = z.object({
-  email: z.string().email("Enter a valid engineer email."),
+  emailOrPhone: z
+    .string()
+    .min(1, "Enter your email or phone number.")
+    .refine((value) => {
+      const isEmail = value.includes("@") && value.includes(".");
+      const isPhone = value.replace(/\D/g, "").length >= 10;
+
+      return isEmail || isPhone;
+    }, "Enter a valid email or phone number."),
+
   password: z.string().min(8, "Security token must be at least 8 chars."),
 });
 

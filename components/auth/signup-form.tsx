@@ -257,18 +257,17 @@ export function SignupForm() {
     setResult(null);
 
     try {
-      await verifySignupCode(verificationCode, expectedCode);
-      const data = await signupUser(signupValues);
-setResult({
+      await verifySignupCode(
+        verificationCode,
+        signupValues.email,
+        signupValues.phone
+      );
 
-      message: "Account verified",
-      user_id: "mock-user-id",
-      email: signupValues.email,
-      phone_number: signupValues.phone,
-    });    
-  } catch (error) {
+      // Redirect to dashboard after successful verification
+      window.location.href = "/dashboard";
+    } catch (error) {
       setVerifyError(
-        error instanceof Error ? error.message : "Verification failed",
+        error instanceof Error ? error.message : "Verification failed"
       );
     } finally {
       setIsPending(false);
