@@ -18,9 +18,9 @@ import { useState } from "react";
 import { FaGithub, FaLinkedin } from "react-icons/fa";
 import { useForm } from "react-hook-form";
 import {
-  // sendSignupVerification,
   signupUser,
-  // verifySignupCode,
+  verifyEmail,
+  verifyPhone,
 } from "@/lib/auth-api";
 import { SignupInput, signupSchema } from "@/lib/schemas";
 import { OAuthButtons } from "./oauth-buttons";
@@ -158,7 +158,6 @@ export function SignupForm() {
   const [isPending, setIsPending] = useState(false);
   const [result, setResult] = useState<SignupResult | null>(null);
   const [signupValues, setSignupValues] = useState<SignupInput | null>(null);
-  const [expectedCode, setExpectedCode] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [verifyError, setVerifyError] = useState<string | null>(null);
 
@@ -233,17 +232,29 @@ const onSubmit = async (values: SignupInput) => {
   setResult(null);
   setVerifyError(null);
 
-  // First move the UI to verification step
-  setSignupValues(values);
-  setExpectedCode("1234");
-  setVerificationCode("");
-  setStep("verify");
-
   try {
     const data = await signupUser(values);
     console.log("signup response:", data);
+
+    setResult(data);
+    setSignupValues(values);
+    setVerificationCode("");
+
+    if (data.requires_verification) {
+      setStep("verify");
+      return;
+    }
+
+    if (data.requires_choice) {
+      setVerifyError("Please choose a verification method.");
+      return;
+    }
+
+    // Fallback: most signup responses should require verification.
+    setStep("verify");
   } catch (error) {
     console.error("signup error:", error);
+    setVerifyError(error instanceof Error ? error.message : "Signup failed");
   } finally {
     setIsPending(false);
   }
@@ -252,17 +263,33 @@ const onSubmit = async (values: SignupInput) => {
 const onVerify = async () => {
   if (!signupValues) return;
 
+  const code = verificationCode.trim();
+
+  if (!code) {
+    setVerifyError("Please enter the verification code.");
+    return;
+  }
+
   setIsPending(true);
   setVerifyError(null);
-  setResult(null);
 
   try {
-    if (verificationCode !== expectedCode) {
-      throw new Error("Invalid verification code");
+    const emailToVerify = result?.email || signupValues.email;
+    const phoneToVerify = result?.phone_number || signupValues.phone;
+
+    if (emailToVerify) {
+      console.log("verifying email:", emailToVerify);
+      await verifyEmail(emailToVerify, code);
+    } else if (phoneToVerify) {
+      console.log("verifying phone:", phoneToVerify);
+      await verifyPhone(phoneToVerify, code);
+    } else {
+      throw new Error("No email or phone number available for verification.");
     }
 
     window.location.href = "/dashboard";
   } catch (error) {
+    console.error("verification error:", error);
     setVerifyError(
       error instanceof Error ? error.message : "Verification failed"
     );
@@ -290,10 +317,6 @@ const onVerify = async () => {
             </span>
             .
           </p>
-        </div>
-
-        <div className="border border-info/40 bg-info-light p-3 font-mono text-xs text-info">
-          Mock verification code: <strong>{expectedCode}</strong>
         </div>
 
         <div className="space-y-1.5">
