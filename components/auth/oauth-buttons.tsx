@@ -1,5 +1,6 @@
 import { FaGithub } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
+import { getOAuthUrl } from "@/lib/auth-api";
 
 function GoogleIcon() {
   return (
@@ -13,12 +14,19 @@ function GoogleIcon() {
 }
 
 export function OAuthButtons() {
+
+  const handleOAuthSignup = (provider: "google" | "github") => {
+    const url = getOAuthUrl(provider);
+    console.log("OAuth URL:", url);
+    window.location.href = url;
+    // window.location.href = getOAuthUrl(provider);
+  };
   return (
     <div className="space-y-3">
-      <button className="auth-button-secondary" type="button">
+      <button className="auth-button-secondary" type="button" onClick={() => handleOAuthSignup("github")}>
         <FaGithub className="h-5 w-5" /> Authenticate via GitHub
       </button>
-      <button className="auth-button-secondary" type="button">
+      <button className="auth-button-secondary" type="button" onClick={() => handleOAuthSignup("google")}>
         <FcGoogle /> Authenticate via Google
       </button>
     </div>

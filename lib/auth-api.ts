@@ -7,6 +7,10 @@ const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://staging-api.cursify.com/v1";
 
+
+export function getOAuthUrl(provider: "google" | "github") {
+  return `${API_BASE_URL}/auth/oauth/${provider}`;
+}
 type ApiErrorResponse = {
   error?: string;
   errors?: Record<string, string>; // For validation errors
