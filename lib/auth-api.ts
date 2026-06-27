@@ -1,6 +1,6 @@
 "use client";
 
-import type { LoginInput, SignupInput } from "./schemas";
+import type { ForgotPasswordInput, LoginInput, ResetPasswordInput, SignupInput, forgotPasswordSchema, resetPasswordSchema } from "./schemas";
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -222,4 +222,28 @@ export async function verifySignupCode(
   }
 
   throw new Error("No email or phone provided for verification");
+}
+
+export async function forgotPassword(values: ForgotPasswordInput) {
+  await pause(700);
+
+  return requestApi<MessageResponse>("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({
+      email_or_phone: values.emailOrPhone,
+    }),
+  });
+}
+
+export async function resetPassword(values: ResetPasswordInput) {
+  await new Promise((r) => setTimeout(r, 800));
+
+  // fake validation
+  if (values.token !== "12345") {
+    throw new Error("Invalid verification code");
+  }
+
+  return {
+    message: "Password reset successful",
+  };
 }

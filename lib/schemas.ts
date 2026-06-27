@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+
 export const loginSchema = z.object({
   emailOrPhone: z
     .string()
@@ -62,6 +63,48 @@ lastName: z
     message: "Phone number must include at least 10 digits.",
     path: ["phone"],
   });
+
+
+
+const passwordSchema = z
+
+  .string()
+
+  .min(8, "Password must be at least 8 characters.")
+
+  .regex(/[A-Za-z]/, "Must include at least one letter.")
+
+  .regex(/\d/, "Must include at least one number.")
+
+  .regex(/[^A-Za-z0-9]/, "Must include at least one symbol.");
+
+  export const forgotPasswordSchema = z.object({
+  emailOrPhone: z
+    .string()
+    .min(1, "Enter your email or phone number.")
+    .refine((value) => {
+      const isEmail = value.includes("@") && value.includes(".");
+      const isPhone = value.replace(/\D/g, "").length >= 10;
+
+      return isEmail || isPhone;
+    }, "Enter a valid email or phone number."),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1, "Reset token is required."),
+
+    password: passwordSchema,
+
+    confirmPassword: z.string().min(1, "Confirm your new password."),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match.",
+    path: ["confirmPassword"],
+  });
+
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type SignupInput = z.infer<typeof signupSchema>;

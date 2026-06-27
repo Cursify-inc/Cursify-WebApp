@@ -87,12 +87,11 @@ const onSubmit = async (values: LoginInput) => {
               <KeyRound className="h-4 w-4" /> Password
             </label>
 
-            <button
+            <Link href="/forgot-password"
               className="text-xs font-mono uppercase tracking-[0.12em] text-text-tertiary hover:text-text-primary hover:underline"
-              type="button"
             >
               forget password?
-            </button>
+            </Link>
           </div>
 
           <input
