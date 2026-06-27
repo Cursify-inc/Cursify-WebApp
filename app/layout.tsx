@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import "./globals.css"
 import { ThemeProvider } from "@/components/providers/theme-provider"
-
+import { AuthProvider } from "@/components/providers/auth-provider"
 export const metadata: Metadata = {
     title: "Cursify — AI-powered IDE platform",
     description:
@@ -31,8 +31,10 @@ export default function RootLayout({
         <html lang="en" suppressHydrationWarning>
         <body className="bg-background text-text-primary">
         <ThemeProvider>
-            {children}
-            <div className="noise-overlay" />
+            <AuthProvider>
+                {children}
+                <div className="noise-overlay" />
+            </AuthProvider>
         </ThemeProvider>
         </body>
         </html>

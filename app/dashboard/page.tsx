@@ -8,9 +8,27 @@ import {
   OverviewActions,
   OverviewCard,
 } from "@/components/dashboard/overview";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export default function DashboardOverviewPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { user, loading } = useAuth();
+
+
+
+  if (loading) {
+
+    return (
+
+      <div className="flex h-screen items-center justify-center text-sm text-text-secondary">
+
+        Loading dashboard...
+
+      </div>
+
+    );
+
+  }
 
   return (
     <main className="min-h-screen bg-background text-text-primary">
@@ -27,7 +45,7 @@ export default function DashboardOverviewPage() {
             <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <h1 className="text-3xl font-black tracking-[-0.04em] text-text-primary md:text-4xl">
-                  Welcome back, Alex.
+                  Welcome back, {user?.name ?? "User"}.
                 </h1>
 
                 <p className="mt-3 max-w-2xl text-xl leading-8 text-text-secondary">
