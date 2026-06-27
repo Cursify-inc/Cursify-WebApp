@@ -1,44 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getCurrentUser } from "@/lib/auth-api";
+import { useEffect } from "react";
 
-export default function AuthCallbackPage() {
-  const [message, setMessage] = useState("Completing authentication...");
-
+export default function OAuthCallbackPage() {
   useEffect(() => {
-    const handleCallback = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const token = params.get("token");
-
-      if (!token) {
-        setMessage("Authentication failed. No token found.");
-        return;
-      }
-
-      window.history.replaceState({}, document.title, "/auth/callback");
-      localStorage.setItem("access_token", token);
-
+    async function finishLogin() {
       try {
-        const user = await getCurrentUser(token);
-        localStorage.setItem("auth_user", JSON.stringify(user));
-        window.location.href = "/dashboard";
-      } catch (error) {
-        console.error("OAuth callback error:", error);
+        // مهم: cookie خودش ارسال میشه
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
+          credentials: "include",
+        });
 
-        // Temporary fallback if /auth/me is blocked by CORS
+        if (!res.ok) throw new Error("auth failed");
+
+        const user = await res.json();
+
+        // optional: store in global state (zustand / context)
+        console.log("user:", user);
+
         window.location.href = "/dashboard";
+      } catch (e) {
+        console.error(e);
+        window.location.href = "/login";
       }
-    };
+    }
 
-    handleCallback();
+    finishLogin();
   }, []);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-6">
-      <div className="border border-border bg-background-surface p-6 font-mono text-xs uppercase tracking-[0.16em] text-text-secondary">
-        {message}
-      </div>
-    </main>
+    <div className="flex h-screen items-center justify-center text-sm text-gray-500">
+      Logging you in...
+    </div>
   );
 }
