@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import { loginUser } from "@/lib/auth-api";
 import { LoginInput, loginSchema } from "@/lib/schemas";
 import { OAuthButtons } from "./oauth-buttons";
-import { boolean } from "zod";
+import { OtpModal } from "./otp-modal";
 
 type LoginResult = Awaited<ReturnType<typeof loginUser>>;
 
@@ -21,6 +21,7 @@ function inputClass(isFilled: boolean) {
 export function LoginForm() {
   const [isPending, setIsPending] = useState(false);
   const [result, setResult] = useState<LoginResult | null>(null);
+  const [otpOpen, setOtpOpen] = useState(false);
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -57,6 +58,11 @@ const onSubmit = async (values: LoginInput) => {
     }, 500);
   }
 };
+
+
+  if (otpOpen) {
+    return <OtpModal open={otpOpen} onClose={() => setOtpOpen(false)} />;
+  }
 
   return (
     <div className="space-y-5 p-6">
@@ -117,7 +123,17 @@ const onSubmit = async (values: LoginInput) => {
           {isPending ? "logging..." : "login"}
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
         </button>
+        <button
+  type="button"
+  onClick={() => setOtpOpen(true)}
+  className="flex w-full items-center justify-center gap-2 border border-border bg-background-surface px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-text-secondary transition-colors hover:bg-background-elevated hover:text-text-primary"
+>
+  <KeyRound className="h-4 w-4" />
+  Login with one-time code
+</button>
       </form>
+
+      {/* <OtpModal open={otpOpen} onClose={() => setOtpOpen(false)} /> */}
 
   {result && (
   <motion.div
